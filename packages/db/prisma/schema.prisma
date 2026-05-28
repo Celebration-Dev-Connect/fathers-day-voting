@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StaffRole {
+  ADMIN
+  REGISTRAR
+}
+
+enum VehicleStatus {
+  DRAFT
+  REGISTERED
+  CHECKED_IN
+}
+
+enum RegistrationSource {
+  ONSITE
+  ONLINE_IMPORT
+}
+
+enum QrCardStatus {
+  PRINTED
+  ASSIGNED
+  REASSIGNED
+  RETIRED
+  REPRINTED
+}
+
+enum QrAuditAction {
+  ASSIGNED
+  REASSIGNED
+  REPRINTED
+  RETIRED
+}
+
+model Event {
+  id                 String         @id @default(cuid())
+  name               String
+  eventDate          DateTime
+  venueName          String
+  venueAddress       String
+  registrationOpen   Boolean        @default(true)
+  votingOpen         Boolean        @default(false)
+  judgingOpen        Boolean        @default(false)
+  resultsPublished   Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  categories         Category[]
+  vehicleEntries     VehicleEntry[]
+  qrCards            QrCard[]
+}
+
+model StaffUser {
+  id            String                 @id @default(cuid())
+  email         String                 @unique
+  displayName   String
+  role          StaffRole
+  planningCenterId String?             @unique
+  devLogin      Boolean                @default(false)
+  active        Boolean                @default(true)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  registrations VehicleEntry[]         @relation("RegisteredBy")
+  auditLogs     QrAssignmentAuditLog[] @relation("QrAuditStaff")
+}
+
+model Category {
+  id             String         @id @default(cuid())
+  eventId        String
+  name           String
+  slug           String
+  active         Boolean        @default(true)
+  sortOrder      Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  event          Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vehicleEntries VehicleEntry[]
+
+  @@unique([eventId, slug])
+}
+
+model Owner {
+  id              String         @id @default(cuid())
+  firstName       String
+  lastName        String
+  phone           String
+  email           String?
+  publicName      String?
+  publicNameOptIn Boolean        @default(false)
+  waiverAccepted  Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  vehicleEntries  VehicleEntry[]
+}
+
+model VehicleEntry {
+  id                   String                 @id @default(cuid())
+  eventId              String
+  ownerId              String
+  categoryId           String
+  entryNumber          Int
+  year                 Int
+  make                 String
+  model                String
+  nickname             String?
+  plateNumber          String?
+  exteriorColor        String?
+  internalNotes        String?
+  status               VehicleStatus          @default(REGISTERED)
+  source               RegistrationSource     @default(ONSITE)
+  checkedInAt          DateTime?
+  registeredByStaffId  String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  event                Event                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  owner                Owner                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category             Category               @relation(fields: [categoryId], references: [id])
+  registeredByStaff    StaffUser?             @relation("RegisteredBy", fields: [registeredByStaffId], references: [id])
+  qrCard               QrCard?
+  qrAuditLogs          QrAssignmentAuditLog[] @relation("VehicleQrAudit")
+
+  @@unique([eventId, entryNumber])
+  @@index([eventId, status])
+  @@index([eventId, categoryId])
+}
+
+model QrCard {
+  id             String                 @id @default(cuid())
+  eventId        String
+  visibleCode    String
+  publicToken    String                 @unique
+  status         QrCardStatus           @default(PRINTED)
+  vehicleEntryId String?                @unique
+  printedAt      DateTime?
+  assignedAt     DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  event          Event                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vehicleEntry   VehicleEntry?          @relation(fields: [vehicleEntryId], references: [id])
+  auditLogs      QrAssignmentAuditLog[] @relation("QrCardAudit")
+
+  @@unique([eventId, visibleCode])
+  @@index([eventId, status])
+}
+
+model QrAssignmentAuditLog {
+  id             String        @id @default(cuid())
+  eventId        String
+  qrCardId       String
+  vehicleEntryId String?
+  staffUserId    String
+  action         QrAuditAction
+  reason         String?
+  previousVehicleEntryId String?
+  createdAt      DateTime      @default(now())
+  qrCard         QrCard        @relation("QrCardAudit", fields: [qrCardId], references: [id], onDelete: Cascade)
+  vehicleEntry   VehicleEntry? @relation("VehicleQrAudit", fields: [vehicleEntryId], references: [id])
+  staffUser      StaffUser     @relation("QrAuditStaff", fields: [staffUserId], references: [id])
+
+  @@index([eventId, qrCardId])
+  @@index([eventId, vehicleEntryId])
+}

@@ -1,0 +1,22 @@
+{
+  "name": "fathers-day-voting",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @carshow/api",
+    "dev:web": "npm run dev --workspace @carshow/admin-web",
+    "dev:api": "npm run dev --workspace @carshow/api",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "db:generate": "npm run db:generate --workspace @carshow/db",
+    "db:migrate": "npm run db:migrate --workspace @carshow/db",
+    "db:seed": "npm run db:seed --workspace @carshow/db"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

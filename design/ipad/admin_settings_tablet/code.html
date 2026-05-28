@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Celebration Church Staff Dashboard - Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-highest": "#e1e2ea",
+                      "on-secondary-fixed": "#1b1b1b",
+                      "tertiary": "#b8111c",
+                      "on-tertiary-fixed": "#410003",
+                      "on-tertiary-container": "#fffbff",
+                      "on-error-container": "#93000a",
+                      "border-grey": "#D7D7D7",
+                      "secondary-fixed-dim": "#c6c6c6",
+                      "on-primary-fixed": "#410007",
+                      "primary-fixed": "#ffdad8",
+                      "on-primary-container": "#fffbff",
+                      "inverse-surface": "#2d3037",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container-low": "#f2f3fb",
+                      "error": "#ba1a1a",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed": "#e2e2e2",
+                      "inverse-on-surface": "#eff0f9",
+                      "tertiary-container": "#dc3031",
+                      "on-error": "#ffffff",
+                      "surface-dim": "#d8dae2",
+                      "tertiary-fixed": "#ffdad6",
+                      "surface": "#f9f9ff",
+                      "surface-container": "#ecedf6",
+                      "background": "#f9f9ff",
+                      "on-tertiary-fixed-variant": "#930010",
+                      "surface-variant": "#e1e2ea",
+                      "outline-variant": "#e4bdbc",
+                      "on-secondary-container": "#646464",
+                      "outline": "#906f6e",
+                      "muted-grey": "#7D7D7D",
+                      "tertiary-fixed-dim": "#ffb3ac",
+                      "primary-container": "#dd2d3e",
+                      "surface-container-high": "#e6e8f0",
+                      "pure-white": "#FFFFFF",
+                      "deep-red": "#CB1836",
+                      "on-primary-fixed-variant": "#92001d",
+                      "error-container": "#ffdad6",
+                      "on-background": "#191c21",
+                      "on-tertiary": "#ffffff",
+                      "light-grey": "#F4F4F4",
+                      "inverse-primary": "#ffb3b1",
+                      "on-surface": "#191c21",
+                      "surface-tint": "#bc0f2b",
+                      "primary": "#b90a29",
+                      "on-secondary-fixed-variant": "#474747",
+                      "on-surface-variant": "#5b403f",
+                      "primary-fixed-dim": "#ffb3b1",
+                      "secondary": "#5e5e5e",
+                      "surface-bright": "#f9f9ff",
+                      "secondary-container": "#e2e2e2",
+                      "on-primary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "stack-md": "16px",
+                      "stack-lg": "32px",
+                      "margin-desktop": "40px",
+                      "base": "8px",
+                      "touch-target-min": "48px",
+                      "stack-sm": "8px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Montserrat"
+                      ],
+                      "body-sm": [
+                              "Montserrat"
+                      ],
+                      "headline-xl": [
+                              "Montserrat"
+                      ],
+                      "label-sm": [
+                              "Montserrat"
+                      ],
+                      "body-md": [
+                              "Montserrat"
+                      ],
+                      "headline-lg": [
+                              "Montserrat"
+                      ],
+                      "body-lg": [
+                              "Montserrat"
+                      ],
+                      "label-caps": [
+                              "Montserrat"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-xl": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.03em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "1",
+                                      "letterSpacing": "0.1em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .ambient-shadow {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .touch-target {
+            min-height: 48px;
+            min-width: 48px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex antialiased">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-screen w-72 fixed left-0 top-0 bg-on-background shadow-md z-50">
+<div class="px-6 py-8 border-b border-secondary-fixed-dim border-opacity-20">
+<h1 class="font-headline-md text-headline-md text-pure-white">CELEBRATION CHURCH</h1>
+<p class="font-label-caps text-label-caps text-secondary-fixed mt-1">STAFF DASHBOARD</p>
+</div>
+<div class="flex-1 overflow-y-auto py-margin-desktop space-y-2">
+<a class="flex items-center gap-4 px-6 py-4 text-surface-variant hover:bg-primary-container hover:text-on-primary-container transition-colors touch-target" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-surface-variant hover:bg-primary-container hover:text-on-primary-container transition-colors touch-target" href="#">
+<span class="material-symbols-outlined" data-icon="how_to_reg">how_to_reg</span>
+<span class="font-body-md text-body-md">Registrations</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-surface-variant hover:bg-primary-container hover:text-on-primary-container transition-colors touch-target" href="#">
+<span class="material-symbols-outlined" data-icon="qr_code_scanner">qr_code_scanner</span>
+<span class="font-body-md text-body-md">Scan QR</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-surface-variant hover:bg-primary-container hover:text-on-primary-container transition-colors touch-target" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-body-md text-body-md">Moderate</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 bg-primary text-on-primary font-bold border-r-4 border-pure-white touch-target" href="#">
+<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</div>
+<div class="p-6 border-t border-secondary-fixed-dim border-opacity-20">
+<div class="flex items-center gap-3">
+<img alt="Staff Profile" class="w-10 h-10 rounded-full object-cover" data-alt="A close up portrait photo of a professional staff member in a brightly lit modern office. High quality, crisp focus, representing a user profile avatar." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAhqvi8KGpHC_4fwn-4TkHe4QGT4nGU-66sFvH5S5ixuxJHdP_O8kRcLwT3p2iBsF7lBSxRJ0z7i08xWdHCZcTP3pmZH8TZWNXaj71LyHE3iskil6xsmp72X2n-V_qGGENFu3gJVGrZ9AQd4GARrwOQlXEPnay9MaIsYiTZXTfsp3il9BDEFVnWLlutXV9T9fJIv-avCXVCv2s6HMXKLKpTpUPREIzKFJRZO6uz5-PA7_QuKKPy13AYNPUra6N0_6kswArvVZ9FiDj"/>
+<div>
+<p class="text-pure-white font-body-sm text-body-sm font-bold">Admin User</p>
+<p class="text-secondary-fixed text-label-sm font-label-sm">Logout</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-72 min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-margin-desktop py-4 bg-pure-white sticky top-0 z-40 border-b-2 border-light-grey">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-lg text-headline-lg font-black text-on-background uppercase tracking-tighter">SETTINGS</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-secondary hover:text-primary transition-colors touch-target flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-secondary hover:text-primary transition-colors touch-target flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 p-margin-desktop bg-surface overflow-y-auto">
+<div class="max-w-6xl mx-auto space-y-stack-lg">
+<!-- High-End Bento Grid Layout for Settings -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Section 1: Event Configuration -->
+<div class="lg:col-span-2 bg-pure-white rounded-lg p-6 ambient-shadow flex flex-col gap-stack-md border-t-4 border-primary">
+<div class="flex items-center gap-3 border-b border-light-grey pb-4">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="event">event</span>
+<h3 class="font-headline-md text-headline-md text-on-background">Event Configuration</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter flex-1">
+<div class="space-y-4">
+<div>
+<label class="block font-label-caps text-label-caps text-secondary mb-2">EVENT STATUS</label>
+<div class="flex gap-4">
+<label class="flex items-center gap-2 cursor-pointer touch-target px-4 py-2 bg-surface-container rounded-lg border-2 border-transparent focus-within:border-primary transition-all">
+<input checked="" class="w-6 h-6 text-primary focus:ring-primary border-border-grey" name="event_status" type="radio" value="live"/>
+<span class="font-body-md text-body-md font-bold text-primary">LIVE</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer touch-target px-4 py-2 bg-surface-container rounded-lg border-2 border-transparent focus-within:border-secondary transition-all">
+<input class="w-6 h-6 text-secondary focus:ring-secondary border-border-grey" name="event_status" type="radio" value="closed"/>
+<span class="font-body-md text-body-md font-bold text-secondary">CLOSED</span>
+</label>
+</div>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-secondary mb-2">VOTING WINDOW</label>
+<div class="flex gap-4">
+<label class="flex items-center gap-2 cursor-pointer touch-target px-4 py-2 bg-surface-container rounded-lg border-2 border-transparent focus-within:border-primary transition-all">
+<input checked="" class="w-6 h-6 text-primary focus:ring-primary border-border-grey" name="voting_status" type="radio" value="open"/>
+<span class="font-body-md text-body-md font-bold text-primary">OPEN</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer touch-target px-4 py-2 bg-surface-container rounded-lg border-2 border-transparent focus-within:border-secondary transition-all">
+<input class="w-6 h-6 text-secondary focus:ring-secondary border-border-grey" name="voting_status" type="radio" value="closed"/>
+<span class="font-body-md text-body-md font-bold text-secondary">CLOSED</span>
+</label>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block font-label-caps text-label-caps text-secondary mb-2">START DATE</label>
+<input class="w-full h-12 px-4 rounded-lg border-2 border-border-grey focus:border-primary focus:ring-0 font-body-md text-body-md touch-target" type="date" value="2023-10-15"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-secondary mb-2">END DATE</label>
+<input class="w-full h-12 px-4 rounded-lg border-2 border-border-grey focus:border-primary focus:ring-0 font-body-md text-body-md touch-target" type="date" value="2023-10-17"/>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-4 flex justify-end">
+<button class="bg-on-background text-pure-white font-label-caps text-label-caps px-8 rounded touch-target hover:bg-primary transition-colors flex items-center justify-center uppercase tracking-wider font-bold">
+                                Save Event Settings
+                            </button>
+</div>
+</div>
+<!-- Section 2: Notifications & Quick Toggles -->
+<div class="bg-pure-white rounded-lg p-6 ambient-shadow flex flex-col gap-stack-md border-t-4 border-on-background">
+<div class="flex items-center gap-3 border-b border-light-grey pb-4">
+<span class="material-symbols-outlined text-on-background text-3xl" data-icon="notifications_active">notifications_active</span>
+<h3 class="font-headline-md text-headline-md text-on-background">Alerts</h3>
+</div>
+<div class="space-y-6 mt-4">
+<div class="flex items-center justify-between">
+<div>
+<p class="font-body-md text-body-md font-bold text-on-background">New Registrations</p>
+<p class="font-label-sm text-label-sm text-secondary mt-1">Push notifications for entries</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer touch-target">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-14 h-7 bg-border-grey peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-pure-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between">
+<div>
+<p class="font-body-md text-body-md font-bold text-on-background">Moderation Flags</p>
+<p class="font-label-sm text-label-sm text-secondary mt-1">Alerts for flagged photos</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer touch-target">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-14 h-7 bg-border-grey peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-pure-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between">
+<div>
+<p class="font-body-md text-body-md font-bold text-on-background">System Updates</p>
+<p class="font-label-sm text-label-sm text-secondary mt-1">Dashboard maintenance alerts</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer touch-target">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-14 h-7 bg-border-grey peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-pure-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Section 3: Hardware & QR -->
+<div class="lg:col-span-1 bg-pure-white rounded-lg p-6 ambient-shadow flex flex-col gap-stack-md border-t-4 border-on-background">
+<div class="flex items-center gap-3 border-b border-light-grey pb-4">
+<span class="material-symbols-outlined text-on-background text-3xl" data-icon="print">print</span>
+<h3 class="font-headline-md text-headline-md text-on-background">Hardware</h3>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block font-label-caps text-label-caps text-secondary mb-2">DEFAULT PRINTER</label>
+<select class="w-full h-12 px-4 rounded-lg border-2 border-border-grey focus:border-primary focus:ring-0 font-body-md text-body-md touch-target bg-surface-container">
+<option>Zebra ZD421 (Lobby)</option>
+<option>Brother QL-820 (Registration Desk)</option>
+<option>Dymo LabelWriter (Back Office)</option>
+</select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-secondary mb-2">SCANNER SENSITIVITY</label>
+<input class="w-full h-2 bg-border-grey rounded-lg appearance-none cursor-pointer accent-primary mt-2" max="100" min="1" type="range" value="75"/>
+<div class="flex justify-between text-label-sm font-label-sm text-secondary mt-1">
+<span>Low (Fast)</span>
+<span>High (Accurate)</span>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-6 flex justify-start">
+<button class="bg-surface-container text-on-background font-label-caps text-label-caps px-6 rounded touch-target hover:bg-border-grey transition-colors flex items-center justify-center border-2 border-border-grey">
+                                Test Printer
+                            </button>
+</div>
+</div>
+<!-- Section 4: User Management -->
+<div class="lg:col-span-2 bg-pure-white rounded-lg p-6 ambient-shadow flex flex-col gap-stack-md border-t-4 border-on-background">
+<div class="flex items-center justify-between border-b border-light-grey pb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-background text-3xl" data-icon="manage_accounts">manage_accounts</span>
+<h3 class="font-headline-md text-headline-md text-on-background">Staff Access</h3>
+</div>
+<button class="bg-primary text-pure-white font-label-caps text-label-caps px-4 py-2 rounded touch-target hover:bg-on-background transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span> ADD STAFF
+                            </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b-2 border-border-grey font-label-caps text-label-caps text-secondary">
+<th class="py-3 px-4">User</th>
+<th class="py-3 px-4">Role</th>
+<th class="py-3 px-4">Status</th>
+<th class="py-3 px-4 text-right">Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-light-grey hover:bg-surface transition-colors">
+<td class="py-3 px-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary font-bold">JD</div>
+<div>
+<p class="font-body-md text-body-md font-bold text-on-background">John Doe</p>
+<p class="font-label-sm text-label-sm text-secondary">john@celebration.church</p>
+</div>
+</div>
+</td>
+<td class="py-3 px-4 font-body-md text-body-md">Administrator</td>
+<td class="py-3 px-4">
+<span class="inline-block px-2 py-1 bg-surface-container text-primary text-xs font-bold rounded">ACTIVE</span>
+</td>
+<td class="py-3 px-4 text-right">
+<button class="text-secondary hover:text-primary p-2 touch-target inline-flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</td>
+</tr>
+<tr class="border-b border-light-grey hover:bg-surface transition-colors">
+<td class="py-3 px-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary font-bold">AS</div>
+<div>
+<p class="font-body-md text-body-md font-bold text-on-background">Alice Smith</p>
+<p class="font-label-sm text-label-sm text-secondary">alice@celebration.church</p>
+</div>
+</div>
+</td>
+<td class="py-3 px-4 font-body-md text-body-md">Moderator</td>
+<td class="py-3 px-4">
+<span class="inline-block px-2 py-1 bg-surface-container text-primary text-xs font-bold rounded">ACTIVE</span>
+</td>
+<td class="py-3 px-4 text-right">
+<button class="text-secondary hover:text-primary p-2 touch-target inline-flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

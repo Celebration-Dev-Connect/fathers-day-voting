@@ -36,6 +36,7 @@ export type QrCard = {
   publicToken: string;
   status: "PRINTED" | "ASSIGNED" | "REASSIGNED" | "RETIRED" | "REPRINTED";
   vehicleEntryId?: string | null;
+  printedAt?: string | null;
   assignedAt?: string | null;
   vehicleEntry?: Registration;
 };

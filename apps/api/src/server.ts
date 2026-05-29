@@ -74,6 +74,19 @@ function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+function normalizeQrCode(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+
+  try {
+    const parsed = new URL(trimmed);
+    const pathCode = parsed.pathname.split("/").filter(Boolean).at(-1);
+    return pathCode || trimmed;
+  } catch {
+    return trimmed.replace(/\/$/, "");
+  }
+}
+
 async function nextEntryNumber() {
   const latest = await prisma.vehicleEntry.findFirst({
     where: { eventId },
@@ -390,13 +403,38 @@ app.post("/registrations/:id/check-in", async (request) => {
   return { registration };
 });
 
+app.get("/qr-cards", async (request) => {
+  await requireStaff(request);
+  const query = z
+    .object({
+      status: z.nativeEnum(QrCardStatus).optional(),
+    })
+    .parse(request.query);
+
+  const qrCards = await prisma.qrCard.findMany({
+    where: {
+      eventId,
+      status: query.status,
+    },
+    include: {
+      vehicleEntry: {
+        include: { owner: true, category: true },
+      },
+    },
+    orderBy: { visibleCode: "asc" },
+  });
+
+  return { qrCards };
+});
+
 app.get("/qr-cards/:code", async (request) => {
   await requireStaff(request);
   const params = z.object({ code: z.string().trim().min(1) }).parse(request.params);
+  const code = normalizeQrCode(params.code);
   const qrCard = await prisma.qrCard.findFirst({
     where: {
       eventId,
-      OR: [{ visibleCode: params.code }, { publicToken: params.code }],
+      OR: [{ visibleCode: code }, { publicToken: code }],
     },
     include: {
       vehicleEntry: {
@@ -417,6 +455,7 @@ app.post("/qr-cards/assign", async (request) => {
       code: z.string().trim().min(1),
     })
     .parse(request.body);
+  const code = normalizeQrCode(body.code);
 
   const result = await prisma.$transaction(async (tx) => {
     const vehicle = await tx.vehicleEntry.findFirst({
@@ -430,7 +469,7 @@ app.post("/qr-cards/assign", async (request) => {
     const qrCard = await tx.qrCard.findFirst({
       where: {
         eventId,
-        OR: [{ visibleCode: body.code }, { publicToken: body.code }],
+        OR: [{ visibleCode: code }, { publicToken: code }],
       },
     });
 

@@ -5,6 +5,7 @@ import {
   ClipboardList,
   LogOut,
   Plus,
+  Printer,
   QrCode,
   Save,
   Search,
@@ -12,6 +13,7 @@ import {
   Tags,
   UserRound,
 } from "lucide-react";
+import QRCode from "qrcode";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   assignQrCard,
@@ -21,6 +23,7 @@ import {
   createRegistration,
   devLogin,
   listCategories,
+  listQrCards,
   listRegistrations,
   lookupQrCard,
   me,
@@ -28,9 +31,9 @@ import {
   updateCategory,
   updateRegistration,
 } from "./api";
-import type { Category, Registration, RegistrationPayload, StaffUser } from "./types";
+import type { Category, QrCard as QrCardRecord, Registration, RegistrationPayload, StaffUser } from "./types";
 
-type View = "dashboard" | "registrations" | "categories";
+type View = "dashboard" | "registrations" | "qr-cards" | "categories";
 
 const emptyPayload: RegistrationPayload = {
   owner: {
@@ -232,6 +235,10 @@ function AdminShell({ staff, onLogout }: { staff: StaffUser; onLogout: () => voi
             <Car size={22} />
             Registrations
           </button>
+          <button className={view === "qr-cards" ? "active" : ""} onClick={() => setView("qr-cards")}>
+            <QrCode size={22} />
+            QR Cards
+          </button>
           <button className={view === "categories" ? "active" : ""} onClick={() => setView("categories")}>
             <Tags size={22} />
             Categories
@@ -265,6 +272,7 @@ function AdminShell({ staff, onLogout }: { staff: StaffUser; onLogout: () => voi
             onRefresh={refresh}
           />
         ) : null}
+        {view === "qr-cards" ? <QrCardsView /> : null}
         {view === "categories" ? (
           <CategoriesView staff={staff} categories={categories} onRefresh={refresh} />
         ) : null}
@@ -650,6 +658,108 @@ function QrAssignment({
       {message ? <div className="alert success">{message}</div> : null}
       {error ? <div className="alert danger">{error}</div> : null}
     </section>
+  );
+}
+
+function QrCardsView() {
+  const [qrCards, setQrCards] = useState<QrCardRecord[]>([]);
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    setError("");
+    listQrCards(status)
+      .then(({ qrCards }) => setQrCards(qrCards))
+      .catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Could not load QR cards"))
+      .finally(() => setLoading(false));
+  }, [status]);
+
+  const availableCount = qrCards.filter((card) => card.status === "PRINTED").length;
+  const assignedCount = qrCards.filter((card) => card.status === "ASSIGNED").length;
+
+  return (
+    <section className="qr-cards-view">
+      <div className="page-header no-print">
+        <div>
+          <p className="eyebrow">Seeded QR Inventory</p>
+          <h1>QR Cards</h1>
+        </div>
+        <div className="header-actions">
+          <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Filter QR cards">
+            <option value="">All Cards</option>
+            <option value="PRINTED">Available</option>
+            <option value="ASSIGNED">Assigned</option>
+            <option value="REASSIGNED">Reassigned</option>
+            <option value="RETIRED">Retired</option>
+          </select>
+          <button type="button" className="primary-button" onClick={() => window.print()}>
+            <Printer size={20} />
+            Print
+          </button>
+        </div>
+      </div>
+
+      {error ? <div className="alert danger no-print">{error}</div> : null}
+
+      <div className="qr-summary no-print">
+        <Metric label="Loaded Cards" value={qrCards.length} icon={<QrCode />} />
+        <Metric label="Available" value={availableCount} icon={<CheckCircle2 />} />
+        <Metric label="Assigned" value={assignedCount} icon={<Car />} />
+      </div>
+
+      {loading ? <div className="empty-state no-print">Loading QR cards...</div> : null}
+      {!loading && !qrCards.length ? <div className="empty-state no-print">No QR cards found.</div> : null}
+
+      <div className="print-sheet" aria-label="Printable QR card sheet">
+        {qrCards.map((card) => (
+          <QrPrintCard key={card.id} card={card} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function QrPrintCard({ card }: { card: QrCardRecord }) {
+  const [dataUrl, setDataUrl] = useState("");
+  const qrUrl = `${window.location.origin}/v/${card.publicToken}`;
+  const owner = card.vehicleEntry?.owner;
+
+  useEffect(() => {
+    let mounted = true;
+    QRCode.toDataURL(qrUrl, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      scale: 7,
+      color: {
+        dark: "#191c21",
+        light: "#ffffff",
+      },
+    }).then((url) => {
+      if (mounted) setDataUrl(url);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [qrUrl]);
+
+  return (
+    <article className={`qr-print-card ${card.status.toLowerCase()}`}>
+      <div className="qr-print-heading">
+        <div>
+          <strong>Father's Day Car Show</strong>
+          <span>Celebration Church</span>
+        </div>
+        <b>{card.visibleCode}</b>
+      </div>
+      {dataUrl ? <img src={dataUrl} alt={`QR code ${card.visibleCode}`} /> : <div className="qr-placeholder" />}
+      <div className="qr-print-footer">
+        <span>{card.status.replace("_", " ")}</span>
+        <small>{owner ? `${owner.firstName} ${owner.lastName}` : qrUrl}</small>
+      </div>
+    </article>
   );
 }
 

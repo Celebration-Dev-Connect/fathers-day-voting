@@ -89,6 +89,12 @@ export async function checkInRegistration(id: string) {
   });
 }
 
+export async function listQrCards(status = "") {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  return request<{ qrCards: QrCard[] }>(`/qr-cards?${params.toString()}`);
+}
+
 export async function lookupQrCard(code: string) {
   return request<{ qrCard: QrCard }>(`/qr-cards/${encodeURIComponent(code)}`);
 }

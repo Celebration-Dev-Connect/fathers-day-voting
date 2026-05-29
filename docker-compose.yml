@@ -35,7 +35,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: sh -c "cd packages/db && npx prisma migrate deploy && npm run db:seed --workspace @carshow/db"
+    command: sh -c "npx prisma migrate deploy --schema packages/db/prisma/schema.prisma && npm run db:seed --workspace @carshow/db"
     environment:
       DATABASE_URL: postgresql://carshow:carshow@postgres:5432/carshow?schema=public
       NODE_ENV: development

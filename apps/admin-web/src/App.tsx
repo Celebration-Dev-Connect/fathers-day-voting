@@ -582,14 +582,31 @@ function QrAssignment({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
+  const cameraAvailable =
+    typeof window !== "undefined" &&
+    window.isSecureContext &&
+    typeof navigator !== "undefined" &&
+    typeof navigator.mediaDevices?.getUserMedia === "function";
 
   async function startScan() {
     setError("");
     setMessage("");
+    if (!cameraAvailable) {
+      setError(
+        window.isSecureContext
+          ? "Camera scanning is not available in this browser. Enter the QR code manually."
+          : "Camera scanning requires HTTPS on iPad/Safari. Enter the QR code manually for now.",
+      );
+      return;
+    }
+    if (!videoElement) {
+      setError("Camera view is still loading. Try Scan again.");
+      return;
+    }
     setScanning(true);
     try {
       const reader = new BrowserMultiFormatReader();
-      const result = await reader.decodeOnceFromVideoDevice(undefined, videoElement!);
+      const result = await reader.decodeOnceFromVideoDevice(undefined, videoElement);
       const scannedCode = result.getText();
       setCode(scannedCode);
       setMessage(`Scanned ${scannedCode}`);

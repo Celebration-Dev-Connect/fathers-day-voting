@@ -7,7 +7,7 @@ import type {
   RegistrationPayload,
   StaffUser,
   VotingSettings,
-} from "./types";
+} from "@carshow/carshow-components";
 import { API_URL } from "./config";
 
 const tokenKey = "carshow-admin-token";

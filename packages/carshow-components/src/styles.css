@@ -150,6 +150,10 @@ textarea:focus {
   top: 0;
 }
 
+.mobile-admin-bar {
+  display: none;
+}
+
 .sidebar nav {
   display: grid;
   gap: 8px;
@@ -961,6 +965,149 @@ textarea:focus {
   .tally-grid,
   .voting-settings {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    min-width: 0;
+  }
+
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: static;
+    min-height: 0;
+    background: transparent;
+    color: var(--on-surface);
+    padding: 0;
+    display: block;
+  }
+
+  .sidebar-brand,
+  .sidebar > .staff-card {
+    display: none;
+  }
+
+  .mobile-admin-bar {
+    position: fixed;
+    z-index: 40;
+    top: 0;
+    left: 0;
+    right: 0;
+    min-height: 64px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--pure-white);
+    background: var(--inverse-surface);
+    box-shadow: 0 8px 20px rgb(0 0 0 / 16%);
+  }
+
+  .mobile-admin-bar .brand-mark {
+    font-size: 13px;
+    line-height: 1.1;
+  }
+
+  .mobile-admin-bar p {
+    margin: 2px 0 0;
+    color: #d7d7d7;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .mobile-admin-bar button {
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgb(255 255 255 / 22%);
+    border-radius: 4px;
+    color: var(--pure-white);
+    background: transparent;
+    display: grid;
+    place-items: center;
+  }
+
+  .sidebar nav {
+    position: fixed;
+    z-index: 40;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    background: var(--inverse-surface);
+    box-shadow: 0 -8px 20px rgb(0 0 0 / 18%);
+  }
+
+  .sidebar nav button {
+    min-width: 0;
+    min-height: 54px;
+    padding: 6px 2px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    gap: 3px;
+    color: #d7d7d7;
+    font-size: 10px;
+    line-height: 1.1;
+    text-align: center;
+    letter-spacing: 0;
+  }
+
+  .sidebar nav button svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .sidebar nav button span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar nav button.active {
+    color: var(--pure-white);
+    background: var(--primary);
+  }
+
+  .main-panel {
+    padding: 84px 14px 92px;
+  }
+
+  .page-header,
+  .editor-header,
+  .tally-card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .registration-list {
+    max-height: none;
+  }
+
+  .registration-row {
+    grid-template-columns: 56px 1fr;
+  }
+
+  .registration-row > *:nth-child(n + 3) {
+    justify-self: start;
+    grid-column: 2;
+  }
+
+  .winner-drawer {
+    inset: 0;
+    width: auto;
+    max-width: none;
+    border-radius: 0;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
 }
 

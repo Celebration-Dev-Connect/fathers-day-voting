@@ -8,10 +8,13 @@ ENV VITE_PUBLIC_BASE_PATH=$VITE_PUBLIC_BASE_PATH
 ENV VITE_PUBLIC_APP_URL=$VITE_PUBLIC_APP_URL
 COPY package.json package-lock.json* ./
 COPY apps/admin-web/package.json apps/admin-web/package.json
+COPY packages/carshow-components/package.json packages/carshow-components/package.json
 COPY packages/db/package.json packages/db/package.json
 RUN npm install
 COPY tsconfig.base.json ./
 COPY apps/admin-web apps/admin-web
+COPY packages/carshow-components packages/carshow-components
+RUN npm run build --workspace @carshow/carshow-components
 RUN npm run build --workspace @carshow/admin-web
 
 FROM nginx:1.27-alpine

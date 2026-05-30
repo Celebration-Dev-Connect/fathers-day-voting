@@ -100,7 +100,7 @@ async function nextEntryNumber() {
 const ownerSchema = z.object({
   firstName: z.string().trim().min(1),
   lastName: z.string().trim().min(1),
-  phone: z.string().trim().min(7),
+  phone: z.string().trim().regex(/^\d{3}-\d{3}-\d{4}$/, "Phone must use XXX-XXX-XXXX format"),
   email: z.string().trim().email().optional().or(z.literal("")),
   publicName: z.string().trim().optional(),
   publicNameOptIn: z.boolean().default(false),
@@ -181,6 +181,144 @@ app.get("/categories", async (request) => {
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       include: { _count: { select: { vehicleEntries: true } } },
     }),
+  };
+});
+
+app.get("/voting/settings", async (request) => {
+  await requireStaff(request);
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: {
+      id: true,
+      name: true,
+      votingOpen: true,
+      judgingOpen: true,
+      resultsPublished: true,
+      peopleChoiceCutoff: true,
+    },
+  });
+
+  if (!event) throw app.httpErrors.notFound("Event not found");
+  return { event };
+});
+
+app.patch("/voting/settings", async (request) => {
+  await requireAdmin(request);
+  const body = z
+    .object({
+      votingOpen: z.boolean().optional(),
+      judgingOpen: z.boolean().optional(),
+      resultsPublished: z.boolean().optional(),
+      peopleChoiceCutoff: z.string().datetime().nullable().optional(),
+    })
+    .parse(request.body);
+
+  const event = await prisma.event.update({
+    where: { id: eventId },
+    data: {
+      votingOpen: body.votingOpen,
+      judgingOpen: body.judgingOpen,
+      resultsPublished: body.resultsPublished,
+      peopleChoiceCutoff:
+        body.peopleChoiceCutoff === undefined
+          ? undefined
+          : body.peopleChoiceCutoff
+            ? new Date(body.peopleChoiceCutoff)
+            : null,
+    },
+    select: {
+      id: true,
+      name: true,
+      votingOpen: true,
+      judgingOpen: true,
+      resultsPublished: true,
+      peopleChoiceCutoff: true,
+    },
+  });
+
+  return { event };
+});
+
+app.get("/voting/tallies", async (request) => {
+  await requireStaff(request);
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: {
+      votingOpen: true,
+      judgingOpen: true,
+      resultsPublished: true,
+      peopleChoiceCutoff: true,
+    },
+  });
+
+  if (!event) throw app.httpErrors.notFound("Event not found");
+
+  const [categories, voteGroups, judgePicks] = await Promise.all([
+    prisma.category.findMany({
+      where: { eventId },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    }),
+    prisma.peopleChoiceVote.groupBy({
+      by: ["vehicleEntryId"],
+      where: {
+        eventId,
+        createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
+      },
+      _count: { _all: true },
+      orderBy: { _count: { vehicleEntryId: "desc" } },
+    }),
+    prisma.judgeCategoryPick.findMany({
+      where: { eventId, rank: { in: [1, 2, 3] } },
+      include: {
+        category: true,
+        vehicleEntry: {
+          include: { owner: true, category: true },
+        },
+      },
+      orderBy: [{ category: { sortOrder: "asc" } }, { rank: "asc" }],
+    }),
+  ]);
+
+  const votedVehicleIds = voteGroups.map((vote) => vote.vehicleEntryId);
+  const votedVehicles = votedVehicleIds.length
+    ? await prisma.vehicleEntry.findMany({
+        where: { id: { in: votedVehicleIds }, eventId },
+        include: { owner: true, category: true, qrCard: true },
+      })
+    : [];
+  const vehicleById = new Map(votedVehicles.map((vehicle) => [vehicle.id, vehicle]));
+
+  const peopleChoiceByCategory = new Map<string, Array<{ registration: unknown; votes: number }>>();
+  for (const vote of voteGroups) {
+    const vehicle = vehicleById.get(vote.vehicleEntryId);
+    if (!vehicle) continue;
+    const categoryVotes = peopleChoiceByCategory.get(vehicle.categoryId) ?? [];
+    categoryVotes.push({ registration: vehicle, votes: vote._count._all });
+    peopleChoiceByCategory.set(vehicle.categoryId, categoryVotes);
+  }
+
+  const judgePicksByCategory = new Map<string, typeof judgePicks>();
+  for (const pick of judgePicks) {
+    const picks = judgePicksByCategory.get(pick.categoryId) ?? [];
+    picks.push(pick);
+    judgePicksByCategory.set(pick.categoryId, picks);
+  }
+
+  return {
+    event,
+    categories: categories.map((category) => ({
+      category,
+      peopleChoice: (peopleChoiceByCategory.get(category.id) ?? [])
+        .sort((first, second) => second.votes - first.votes)
+        .slice(0, 10),
+      judgeTop3: (judgePicksByCategory.get(category.id) ?? []).map((pick) => ({
+        id: pick.id,
+        rank: pick.rank,
+        judgeName: pick.judgeName,
+        notes: pick.notes,
+        registration: pick.vehicleEntry,
+      })),
+    })),
   };
 });
 
@@ -464,7 +602,6 @@ app.post("/qr-cards/assign", async (request) => {
     });
 
     if (!vehicle) throw app.httpErrors.notFound("Registration not found");
-    if (vehicle.qrCard) throw app.httpErrors.conflict("Vehicle already has an assigned QR card");
 
     const qrCard = await tx.qrCard.findFirst({
       where: {
@@ -474,8 +611,32 @@ app.post("/qr-cards/assign", async (request) => {
     });
 
     if (!qrCard) throw app.httpErrors.notFound("QR card not found");
+    if (vehicle.qrCard?.id === qrCard.id) {
+      throw app.httpErrors.conflict("Vehicle already has this QR card assigned");
+    }
     if (qrCard.status !== QrCardStatus.PRINTED || qrCard.vehicleEntryId) {
       throw app.httpErrors.conflict("QR card is already assigned or unavailable");
+    }
+
+    if (vehicle.qrCard) {
+      await tx.qrCard.update({
+        where: { id: vehicle.qrCard.id },
+        data: {
+          status: QrCardStatus.REASSIGNED,
+          vehicleEntryId: null,
+        },
+      });
+
+      await tx.qrAssignmentAuditLog.create({
+        data: {
+          eventId,
+          qrCardId: vehicle.qrCard.id,
+          vehicleEntryId: vehicle.id,
+          staffUserId: staff.id,
+          action: "REASSIGNED",
+          reason: `Replaced by ${qrCard.visibleCode}`,
+        },
+      });
     }
 
     const updatedQrCard = await tx.qrCard.update({
@@ -487,12 +648,13 @@ app.post("/qr-cards/assign", async (request) => {
       },
     });
 
-    await tx.vehicleEntry.update({
+    const registration = await tx.vehicleEntry.update({
       where: { id: vehicle.id },
       data: {
         status: VehicleStatus.CHECKED_IN,
         checkedInAt: vehicle.checkedInAt ?? new Date(),
       },
+      include: { owner: true, category: true, qrCard: true },
     });
 
     const auditLog = await tx.qrAssignmentAuditLog.create({
@@ -501,12 +663,12 @@ app.post("/qr-cards/assign", async (request) => {
         qrCardId: qrCard.id,
         vehicleEntryId: vehicle.id,
         staffUserId: staff.id,
-        action: "ASSIGNED",
-        reason: "Initial registration assignment",
+        action: vehicle.qrCard ? "REASSIGNED" : "ASSIGNED",
+        reason: vehicle.qrCard ? `Replaced ${vehicle.qrCard.visibleCode}` : "Initial registration assignment",
       },
     });
 
-    return { qrCard: updatedQrCard, auditLog };
+    return { qrCard: updatedQrCard, auditLog, registration };
   });
 
   return result;

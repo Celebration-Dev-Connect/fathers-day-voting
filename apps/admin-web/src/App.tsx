@@ -2,15 +2,18 @@ import { BrowserMultiFormatReader } from "@zxing/browser";
 import {
   Car,
   CheckCircle2,
+  Clock,
   ClipboardList,
   LogOut,
   Plus,
   Printer,
   QrCode,
+  RefreshCw,
   Save,
   Search,
   ShieldCheck,
   Tags,
+  Trophy,
   UserRound,
 } from "lucide-react";
 import QRCode from "qrcode";
@@ -22,6 +25,9 @@ import {
   createCategory,
   createRegistration,
   devLogin,
+  getVotingSettings,
+  getVotingTallies,
+  listAudit,
   listCategories,
   listQrCards,
   listRegistrations,
@@ -30,10 +36,21 @@ import {
   setToken,
   updateCategory,
   updateRegistration,
+  updateVotingSettings,
 } from "./api";
-import type { Category, QrCard as QrCardRecord, Registration, RegistrationPayload, StaffUser } from "./types";
+import { PUBLIC_APP_URL } from "./config";
+import type {
+  AuditLog,
+  Category,
+  CategoryVotingTally,
+  QrCard as QrCardRecord,
+  Registration,
+  RegistrationPayload,
+  StaffUser,
+  VotingSettings,
+} from "./types";
 
-type View = "dashboard" | "registrations" | "qr-cards" | "categories";
+type View = "dashboard" | "registrations" | "qr-cards" | "categories" | "voting";
 
 const emptyPayload: RegistrationPayload = {
   owner: {
@@ -57,12 +74,23 @@ const emptyPayload: RegistrationPayload = {
   },
 };
 
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  const first = digits.slice(0, 3);
+  const second = digits.slice(3, 6);
+  const third = digits.slice(6, 10);
+
+  if (digits.length > 6) return `${first}-${second}-${third}`;
+  if (digits.length > 3) return `${first}-${second}`;
+  return first;
+}
+
 function payloadFromRegistration(registration: Registration): RegistrationPayload {
   return {
     owner: {
       firstName: registration.owner.firstName,
       lastName: registration.owner.lastName,
-      phone: registration.owner.phone,
+      phone: formatPhone(registration.owner.phone),
       email: registration.owner.email ?? "",
       publicName: registration.owner.publicName ?? "",
       publicNameOptIn: registration.owner.publicNameOptIn,
@@ -83,6 +111,27 @@ function payloadFromRegistration(registration: Registration): RegistrationPayloa
 
 function vehicleName(registration: Registration) {
   return `${registration.year} ${registration.make} ${registration.model}`;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "Not set";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function toDateTimeLocalValue(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function fromDateTimeLocalValue(value: string) {
+  return value ? new Date(value).toISOString() : null;
 }
 
 export function App() {
@@ -243,6 +292,10 @@ function AdminShell({ staff, onLogout }: { staff: StaffUser; onLogout: () => voi
             <Tags size={22} />
             Categories
           </button>
+          <button className={view === "voting" ? "active" : ""} onClick={() => setView("voting")}>
+            <Trophy size={22} />
+            Voting
+          </button>
         </nav>
         <div className="staff-card">
           <UserRound size={24} />
@@ -276,6 +329,7 @@ function AdminShell({ staff, onLogout }: { staff: StaffUser; onLogout: () => voi
         {view === "categories" ? (
           <CategoriesView staff={staff} categories={categories} onRefresh={refresh} />
         ) : null}
+        {view === "voting" ? <VotingView staff={staff} /> : null}
       </main>
     </div>
   );
@@ -497,7 +551,14 @@ function RegistrationEditor({
         </label>
         <label>
           Phone *
-          <input value={payload.owner.phone} onChange={(event) => updateOwner("phone", event.target.value)} />
+          <input
+            value={payload.owner.phone}
+            inputMode="numeric"
+            maxLength={12}
+            pattern="\d{3}-\d{3}-\d{4}"
+            placeholder="XXX-XXX-XXXX"
+            onChange={(event) => updateOwner("phone", formatPhone(event.target.value))}
+          />
         </label>
         <label>
           Email
@@ -586,15 +647,36 @@ function QrAssignment({
   onAssigned: (registration: Registration) => void;
 }) {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
-  const [code, setCode] = useState(registration.qrCard?.visibleCode ?? "");
+  const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
   const cameraAvailable =
     typeof window !== "undefined" &&
     window.isSecureContext &&
     typeof navigator !== "undefined" &&
     typeof navigator.mediaDevices?.getUserMedia === "function";
+
+  async function refreshAudit() {
+    setAuditLoading(true);
+    try {
+      const result = await listAudit(registration.id);
+      setAuditLogs(result.auditLogs);
+    } catch (auditError) {
+      setError(auditError instanceof Error ? auditError.message : "Could not load QR audit trail");
+    } finally {
+      setAuditLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    setCode("");
+    setMessage("");
+    setError("");
+    void refreshAudit();
+  }, [registration.id]);
 
   async function startScan() {
     setError("");
@@ -630,9 +712,11 @@ function QrAssignment({
     setMessage("");
     try {
       await lookupQrCard(code);
-      await assignQrCard(registration.id, code);
+      const result = await assignQrCard(registration.id, code);
+      onAssigned(result.registration);
+      await refreshAudit();
+      setCode("");
       setMessage("QR assigned and audit log written.");
-      window.setTimeout(() => window.location.reload(), 500);
     } catch (assignError) {
       setError(assignError instanceof Error ? assignError.message : "QR assignment failed");
     }
@@ -642,7 +726,7 @@ function QrAssignment({
     <section className="qr-panel">
       <div>
         <strong>{registration.qrCard ? `QR ${registration.qrCard.visibleCode}` : "Assign QR Card"}</strong>
-        <span>Camera scan plus manual fallback</span>
+        <span>{registration.qrCard ? "Scan a new QR to replace this card" : "Camera scan plus manual fallback"}</span>
       </div>
       <video ref={setVideoElement} className="qr-video" muted playsInline />
       <div className="qr-actions">
@@ -651,12 +735,33 @@ function QrAssignment({
           <QrCode size={20} />
           {scanning ? "Scanning..." : "Scan"}
         </button>
-        <button type="button" className="primary-button" onClick={assign} disabled={!code || Boolean(registration.qrCard)}>
-          Assign
+        <button type="button" className="primary-button" onClick={assign} disabled={!code}>
+          {registration.qrCard ? "Replace QR" : "Assign"}
         </button>
       </div>
       {message ? <div className="alert success">{message}</div> : null}
       {error ? <div className="alert danger">{error}</div> : null}
+      <div className="qr-audit">
+        <div className="qr-audit-header">
+          <strong>Audit Trail</strong>
+          <button type="button" className="icon-button light" onClick={refreshAudit} aria-label="Refresh QR audit">
+            <RefreshCw size={18} />
+          </button>
+        </div>
+        {auditLoading ? <span>Loading audit...</span> : null}
+        {!auditLoading && !auditLogs.length ? <span>No QR assignment history yet.</span> : null}
+        {auditLogs.slice(0, 5).map((log) => (
+          <div className="audit-row" key={log.id}>
+            <div>
+              <strong>{log.action.replace("_", " ")}</strong>
+              <span>
+                {log.qrCard.visibleCode} by {log.staffUser.displayName}
+              </span>
+            </div>
+            <time>{formatDateTime(log.createdAt)}</time>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -713,25 +818,37 @@ function QrCardsView() {
       {!loading && !qrCards.length ? <div className="empty-state no-print">No QR cards found.</div> : null}
 
       <div className="print-sheet" aria-label="Printable QR card sheet">
-        {qrCards.map((card) => (
-          <QrPrintCard key={card.id} card={card} />
+        {chunk(qrCards, 4).map((pageCards, pageIndex) => (
+          <div className="print-page" key={`qr-page-${pageIndex}`}>
+            {pageCards.map((card) => (
+              <QrPrintCard key={card.id} card={card} />
+            ))}
+          </div>
         ))}
       </div>
     </section>
   );
 }
 
+function chunk<T>(items: T[], size: number) {
+  const pages: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    pages.push(items.slice(index, index + size));
+  }
+  return pages;
+}
+
 function QrPrintCard({ card }: { card: QrCardRecord }) {
   const [dataUrl, setDataUrl] = useState("");
-  const qrUrl = `${window.location.origin}/v/${card.publicToken}`;
+  const qrUrl = `${PUBLIC_APP_URL}/v/${card.publicToken}`;
   const owner = card.vehicleEntry?.owner;
 
   useEffect(() => {
     let mounted = true;
     QRCode.toDataURL(qrUrl, {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      scale: 7,
+      errorCorrectionLevel: "Q",
+      margin: 2,
+      width: 720,
       color: {
         dark: "#191c21",
         light: "#ffffff",
@@ -760,6 +877,197 @@ function QrPrintCard({ card }: { card: QrCardRecord }) {
         <small>{owner ? `${owner.firstName} ${owner.lastName}` : qrUrl}</small>
       </div>
     </article>
+  );
+}
+
+function VotingView({ staff }: { staff: StaffUser }) {
+  const [settings, setSettings] = useState<VotingSettings | null>(null);
+  const [cutoff, setCutoff] = useState("");
+  const [tallies, setTallies] = useState<CategoryVotingTally[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const canManage = staff.role === "ADMIN";
+
+  async function refreshVoting() {
+    setLoading(true);
+    setError("");
+    try {
+      const [settingsResult, tallyResult] = await Promise.all([getVotingSettings(), getVotingTallies()]);
+      setSettings(settingsResult.event);
+      setCutoff(toDateTimeLocalValue(settingsResult.event.peopleChoiceCutoff));
+      setTallies(tallyResult.categories);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Could not load voting results");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshVoting();
+  }, []);
+
+  async function saveSettings() {
+    if (!settings) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await updateVotingSettings({
+        votingOpen: settings.votingOpen,
+        judgingOpen: settings.judgingOpen,
+        resultsPublished: settings.resultsPublished,
+        peopleChoiceCutoff: fromDateTimeLocalValue(cutoff),
+      });
+      setSettings(result.event);
+      setCutoff(toDateTimeLocalValue(result.event.peopleChoiceCutoff));
+      await refreshVoting();
+      setMessage("Voting settings saved.");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not save voting settings");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateSetting<Key extends keyof Pick<VotingSettings, "votingOpen" | "judgingOpen" | "resultsPublished">>(
+    key: Key,
+    value: VotingSettings[Key],
+  ) {
+    setSettings((current) => (current ? { ...current, [key]: value } : current));
+  }
+
+  return (
+    <section>
+      <div className="page-header">
+        <div>
+          <p className="eyebrow">Voting Control</p>
+          <h1>People's Choice & Judging</h1>
+        </div>
+        <button type="button" className="secondary-button" onClick={refreshVoting} disabled={loading}>
+          <RefreshCw size={20} />
+          Refresh
+        </button>
+      </div>
+
+      {message ? <div className="alert success">{message}</div> : null}
+      {error ? <div className="alert danger">{error}</div> : null}
+      {!canManage ? <div className="alert">Registrar accounts can view voting tallies but cannot edit settings.</div> : null}
+
+      <div className="voting-settings">
+        <div>
+          <p className="eyebrow">People's Choice Cutoff</p>
+          <h2>{formatDateTime(settings?.peopleChoiceCutoff)}</h2>
+        </div>
+        <label>
+          Cutoff time
+          <input
+            type="datetime-local"
+            value={cutoff}
+            disabled={!canManage || !settings}
+            onChange={(event) => setCutoff(event.target.value)}
+          />
+        </label>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={settings?.votingOpen ?? false}
+            disabled={!canManage || !settings}
+            onChange={(event) => updateSetting("votingOpen", event.target.checked)}
+          />
+          People's choice open
+        </label>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={settings?.judgingOpen ?? false}
+            disabled={!canManage || !settings}
+            onChange={(event) => updateSetting("judgingOpen", event.target.checked)}
+          />
+          Judging open
+        </label>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={settings?.resultsPublished ?? false}
+            disabled={!canManage || !settings}
+            onChange={(event) => updateSetting("resultsPublished", event.target.checked)}
+          />
+          Results published
+        </label>
+        <button type="button" className="primary-button" onClick={saveSettings} disabled={!canManage || saving || !settings}>
+          <Save size={20} />
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </div>
+
+      {loading ? <div className="empty-state">Loading voting tallies...</div> : null}
+      {!loading ? (
+        <div className="tally-grid">
+          {tallies.map((tally) => (
+            <article className="tally-card" key={tally.category.id}>
+              <div className="tally-card-header">
+                <div>
+                  <p className="eyebrow">Category</p>
+                  <h2>{tally.category.name}</h2>
+                </div>
+              </div>
+
+              <section className="tally-section">
+                <div className="section-title">
+                  <Trophy size={18} />
+                  <strong>People's Choice</strong>
+                </div>
+                {tally.peopleChoice.length ? (
+                  <div className="rank-list">
+                    {tally.peopleChoice.map((item, index) => (
+                      <div className="rank-row" key={item.registration.id}>
+                        <span className="rank-badge">{index + 1}</span>
+                        <div>
+                          <strong>{vehicleName(item.registration)}</strong>
+                          <span>
+                            #{item.registration.entryNumber.toString().padStart(3, "0")} - {item.votes} votes
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted-copy">No people's choice votes yet.</p>
+                )}
+              </section>
+
+              <section className="tally-section">
+                <div className="section-title">
+                  <Clock size={18} />
+                  <strong>Judge Top 3</strong>
+                </div>
+                {tally.judgeTop3.length ? (
+                  <div className="rank-list">
+                    {tally.judgeTop3.map((pick) => (
+                      <div className="rank-row" key={pick.id}>
+                        <span className="rank-badge">{pick.rank}</span>
+                        <div>
+                          <strong>{vehicleName(pick.registration)}</strong>
+                          <span>
+                            #{pick.registration.entryNumber.toString().padStart(3, "0")}
+                            {pick.judgeName ? ` - ${pick.judgeName}` : ""}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted-copy">No judge picks recorded yet.</p>
+                )}
+              </section>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 

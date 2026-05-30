@@ -46,6 +46,7 @@ model Event {
   venueAddress       String
   registrationOpen   Boolean        @default(true)
   votingOpen         Boolean        @default(false)
+  peopleChoiceCutoff DateTime?
   judgingOpen        Boolean        @default(false)
   resultsPublished   Boolean        @default(false)
   createdAt          DateTime       @default(now())
@@ -53,6 +54,8 @@ model Event {
   categories         Category[]
   vehicleEntries     VehicleEntry[]
   qrCards            QrCard[]
+  peopleChoiceVotes  PeopleChoiceVote[]
+  judgeCategoryPicks JudgeCategoryPick[]
 }
 
 model StaffUser {
@@ -80,6 +83,7 @@ model Category {
   updatedAt      DateTime       @updatedAt
   event          Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   vehicleEntries VehicleEntry[]
+  judgeCategoryPicks JudgeCategoryPick[]
 
   @@unique([eventId, slug])
 }
@@ -123,10 +127,45 @@ model VehicleEntry {
   registeredByStaff    StaffUser?             @relation("RegisteredBy", fields: [registeredByStaffId], references: [id])
   qrCard               QrCard?
   qrAuditLogs          QrAssignmentAuditLog[] @relation("VehicleQrAudit")
+  peopleChoiceVotes    PeopleChoiceVote[]
+  judgeCategoryPicks   JudgeCategoryPick[]
 
   @@unique([eventId, entryNumber])
   @@index([eventId, status])
   @@index([eventId, categoryId])
+}
+
+model PeopleChoiceVote {
+  id             String        @id @default(cuid())
+  eventId        String
+  vehicleEntryId String
+  voterKey       String?
+  createdAt      DateTime      @default(now())
+  event          Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vehicleEntry   VehicleEntry  @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, vehicleEntryId])
+  @@index([eventId, createdAt])
+  @@unique([eventId, vehicleEntryId, voterKey])
+}
+
+model JudgeCategoryPick {
+  id             String        @id @default(cuid())
+  eventId        String
+  categoryId     String
+  vehicleEntryId String
+  rank           Int
+  judgeName      String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  event          Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vehicleEntry   VehicleEntry  @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, categoryId])
+  @@index([eventId, vehicleEntryId])
+  @@unique([eventId, categoryId, rank])
 }
 
 model QrCard {

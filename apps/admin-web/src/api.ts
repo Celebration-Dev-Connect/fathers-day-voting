@@ -1,6 +1,15 @@
-import type { AuditLog, Category, QrCard, Registration, RegistrationPayload, StaffUser } from "./types";
+import type {
+  AuditLog,
+  Category,
+  CategoryVotingTally,
+  QrCard,
+  Registration,
+  RegistrationPayload,
+  StaffUser,
+  VotingSettings,
+} from "./types";
+import { API_URL } from "./config";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 const tokenKey = "carshow-admin-token";
 
 export function getToken() {
@@ -100,7 +109,7 @@ export async function lookupQrCard(code: string) {
 }
 
 export async function assignQrCard(vehicleEntryId: string, code: string) {
-  return request<{ qrCard: QrCard; auditLog: AuditLog }>("/qr-cards/assign", {
+  return request<{ qrCard: QrCard; auditLog: AuditLog; registration: Registration }>("/qr-cards/assign", {
     method: "POST",
     body: JSON.stringify({ vehicleEntryId, code }),
   });
@@ -109,4 +118,21 @@ export async function assignQrCard(vehicleEntryId: string, code: string) {
 export async function listAudit(vehicleEntryId: string) {
   const params = new URLSearchParams({ vehicleEntryId });
   return request<{ auditLogs: AuditLog[] }>(`/qr-audit?${params.toString()}`);
+}
+
+export async function getVotingSettings() {
+  return request<{ event: VotingSettings }>("/voting/settings");
+}
+
+export async function updateVotingSettings(
+  input: Partial<Pick<VotingSettings, "votingOpen" | "judgingOpen" | "resultsPublished" | "peopleChoiceCutoff">>,
+) {
+  return request<{ event: VotingSettings }>("/voting/settings", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getVotingTallies() {
+  return request<{ event: Omit<VotingSettings, "id" | "name">; categories: CategoryVotingTally[] }>("/voting/tallies");
 }

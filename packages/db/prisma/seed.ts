@@ -33,6 +33,7 @@ async function main() {
       venueName: "Celebration Church",
       venueAddress: "7215 Argyll Road, Edmonton, AB",
       registrationOpen: true,
+      peopleChoiceCutoff: new Date("2026-06-21T21:00:00.000Z"),
     },
   });
 

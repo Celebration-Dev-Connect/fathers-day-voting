@@ -19,6 +19,15 @@ export type Category = {
   };
 };
 
+export type VotingSettings = {
+  id: string;
+  name: string;
+  votingOpen: boolean;
+  judgingOpen: boolean;
+  resultsPublished: boolean;
+  peopleChoiceCutoff?: string | null;
+};
+
 export type Owner = {
   id: string;
   firstName: string;
@@ -65,6 +74,25 @@ export type AuditLog = {
   createdAt: string;
   staffUser: StaffUser;
   qrCard: QrCard;
+};
+
+export type PeopleChoiceTally = {
+  registration: Registration;
+  votes: number;
+};
+
+export type JudgeTopPick = {
+  id: string;
+  rank: number;
+  judgeName?: string | null;
+  notes?: string | null;
+  registration: Registration;
+};
+
+export type CategoryVotingTally = {
+  category: Category;
+  peopleChoice: PeopleChoiceTally[];
+  judgeTop3: JudgeTopPick[];
 };
 
 export type RegistrationPayload = {

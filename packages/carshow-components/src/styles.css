@@ -335,10 +335,7 @@ textarea:focus {
 }
 
 .registrations-layout {
-  display: grid;
-  grid-template-columns: minmax(420px, 0.9fr) minmax(520px, 1.1fr);
-  gap: 16px;
-  align-items: start;
+  display: block;
 }
 
 .list-panel,
@@ -366,8 +363,16 @@ textarea:focus {
   display: grid;
   gap: 8px;
   margin-top: 16px;
-  max-height: calc(100vh - 210px);
-  overflow: auto;
+}
+
+.registration-list-item {
+  display: grid;
+  gap: 8px;
+}
+
+.registration-detail-row .editor-panel {
+  border: 2px solid var(--primary);
+  box-shadow: 0 14px 32px rgb(0 0 0 / 10%);
 }
 
 .registration-row {

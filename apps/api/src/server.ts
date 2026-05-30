@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import sensible from "@fastify/sensible";
-import { prisma, QrCardStatus, StaffRole, VehicleStatus } from "@carshow/db";
+import { prisma, Prisma, QrCardStatus, StaffRole, VehicleStatus } from "@carshow/db";
 import Fastify, { FastifyRequest } from "fastify";
 import { z } from "zod";
 
@@ -184,6 +184,57 @@ app.get("/categories", async (request) => {
   };
 });
 
+const votingRegistrationInclude = {
+  owner: true,
+  category: true,
+  qrCard: true,
+  photos: { orderBy: { sortOrder: "asc" as const } },
+} satisfies Prisma.VehicleEntryInclude;
+
+type VotingRegistration = Prisma.VehicleEntryGetPayload<{
+  include: typeof votingRegistrationInclude;
+}>;
+
+type PeopleChoiceTallyItem = {
+  registration: VotingRegistration;
+  votes: number;
+  rank: number;
+  tieBreakPoints: number;
+};
+
+type JudgeScoreItem = {
+  registration: VotingRegistration;
+  rank: number;
+  judgePoints: number;
+  peopleChoiceTieBreakPoints: number;
+  rankCounts: number[];
+  tieBreakSummary: string;
+  manualOverride: boolean;
+};
+
+function judgePointsForRank(rank: number) {
+  return Math.max(0, 11 - rank);
+}
+
+function compareJudgeScores(first: JudgeScoreItem, second: JudgeScoreItem) {
+  if (second.judgePoints !== first.judgePoints) return second.judgePoints - first.judgePoints;
+  if (second.rankCounts[1] !== first.rankCounts[1]) return second.rankCounts[1] - first.rankCounts[1];
+  if (second.peopleChoiceTieBreakPoints !== first.peopleChoiceTieBreakPoints) {
+    return second.peopleChoiceTieBreakPoints - first.peopleChoiceTieBreakPoints;
+  }
+  for (let rank = 2; rank <= 10; rank += 1) {
+    if (second.rankCounts[rank] !== first.rankCounts[rank]) return second.rankCounts[rank] - first.rankCounts[rank];
+  }
+  return first.registration.entryNumber - second.registration.entryNumber;
+}
+
+function buildTieBreakSummary(item: JudgeScoreItem) {
+  const firstPlaceCount = item.rankCounts[1] ?? 0;
+  return `${item.judgePoints} judge points; ${firstPlaceCount} first-place ranking${
+    firstPlaceCount === 1 ? "" : "s"
+  }; ${item.peopleChoiceTieBreakPoints} People's Choice tie-break points.`;
+}
+
 app.get("/voting/settings", async (request) => {
   await requireStaff(request);
   const event = await prisma.event.findUnique({
@@ -253,7 +304,7 @@ app.get("/voting/tallies", async (request) => {
 
   if (!event) throw app.httpErrors.notFound("Event not found");
 
-  const [categories, voteGroups, judgePicks] = await Promise.all([
+  const [categories, voteGroups, judgePicks, winnerOverrides] = await Promise.all([
     prisma.category.findMany({
       where: { eventId },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -268,14 +319,20 @@ app.get("/voting/tallies", async (request) => {
       orderBy: { _count: { vehicleEntryId: "desc" } },
     }),
     prisma.judgeCategoryPick.findMany({
-      where: { eventId, rank: { in: [1, 2, 3] } },
+      where: { eventId, rank: { gte: 1, lte: 10 } },
       include: {
         category: true,
-        vehicleEntry: {
-          include: { owner: true, category: true },
-        },
+        vehicleEntry: { include: votingRegistrationInclude },
       },
-      orderBy: [{ category: { sortOrder: "asc" } }, { rank: "asc" }],
+      orderBy: [{ category: { sortOrder: "asc" } }, { judgeKey: "asc" }, { rank: "asc" }],
+    }),
+    prisma.categoryWinnerOverride.findMany({
+      where: { eventId, rank: { in: [1, 2, 3] } },
+      include: {
+        vehicleEntry: { include: votingRegistrationInclude },
+        adminStaffUser: true,
+      },
+      orderBy: [{ categoryId: "asc" }, { rank: "asc" }],
     }),
   ]);
 
@@ -283,43 +340,155 @@ app.get("/voting/tallies", async (request) => {
   const votedVehicles = votedVehicleIds.length
     ? await prisma.vehicleEntry.findMany({
         where: { id: { in: votedVehicleIds }, eventId },
-        include: { owner: true, category: true, qrCard: true },
+        include: votingRegistrationInclude,
       })
     : [];
   const vehicleById = new Map(votedVehicles.map((vehicle) => [vehicle.id, vehicle]));
 
-  const peopleChoiceByCategory = new Map<string, Array<{ registration: unknown; votes: number }>>();
+  const peopleChoiceByCategory = new Map<string, PeopleChoiceTallyItem[]>();
+  const peopleChoiceTieBreakByVehicleId = new Map<string, number>();
   for (const vote of voteGroups) {
     const vehicle = vehicleById.get(vote.vehicleEntryId);
     if (!vehicle) continue;
     const categoryVotes = peopleChoiceByCategory.get(vehicle.categoryId) ?? [];
-    categoryVotes.push({ registration: vehicle, votes: vote._count._all });
+    categoryVotes.push({ registration: vehicle, votes: vote._count._all, rank: 0, tieBreakPoints: 0 });
     peopleChoiceByCategory.set(vehicle.categoryId, categoryVotes);
   }
 
-  const judgePicksByCategory = new Map<string, typeof judgePicks>();
+  for (const categoryVotes of peopleChoiceByCategory.values()) {
+    categoryVotes.sort((first, second) => second.votes - first.votes);
+    categoryVotes.forEach((item, index) => {
+      item.rank = index + 1;
+      item.tieBreakPoints = Math.max(0, 11 - item.rank);
+      if (item.rank <= 10) peopleChoiceTieBreakByVehicleId.set(item.registration.id, item.tieBreakPoints);
+    });
+  }
+
+  const judgeScoresByCategory = new Map<string, Map<string, JudgeScoreItem>>();
   for (const pick of judgePicks) {
-    const picks = judgePicksByCategory.get(pick.categoryId) ?? [];
-    picks.push(pick);
-    judgePicksByCategory.set(pick.categoryId, picks);
+    const categoryScores = judgeScoresByCategory.get(pick.categoryId) ?? new Map<string, JudgeScoreItem>();
+    const current =
+      categoryScores.get(pick.vehicleEntryId) ??
+      ({
+        registration: pick.vehicleEntry,
+        rank: 0,
+        judgePoints: 0,
+        peopleChoiceTieBreakPoints: peopleChoiceTieBreakByVehicleId.get(pick.vehicleEntryId) ?? 0,
+        rankCounts: Array.from({ length: 11 }, () => 0),
+        tieBreakSummary: "",
+        manualOverride: false,
+      } satisfies JudgeScoreItem);
+
+    current.judgePoints += judgePointsForRank(pick.rank);
+    current.rankCounts[pick.rank] = (current.rankCounts[pick.rank] ?? 0) + 1;
+    categoryScores.set(pick.vehicleEntryId, current);
+    judgeScoresByCategory.set(pick.categoryId, categoryScores);
+  }
+
+  const overridesByCategory = new Map<string, typeof winnerOverrides>();
+  for (const override of winnerOverrides) {
+    const overrides = overridesByCategory.get(override.categoryId) ?? [];
+    overrides.push(override);
+    overridesByCategory.set(override.categoryId, overrides);
   }
 
   return {
     event,
-    categories: categories.map((category) => ({
-      category,
-      peopleChoice: (peopleChoiceByCategory.get(category.id) ?? [])
-        .sort((first, second) => second.votes - first.votes)
-        .slice(0, 10),
-      judgeTop3: (judgePicksByCategory.get(category.id) ?? []).map((pick) => ({
-        id: pick.id,
-        rank: pick.rank,
-        judgeName: pick.judgeName,
-        notes: pick.notes,
-        registration: pick.vehicleEntry,
-      })),
-    })),
+    categories: categories.map((category) => {
+      const peopleChoice = (peopleChoiceByCategory.get(category.id) ?? []).slice(0, 5);
+      const judgeRanking = Array.from(judgeScoresByCategory.get(category.id)?.values() ?? [])
+        .sort(compareJudgeScores)
+        .map((item, index) => ({
+          ...item,
+          rank: index + 1,
+          tieBreakSummary: buildTieBreakSummary(item),
+        }));
+      const overrides = overridesByCategory.get(category.id) ?? [];
+      const overrideByVehicleId = new Map(overrides.map((override) => [override.vehicleEntryId, override]));
+      const judgeTop3 = overrides.length
+        ? overrides.map((override) => {
+            const score = judgeRanking.find((item) => item.registration.id === override.vehicleEntryId);
+            return {
+              ...(score ?? {
+                registration: override.vehicleEntry,
+                judgePoints: 0,
+                peopleChoiceTieBreakPoints: peopleChoiceTieBreakByVehicleId.get(override.vehicleEntryId) ?? 0,
+                rankCounts: Array.from({ length: 11 }, () => 0),
+                tieBreakSummary: "Manual override winner.",
+              }),
+              rank: override.rank,
+              manualOverride: true,
+              overrideReason: override.reason,
+              overrideBy: override.adminStaffUser?.displayName ?? null,
+              overrideAt: override.updatedAt,
+            };
+          })
+        : judgeRanking.slice(0, 3).map((item) => ({
+            ...item,
+            manualOverride: Boolean(overrideByVehicleId.get(item.registration.id)),
+          }));
+
+      return {
+        category,
+        peopleChoice,
+        judgeRanking,
+        judgeTop3,
+        judgingDescription:
+          "Judges rank up to 10 vehicles per category. Rank 1 earns 10 points down to rank 10 earning 1 point. Ties break by first-place count, then People's Choice top-10 points, then judge rank counts from second through tenth. Remaining ties require admin final ordering.",
+      };
+    }),
   };
+});
+
+app.put("/voting/categories/:categoryId/winners", async (request) => {
+  const staff = await requireAdmin(request);
+  const params = z.object({ categoryId: z.string() }).parse(request.params);
+  const body = z
+    .object({
+      winners: z
+        .array(
+          z.object({
+            vehicleEntryId: z.string(),
+            rank: z.number().int().min(1).max(3),
+          }),
+        )
+        .length(3),
+      reason: z.string().trim().max(500).optional(),
+    })
+    .parse(request.body);
+
+  const category = await prisma.category.findFirst({ where: { id: params.categoryId, eventId } });
+  if (!category) throw app.httpErrors.notFound("Category not found");
+
+  const ranks = new Set(body.winners.map((winner) => winner.rank));
+  const vehicleIds = new Set(body.winners.map((winner) => winner.vehicleEntryId));
+  if (ranks.size !== 3 || vehicleIds.size !== 3) {
+    throw app.httpErrors.badRequest("Choose three different vehicles ranked 1, 2, and 3");
+  }
+
+  const vehicles = await prisma.vehicleEntry.findMany({
+    where: { id: { in: [...vehicleIds] }, eventId, categoryId: category.id },
+    select: { id: true },
+  });
+  if (vehicles.length !== 3) throw app.httpErrors.badRequest("All winners must be in this category");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.categoryWinnerOverride.deleteMany({ where: { eventId, categoryId: category.id } });
+    for (const winner of body.winners) {
+      await tx.categoryWinnerOverride.create({
+        data: {
+          eventId,
+          categoryId: category.id,
+          vehicleEntryId: winner.vehicleEntryId,
+          rank: winner.rank,
+          reason: body.reason ?? "Manual admin winner order",
+          adminStaffUserId: staff.id,
+        },
+      });
+    }
+  });
+
+  return { ok: true };
 });
 
 app.post("/categories", async (request) => {

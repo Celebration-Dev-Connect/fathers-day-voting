@@ -1,4 +1,4 @@
-import { PrismaClient, StaffRole } from "@prisma/client";
+import { PrismaClient, StaffRole, VehicleStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -12,6 +12,70 @@ const categories = [
   "Custom",
 ];
 
+const firstNames = [
+  "Alex",
+  "Jordan",
+  "Taylor",
+  "Morgan",
+  "Casey",
+  "Riley",
+  "Jamie",
+  "Drew",
+  "Avery",
+  "Sam",
+];
+
+const lastNames = [
+  "Miller",
+  "Johnson",
+  "Patel",
+  "Nguyen",
+  "Anderson",
+  "Brown",
+  "Wilson",
+  "Singh",
+  "Martin",
+  "Clark",
+];
+
+const vehiclesByCategory: Record<string, Array<[number, string, string, string]>> = {
+  "Classic Car": [
+    [1967, "Chevrolet", "Camaro", "Crimson Rocket"],
+    [1969, "Ford", "Mustang", "Blue Streak"],
+    [1957, "Chevrolet", "Bel Air", "Sunday Cruiser"],
+    [1970, "Dodge", "Challenger", "Orange Crush"],
+    [1965, "Pontiac", "GTO", "Goat"],
+  ],
+  "Modern Car": [
+    [2023, "Chevrolet", "Corvette", "Rapid Red"],
+    [2022, "Ford", "Mustang GT", "Track Pack"],
+    [2024, "Toyota", "GR Supra", "White Lightning"],
+    [2021, "Dodge", "Charger", "Night Run"],
+    [2023, "BMW", "M4", "Alpine"],
+  ],
+  Truck: [
+    [1972, "Chevrolet", "C10", "Shop Truck"],
+    [1979, "Ford", "F-150", "Highboy"],
+    [1985, "GMC", "Sierra", "Squarebody"],
+    [2022, "Ram", "1500", "Big Horn"],
+    [2021, "Toyota", "Tacoma", "Trail Rig"],
+  ],
+  Motorbike: [
+    [2020, "Harley-Davidson", "Street Bob", "Blackline"],
+    [2018, "Indian", "Scout", "Copper Scout"],
+    [2022, "Triumph", "Bonneville", "Cafe Sunday"],
+    [2019, "Ducati", "Scrambler", "Redline"],
+    [2021, "Yamaha", "Bolt", "Midnight"],
+  ],
+  Custom: [
+    [1932, "Ford", "Roadster", "Hot Rod"],
+    [1964, "Chevrolet", "Impala", "Low Glow"],
+    [1976, "Volkswagen", "Beetle", "Bug Out"],
+    [1991, "Mazda", "Miata", "Corner Carver"],
+    [1988, "Jeep", "Wagoneer", "Woodgrain"],
+  ],
+};
+
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
@@ -20,6 +84,29 @@ function tokenFor(index: number) {
   return `fd2026-${index.toString().padStart(4, "0")}-${Math.random()
     .toString(36)
     .slice(2, 10)}`;
+}
+
+function demoPhotoUrl(
+  categoryName: string,
+  make: string,
+  model: string,
+  categoryIndex: number,
+  vehicleIndex: number,
+  photoIndex: number,
+) {
+  const imageId = 1000 + categoryIndex * 100 + vehicleIndex * 3 + photoIndex;
+  const categoryTags =
+    categoryName === "Motorbike"
+      ? ["motorcycle"]
+      : categoryName === "Truck"
+        ? ["truck"]
+        : ["car"];
+  const tags = [make, model, ...categoryTags]
+    .join(",")
+    .toLowerCase()
+    .replace(/[^a-z0-9,]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+  return `https://loremflickr.com/900/600/${tags}/all?lock=${imageId}`;
 }
 
 async function main() {
@@ -91,6 +178,147 @@ async function main() {
         printedAt: new Date(),
       },
     });
+  }
+
+  const seededCategories = await prisma.category.findMany({
+    where: { eventId },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
+
+  for (const [categoryIndex, category] of seededCategories.entries()) {
+    const categoryVehicles = vehiclesByCategory[category.name] ?? vehiclesByCategory.Custom;
+    const demoVehicleIds: string[] = [];
+
+    for (let index = 1; index <= 20; index += 1) {
+      const template = categoryVehicles[(index - 1) % categoryVehicles.length];
+      const [year, make, model, nickname] = template;
+      const ownerId = `seed-owner-${category.slug}-${index}`;
+      const vehicleId = `seed-vehicle-${category.slug}-${index}`;
+      const entryNumber = 1000 + categoryIndex * 100 + index;
+      const ownerFirstName = firstNames[(categoryIndex + index) % firstNames.length];
+      const ownerLastName = lastNames[(categoryIndex * 3 + index) % lastNames.length];
+
+      await prisma.owner.upsert({
+        where: { id: ownerId },
+        update: {
+          firstName: ownerFirstName,
+          lastName: ownerLastName,
+          phone: `780-555-${(1000 + categoryIndex * 100 + index).toString().slice(-4)}`,
+          email: `${category.slug}${index}@carshow.local`,
+          publicName: `${ownerFirstName} ${ownerLastName}`,
+          publicNameOptIn: true,
+          waiverAccepted: true,
+        },
+        create: {
+          id: ownerId,
+          firstName: ownerFirstName,
+          lastName: ownerLastName,
+          phone: `780-555-${(1000 + categoryIndex * 100 + index).toString().slice(-4)}`,
+          email: `${category.slug}${index}@carshow.local`,
+          publicName: `${ownerFirstName} ${ownerLastName}`,
+          publicNameOptIn: true,
+          waiverAccepted: true,
+        },
+      });
+
+      await prisma.vehicleEntry.upsert({
+        where: { id: vehicleId },
+        update: {
+          ownerId,
+          categoryId: category.id,
+          entryNumber,
+          year,
+          make,
+          model,
+          nickname: `${nickname} ${index}`,
+          plateNumber: `FD${categoryIndex + 1}${index.toString().padStart(2, "0")}`,
+          exteriorColor: ["Red", "Blue", "Black", "White", "Silver"][index % 5],
+          internalNotes: "Seeded demo vehicle for voting tally review.",
+          status: VehicleStatus.CHECKED_IN,
+          checkedInAt: new Date("2026-06-21T17:00:00.000Z"),
+        },
+        create: {
+          id: vehicleId,
+          eventId,
+          ownerId,
+          categoryId: category.id,
+          entryNumber,
+          year,
+          make,
+          model,
+          nickname: `${nickname} ${index}`,
+          plateNumber: `FD${categoryIndex + 1}${index.toString().padStart(2, "0")}`,
+          exteriorColor: ["Red", "Blue", "Black", "White", "Silver"][index % 5],
+          internalNotes: "Seeded demo vehicle for voting tally review.",
+          status: VehicleStatus.CHECKED_IN,
+          checkedInAt: new Date("2026-06-21T17:00:00.000Z"),
+        },
+      });
+
+      demoVehicleIds.push(vehicleId);
+
+      for (let photoIndex = 1; photoIndex <= 3; photoIndex += 1) {
+        await prisma.vehiclePhoto.upsert({
+          where: {
+            vehicleEntryId_sortOrder: {
+              vehicleEntryId: vehicleId,
+              sortOrder: photoIndex,
+            },
+          },
+          update: {
+            url: demoPhotoUrl(category.name, make, model, categoryIndex, index, photoIndex),
+            altText: `${year} ${make} ${model} photo ${photoIndex}`,
+          },
+          create: {
+            vehicleEntryId: vehicleId,
+            sortOrder: photoIndex,
+            url: demoPhotoUrl(category.name, make, model, categoryIndex, index, photoIndex),
+            altText: `${year} ${make} ${model} photo ${photoIndex}`,
+          },
+        });
+      }
+
+      await prisma.peopleChoiceVote.createMany({
+        data: Array.from({ length: Math.max(1, 24 - index) }, (_, voteIndex) => ({
+          eventId,
+          vehicleEntryId: vehicleId,
+          voterKey: `seed-voter-${category.slug}-${index}-${voteIndex + 1}`,
+          createdAt: new Date(`2026-06-21T18:${(voteIndex % 50).toString().padStart(2, "0")}:00.000Z`),
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    await prisma.judgeCategoryPick.deleteMany({
+      where: {
+        eventId,
+        categoryId: category.id,
+        judgeName: { startsWith: "Demo Judge" },
+      },
+    });
+
+    const judgeOrders = [
+      ["judge-a", "Demo Judge A", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]],
+      ["judge-b", "Demo Judge B", [2, 1, 4, 3, 6, 5, 8, 7, 10, 9]],
+      ["judge-c", "Demo Judge C", [3, 1, 2, 5, 4, 7, 6, 9, 8, 10]],
+    ] as const;
+
+    for (const [judgeKey, judgeName, order] of judgeOrders) {
+      for (const [orderIndex, vehicleIndex] of order.entries()) {
+        const rank = orderIndex + 1;
+        await prisma.judgeCategoryPick.create({
+          data: {
+            eventId,
+            categoryId: category.id,
+            vehicleEntryId: demoVehicleIds[vehicleIndex - 1],
+            judgeKey,
+            rank,
+            judgeName,
+            notes: `Seeded rank ${rank} ballot pick.`,
+          },
+        });
+      }
+    }
   }
 }
 

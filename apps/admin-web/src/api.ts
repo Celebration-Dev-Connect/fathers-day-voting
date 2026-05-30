@@ -136,3 +136,14 @@ export async function updateVotingSettings(
 export async function getVotingTallies() {
   return request<{ event: Omit<VotingSettings, "id" | "name">; categories: CategoryVotingTally[] }>("/voting/tallies");
 }
+
+export async function updateCategoryWinners(
+  categoryId: string,
+  winners: Array<{ vehicleEntryId: string; rank: number }>,
+  reason?: string,
+) {
+  return request<{ ok: true }>(`/voting/categories/${categoryId}/winners`, {
+    method: "PUT",
+    body: JSON.stringify({ winners, reason }),
+  });
+}

@@ -30,10 +30,12 @@ const emptyPayload: RegistrationPayload = {
 export function RegistrationEditor({
   categories,
   registration,
+  onCancel,
   onSaved,
 }: {
   categories: Category[];
   registration: Registration | null;
+  onCancel: () => void;
   onSaved: (registration: Registration) => void;
 }) {
   const [payload, setPayload] = useState<RegistrationPayload>(() =>
@@ -103,10 +105,15 @@ export function RegistrationEditor({
           <p className="eyebrow">{registration ? `Entry #${registration.entryNumber}` : "New Entry"}</p>
           <h2>{registration ? "Edit Registration" : "Register Vehicle"}</h2>
         </div>
-        <Button type="submit" disabled={saving}>
-          <Save size={20} />
-          {saving ? "Saving..." : "Save"}
-        </Button>
+        <div className="header-actions">
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={saving}>
+            <Save size={20} />
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </div>
       </div>
 
       {message ? <Alert variant="success">{message}</Alert> : null}

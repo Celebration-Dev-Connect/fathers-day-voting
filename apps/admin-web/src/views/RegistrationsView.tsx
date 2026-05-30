@@ -25,7 +25,7 @@ export function RegistrationsView({
 
   function selectRegistration(registration: Registration) {
     setShowNewEditor(false);
-    onSelect(registration);
+    onSelect(selected?.id === registration.id ? null : registration);
   }
 
   return (
@@ -59,6 +59,10 @@ export function RegistrationsView({
                 key="new"
                 categories={categories}
                 registration={null}
+                onCancel={() => {
+                  setShowNewEditor(false);
+                  onSelect(null);
+                }}
                 onSaved={(registration) => {
                   setShowNewEditor(false);
                   onSelect(registration);
@@ -80,6 +84,7 @@ export function RegistrationsView({
                     key={selected.id}
                     categories={categories}
                     registration={selected}
+                    onCancel={() => onSelect(null)}
                     onSaved={(savedRegistration) => {
                       setShowNewEditor(false);
                       onSelect(savedRegistration);

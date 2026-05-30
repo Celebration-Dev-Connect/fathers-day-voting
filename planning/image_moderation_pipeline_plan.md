@@ -13,6 +13,11 @@ Today: no upload endpoints, no multipart, no AWS SDK, no job queue, and **zero I
 - **IaC:** Terraform in `infra/terraform/`.
 - **Async driver:** In-process worker + DB-backed sweeper. The `PENDING` rows in `VehiclePhoto` *are* the queue — no Redis. Survives restarts via a periodic sweeper.
 - **Public delivery:** CloudFront (OAC) serving a private bucket's `public/` prefix. Justified by the ~10k-visitor / awards-burst traffic profile; immutable id-keyed objects mean no cache invalidation. `PENDING` objects live under `pending/` which the distribution does not serve.
+- **Pluggable storage & moderation (key design):** Both photo **storage** and image **scanning** are defined as TypeScript interfaces with swappable implementations selected by config at startup. This phase ships two of each:
+  - Storage: **LocalFs** (dev — files on local disk) and **S3** (prod).
+  - Moderation: **Mock** (dev/tests) and **Rekognition** (prod).
+  
+  The two interfaces are independent — neither depends on the other (the worker orchestrates them), so e.g. local-disk storage can be paired with the mock scanner in dev, and any future backend (GCS, Azure Blob, a different vision API, a local NSFW model) is added as one new class + a factory case, with no changes to the pipeline.
 
 ---
 
@@ -24,13 +29,14 @@ upload (multipart)                async (setImmediate, off the response)
    ▼                                      ▼
 API validates type/size/cap        worker.processPhoto(id):
    │                                 1. claim row (processingStartedAt)
-   ├─ S3 PutObject  pending/<id>     2. Rekognition DetectModerationLabels
-   ├─ DB insert VehiclePhoto              (Image = S3Object pending/<id>)
-   │     status=PENDING, url=null    3a. CLEAN → S3 Copy pending→public/<id>,
-   ├─ enqueue(id)                         delete pending/<id>,
-   └─ 202 { id, status:PENDING }          row.status=APPROVED, url=CDN/<id>
-                                     3b. UNSAFE → delete pending/<id> + delete row
+   ├─ storage.putPending(pending/id) 2. bytes = storage.getBytes(pending/id)
+   ├─ DB insert VehiclePhoto            moderator.scan({ bytes })
+   │     status=PENDING, url=null    3a. CLEAN → storage.moveToPublic(id),
+   ├─ enqueue(id)                         row.status=APPROVED, url=storage.publicUrl(...)
+   └─ 202 { id, status:PENDING }     3b. UNSAFE → storage.deletePending(id) + delete row
                                      3c. ERROR → row.status=FAILED (sweeper retries)
+
+  (storage & moderator are interfaces — see §3; impls chosen by config)
 
 sweeper (setInterval ~30s): re-pick PENDING/FAILED rows whose claim is null or stale
    → handles API restarts; nothing unscanned is ever exposed because public reads filter status=APPROVED
@@ -86,20 +92,43 @@ New `apps/api/src/config.ts` — zod-validated env accessor (consolidates the sc
 
 ---
 
-## 3. Storage + moderation modules — `apps/api/src/media/`
+## 3. Pluggable storage + moderation — `apps/api/src/media/`
 
-Driver abstraction so local dev needs no AWS:
+Two independent interfaces, each with multiple implementations chosen at startup by config. The worker depends only on the interfaces, never a concrete backend.
 
-- `storage.ts` — `interface PhotoStorage { putPending(key, bytes, contentType); moveToPublic(id); deletePending(id); deleteObject(key); publicUrl(storageKey) }`.
-  - **S3 impl** (`@aws-sdk/client-s3`): `PutObjectCommand`, `CopyObjectCommand` + `DeleteObjectCommand` for the pending→public move. `publicUrl` → `${CDN_BASE_URL}/<id>` (prod) or a presigned GET (MinIO dev). One impl handles both; MinIO is just `S3_ENDPOINT` + `forcePathStyle`.
-- `moderator.ts` — `interface Moderator { scan(pendingKey): Promise<{ safe: boolean; labels: unknown }> }`.
-  - **Rekognition impl**: `DetectModerationLabelsCommand` with `Image:{ S3Object:{ Bucket, Name: pendingKey } }`, `MinConfidence` from config. `safe = ModerationLabels.length === 0`.
-  - **Mock impl** (dev/tests): safe unless the original filename contains `unsafe` (lets us exercise the reject path locally).
-  - Selected by `MODERATION_DRIVER`.
+### Storage interface — `media/storage/types.ts`
+```ts
+export interface PhotoStorage {
+  putPending(id: string, bytes: Buffer, contentType: string): Promise<{ storageKey: string }>;
+  getBytes(storageKey: string): Promise<Buffer>;          // used by the scanner, backend-agnostic
+  moveToPublic(id: string): Promise<{ storageKey: string }>; // pending/<id> → public/<id>
+  deletePending(id: string): Promise<void>;
+  deletePublic(id: string): Promise<void>;
+  publicUrl(storageKey: string): string;                   // how an APPROVED photo is served
+}
+```
+Implementations (one file each):
+- `media/storage/localFs.ts` — **dev.** Writes under `LOCAL_STORAGE_DIR` (e.g. `var/media/pending/<id>`, `var/media/public/<id>`). `moveToPublic` = `fs.rename`; deletes = `fs.unlink`. `publicUrl` → `${MEDIA_PUBLIC_BASE_URL}/media/public/<id>` served by a dev-only static route (see §4). No AWS, no MinIO, no container.
+- `media/storage/s3.ts` — **prod.** `@aws-sdk/client-s3`: `PutObjectCommand`; `moveToPublic` = `CopyObjectCommand` + `DeleteObjectCommand`; `getBytes` = `GetObjectCommand`. `publicUrl` → `${CDN_BASE_URL}/<id>` (CloudFront).
+- `media/storage/index.ts` — `createStorage(config): PhotoStorage` factory, switch on `STORAGE_DRIVER` (`local` | `s3`).
 
-`worker.ts`:
+### Moderation interface — `media/moderation/types.ts`
+```ts
+export interface ImageModerator {
+  scan(image: { bytes: Buffer; contentType: string }): Promise<{ safe: boolean; labels: unknown }>;
+}
+```
+Takes raw bytes (not an S3 key) so it is fully decoupled from the storage backend. Implementations:
+- `media/moderation/mock.ts` — **dev/tests.** `safe` unless an injected marker is present (e.g. original filename contains `unsafe`), so the reject path is exercisable locally and deterministically.
+- `media/moderation/rekognition.ts` — **prod.** `@aws-sdk/client-rekognition` `DetectModerationLabelsCommand` with `Image: { Bytes }`, `MinConfidence` from config; `safe = (ModerationLabels ?? []).length === 0`.
+- `media/moderation/index.ts` — `createModerator(config): ImageModerator` factory, switch on `MODERATION_DRIVER` (`mock` | `rekognition`).
+
+> Note: Rekognition's inline `Bytes` path is capped at 5 MB, so `PHOTO_MAX_BYTES` defaults to 5 MB this phase. Server-side downscaling/EXIF-strip (e.g. `sharp`) to lift that cap is a listed follow-up.
+
+### Worker — `media/worker.ts`
+Constructed with a `PhotoStorage` + `ImageModerator` (injected; trivially swappable in tests).
 - `enqueue(photoId)` → `setImmediate(() => processPhoto(photoId))` so scanning happens after the HTTP response.
-- `processPhoto(id)`: atomically claim (`updateMany where id, processingStartedAt null/stale → set now`); scan; apply CLEAN/UNSAFE/ERROR transitions from the flow above; always clears/sets the claim.
+- `processPhoto(id)`: atomically claim (`updateMany where id, processingStartedAt null/stale → set now`); `bytes = storage.getBytes(pendingKey)`; `moderator.scan({ bytes })`; apply CLEAN/UNSAFE/ERROR transitions from the flow above; always clears/sets the claim.
 - `startSweeper()`: `setInterval` (~30s) selects a bounded batch of `PENDING`/`FAILED` rows with null/stale `processingStartedAt` and processes them with limited concurrency. Started after `app.listen`. This is the restart-safety net.
 
 ---
@@ -112,6 +141,8 @@ Register `@fastify/multipart` (limits: 1 file, ~10MB, mime allowlist `image/jpeg
 - **Staff upload:** `POST /registrations/:id/photos` (`requireStaff`). Same pipeline (also moderated, for consistency).
 - **Public vehicle read:** `GET /v/:publicToken` (no auth) → vehicle summary + photos filtered to `moderationStatus = APPROVED` only. Never exposes `pending/` keys. (This is the minimal read surface needed to *test* the pipeline; it is not a UI.)
 - **Staff reads:** extend the existing registration includes (the `photos` include near server.ts:191 and the `/registrations/:id` include) so the API response carries `moderationStatus`/`url`. (Response-shape only — no UI work in this phase.)
+
+- **Dev static media route:** when `STORAGE_DRIVER=local`, register a static route (`@fastify/static` or a small stream handler) serving `LOCAL_STORAGE_DIR/public/*` at `/media/public/*`, so locally-stored APPROVED photos resolve via `publicUrl`. Registered **only** for the local driver — prod serves from CloudFront and the `pending/` dir is never exposed.
 
 All public surfaces gate on `moderationStatus = APPROVED`, so an unscanned image is unreachable even though its row exists.
 
@@ -131,36 +162,54 @@ Rekognition needs no provisioned resource — it's pay-per-call; only the IAM pe
 
 ---
 
-## 6. Local dev (no AWS needed) — `docker-compose.yml`
+## 6. Local dev (no AWS, no MinIO)
 
-- Add `minio` service (S3-compatible) + a one-shot `mc` init container that creates the bucket. API talks to it via `S3_ENDPOINT=http://localhost:9000`, `forcePathStyle`.
-- Dev env: `MODERATION_DRIVER=mock`, so the full pipeline (upload → scan → approve/reject → move/delete → public read) runs locally with no AWS account. `publicUrl` returns a presigned MinIO GET in dev.
+- `STORAGE_DRIVER=local` + `MODERATION_DRIVER=mock`. The full pipeline (upload → scan → approve/reject → move/delete → public read) runs entirely on local disk with no AWS account and **no extra containers** — just the existing Postgres. Files land under `LOCAL_STORAGE_DIR` (gitignored, e.g. `apps/api/var/media/`) and APPROVED photos are served by the dev static route (§4).
+- No `docker-compose.yml` change is required for the pipeline. (S3/MinIO is no longer part of local dev; prod uses real S3 via the `s3` driver.)
 
 ---
 
 ## 7. Env vars — `.env.example` (and document in README)
 
-Add: `AWS_REGION`, `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (from Terraform outputs; standard SDK credential-chain names), `S3_BUCKET`, `S3_ENDPOINT` (dev/MinIO only), `CDN_BASE_URL` (CloudFront domain), `MODERATION_DRIVER` (`rekognition|mock`), `MODERATION_MIN_CONFIDENCE` (e.g. `60`), `PHOTO_MAX_BYTES`, `PHOTO_PER_VEHICLE_CAP`.
+Driver selection:
+- `STORAGE_DRIVER` (`local` | `s3`), `MODERATION_DRIVER` (`mock` | `rekognition`).
+
+Local driver: `LOCAL_STORAGE_DIR` (e.g. `apps/api/var/media`), `MEDIA_PUBLIC_BASE_URL` (e.g. `http://localhost:4000`).
+
+S3 / Rekognition driver: `AWS_REGION`, `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (from Terraform outputs; standard SDK credential-chain names), `S3_BUCKET`, `CDN_BASE_URL` (CloudFront domain), `MODERATION_MIN_CONFIDENCE` (e.g. `60`).
+
+Common: `PHOTO_MAX_BYTES` (default 5 MB — Rekognition `Bytes` limit), `PHOTO_PER_VEHICLE_CAP`.
+
+`config.ts` validates the vars required by the *selected* drivers (e.g. S3 vars only required when `STORAGE_DRIVER=s3`).
 
 ---
 
 ## Files to create / modify
 
-Create: `infra/terraform/{versions,variables,s3,cloudfront,iam,outputs}.tf`, `infra/terraform/terraform.tfvars.example`, `infra/README.md`; `apps/api/src/config.ts`; `apps/api/src/media/{storage,moderator,worker}.ts`.
-Modify: `packages/db/prisma/schema.prisma` (+ new migration), `packages/db/prisma/seed.ts`, `apps/api/src/server.ts`, `apps/api/package.json`, `docker-compose.yml`, `.env.example`, `.gitignore`, `README.md`.
+Create:
+- `infra/terraform/{versions,variables,s3,cloudfront,iam,outputs}.tf`, `infra/terraform/terraform.tfvars.example`, `infra/README.md`
+- `apps/api/src/config.ts`
+- `apps/api/src/media/storage/{types,localFs,s3,index}.ts`
+- `apps/api/src/media/moderation/{types,mock,rekognition,index}.ts`
+- `apps/api/src/media/worker.ts`
+
+Modify: `packages/db/prisma/schema.prisma` (+ new migration), `packages/db/prisma/seed.ts`, `apps/api/src/server.ts`, `apps/api/package.json`, `.env.example`, `.gitignore` (add `apps/api/var/`), `README.md`. (No `docker-compose.yml` change needed for this phase.)
 
 ## Verification (local, end-to-end, no AWS, no frontend)
 
-All via `curl`/HTTP against the running API:
+All via `curl`/HTTP against the running API, using the **local** drivers (`STORAGE_DRIVER=local`, `MODERATION_DRIVER=mock`) — no AWS, no MinIO:
 
-1. `docker compose up -d postgres minio`; create bucket; `npm run db:migrate && npm run db:seed`; start API with `MODERATION_DRIVER=mock`, MinIO endpoint.
-2. **Happy path:** `POST /v/:token/photos` with a clean JPEG → `202 PENDING`. Immediately `GET /v/:token` → photo **absent**. After the worker runs → row `APPROVED`, object now under `public/`, `pending/` object gone, `GET /v/:token` returns it with a `url`.
-3. **Reject path:** upload a file named `*unsafe*.jpg` → after processing, the DB row is gone and the S3 object is deleted; never public. (Confirm via DB query + MinIO listing.)
+1. `docker compose up -d postgres`; `npm run db:migrate && npm run db:seed`; start API.
+2. **Happy path:** `POST /v/:token/photos` with a clean JPEG → `202 PENDING`. Immediately `GET /v/:token` → photo **absent**. After the worker runs → row `APPROVED`, file moved to `var/media/public/<id>`, `var/media/pending/<id>` gone, `GET /v/:token` returns it with a `url` that resolves via the dev static route.
+3. **Reject path:** upload a file named `*unsafe*.jpg` → after processing, the DB row is gone and the on-disk file is deleted; never public. (Confirm via DB query + `ls var/media`.)
 4. **Restart safety:** kill the API while a row is `PENDING`; on restart the sweeper claims and processes it.
 5. **Caps/limits:** oversized file and >cap uploads are rejected with 4xx; rate-limit triggers on burst.
-6. **IaC:** `terraform init && terraform validate && terraform plan` (config correctness; real `apply` needs AWS creds). Confirm bucket blocks public access and only CloudFront OAC can read `public/*`.
+6. **Driver swap (interface check):** the same upload/scan tests pass unchanged when the worker is constructed with the S3 + Rekognition impls (unit-level with a stubbed S3/Rekognition, or against a real dev bucket), proving the pipeline is backend-agnostic.
+7. **IaC:** `terraform init && terraform validate && terraform plan` (config correctness; real `apply` needs AWS creds). Confirm bucket blocks public access and only CloudFront OAC can read `public/*`.
 
 ## Out of scope / follow-ups (deferred to a later phase)
 
 - **Web/UI integration** — visitor & owner upload screens, the `VehiclePhoto` shared-type change in `packages/carshow-components`, the `apps/admin-web/src/api.ts` multipart upload helper, and any admin moderation views. The backend returns the new fields, but no frontend consumes them yet.
+- Server-side image downscaling / EXIF-strip (e.g. `sharp`) to normalize uploads and lift the 5 MB Rekognition `Bytes` cap.
+- Additional storage/moderation implementations (GCS/Azure Blob, alternative vision APIs or a local NSFW model) — the interfaces are designed to accept them with no pipeline changes.
 - Visitor & owner apps themselves, Planning Center auth, S3 remote Terraform backend, signed-cookie CloudFront (unneeded — approved images are public by design).

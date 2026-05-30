@@ -271,12 +271,14 @@ async function main() {
           update: {
             url: demoPhotoUrl(category.name, make, model, categoryIndex, index, photoIndex),
             altText: `${year} ${make} ${model} photo ${photoIndex}`,
+            moderationStatus: "APPROVED",
           },
           create: {
             vehicleEntryId: vehicleId,
             sortOrder: photoIndex,
             url: demoPhotoUrl(category.name, make, model, categoryIndex, index, photoIndex),
             altText: `${year} ${make} ${model} photo ${photoIndex}`,
+            moderationStatus: "APPROVED",
           },
         });
       }

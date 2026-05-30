@@ -141,17 +141,31 @@ model VehicleEntry {
   @@index([eventId, categoryId])
 }
 
+enum PhotoModerationStatus {
+  PENDING
+  APPROVED
+  FAILED
+}
+
 model VehiclePhoto {
-  id             String       @id @default(cuid())
-  vehicleEntryId String
-  url            String
-  altText        String?
-  sortOrder      Int          @default(0)
-  createdAt      DateTime     @default(now())
-  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  id                  String                @id @default(cuid())
+  vehicleEntryId      String
+  url                 String?
+  storageKey          String?
+  contentType         String?
+  altText             String?
+  sortOrder           Int                   @default(0)
+  moderationStatus    PhotoModerationStatus @default(PENDING)
+  moderationLabels    Json?
+  uploadedBy          String?
+  processingStartedAt DateTime?
+  processedAt         DateTime?
+  createdAt           DateTime              @default(now())
+  vehicleEntry        VehicleEntry          @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
 
   @@unique([vehicleEntryId, sortOrder])
   @@index([vehicleEntryId])
+  @@index([moderationStatus])
 }
 
 model PeopleChoiceVote {

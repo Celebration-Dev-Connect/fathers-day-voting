@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+region      = "us-east-1"
+project     = "carshow"
+environment = "prod"
+
+# Must be globally unique across all of S3.
+bucket_name = "carshow-photos-CHANGE-ME"
+
+# Lock this down to your real web origin(s) before going live.
+cors_allowed_origins = ["https://carshow.celebrationedmonton.com"]

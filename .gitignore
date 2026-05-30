@@ -6,3 +6,12 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Local media storage (dev filesystem driver)
+apps/api/var/
+
+# Terraform
+infra/terraform/.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars

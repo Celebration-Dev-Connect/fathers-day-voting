@@ -50,6 +50,15 @@ export type QrCard = {
   vehicleEntry?: Registration;
 };
 
+export type VehiclePhoto = {
+  id: string;
+  vehicleEntryId: string;
+  url: string;
+  altText?: string | null;
+  sortOrder: number;
+  createdAt: string;
+};
+
 export type Registration = {
   id: string;
   entryNumber: number;
@@ -65,6 +74,7 @@ export type Registration = {
   owner: Owner;
   category: Category;
   qrCard?: QrCard | null;
+  photos?: VehiclePhoto[];
 };
 
 export type AuditLog = {
@@ -79,20 +89,29 @@ export type AuditLog = {
 export type PeopleChoiceTally = {
   registration: Registration;
   votes: number;
+  rank: number;
+  tieBreakPoints: number;
 };
 
 export type JudgeTopPick = {
-  id: string;
   rank: number;
-  judgeName?: string | null;
-  notes?: string | null;
   registration: Registration;
+  judgePoints: number;
+  peopleChoiceTieBreakPoints: number;
+  rankCounts: number[];
+  tieBreakSummary: string;
+  manualOverride: boolean;
+  overrideReason?: string | null;
+  overrideBy?: string | null;
+  overrideAt?: string | null;
 };
 
 export type CategoryVotingTally = {
   category: Category;
   peopleChoice: PeopleChoiceTally[];
+  judgeRanking: JudgeTopPick[];
   judgeTop3: JudgeTopPick[];
+  judgingDescription: string;
 };
 
 export type RegistrationPayload = {

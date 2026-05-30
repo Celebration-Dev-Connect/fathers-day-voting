@@ -45,13 +45,13 @@ export function TallyCard({ tally }: { tally: CategoryVotingTally }) {
         {tally.judgeTop3.length ? (
           <div className="rank-list">
             {tally.judgeTop3.map((pick) => (
-              <div className="rank-row" key={pick.id}>
+              <div className="rank-row" key={pick.registration.id}>
                 <Badge variant="rank">{pick.rank}</Badge>
                 <div>
                   <strong>{vehicleName(pick.registration)}</strong>
                   <span>
-                    #{pick.registration.entryNumber.toString().padStart(3, "0")}
-                    {pick.judgeName ? ` — ${pick.judgeName}` : ""}
+                    #{pick.registration.entryNumber.toString().padStart(3, "0")} - {pick.judgePoints} judge pts
+                    {pick.manualOverride ? " - Manual" : ""}
                   </span>
                 </div>
               </div>

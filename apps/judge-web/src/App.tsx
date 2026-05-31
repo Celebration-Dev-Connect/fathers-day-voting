@@ -8,6 +8,7 @@ import type {
 } from "@carshow/carshow-components";
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   Check,
   ClipboardList,
@@ -528,6 +529,10 @@ function JudgeVehicleDrawer({
     <div className="judge-drawer-backdrop" role="presentation" onClick={onClose}>
       <aside className="judge-vehicle-drawer" aria-label="Vehicle details" onClick={(event) => event.stopPropagation()}>
         <header>
+          <button className="judge-drawer-back-button" type="button" onClick={onClose}>
+            <ArrowLeft size={18} />
+            Back to vehicles
+          </button>
           <div>
             <small>#{vehicle.entryNumber.toString().padStart(3, "0")}</small>
             <strong>{vehicleName(vehicle)}</strong>
@@ -537,19 +542,6 @@ function JudgeVehicleDrawer({
             <X size={20} />
           </Button>
         </header>
-
-        <div className="judge-drawer-photos">
-          {vehicle.photos?.length ? (
-            vehicle.photos.slice(0, 3).map((photo) => (
-              <img key={photo.id} src={photo.url} alt={photo.altText ?? vehicleName(vehicle)} />
-            ))
-          ) : (
-            <div>
-              <ImageIcon size={30} />
-              <span>No photos</span>
-            </div>
-          )}
-        </div>
 
         <dl className="judge-vehicle-facts">
           <div>
@@ -571,6 +563,22 @@ function JudgeVehicleDrawer({
             </div>
           ) : null}
         </dl>
+
+        <section className="judge-drawer-photo-section" aria-label="Vehicle photos">
+          <strong>Photos</strong>
+          <div className="judge-drawer-photos">
+            {vehicle.photos?.length ? (
+              vehicle.photos.map((photo) => (
+                <img key={photo.id} src={photo.url} alt={photo.altText ?? vehicleName(vehicle)} />
+              ))
+            ) : (
+              <div>
+                <ImageIcon size={30} />
+                <span>No photos</span>
+              </div>
+            )}
+          </div>
+        </section>
 
         <section className="judge-drawer-rank">
           <div>

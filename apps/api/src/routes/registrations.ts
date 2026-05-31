@@ -1,4 +1,4 @@
-import { Prisma, StaffRole, VehicleStatus, prisma } from "@carshow/db";
+import { Prisma, QrCardStatus, StaffRole, VehicleStatus, prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireStaff } from "../auth.js";
@@ -17,6 +17,25 @@ async function nextEntryNumber() {
 }
 
 export async function registerRegistrationRoutes(app: FastifyInstance) {
+  app.get("/registrations/metrics", async (request) => {
+    await requireStaff(app, request);
+
+    const [total, checkedIn, assignedQr, categories] = await Promise.all([
+      prisma.vehicleEntry.count({ where: { eventId } }),
+      prisma.vehicleEntry.count({ where: { eventId, status: VehicleStatus.CHECKED_IN } }),
+      prisma.qrCard.count({
+        where: {
+          eventId,
+          status: QrCardStatus.ASSIGNED,
+          vehicleEntryId: { not: null },
+        },
+      }),
+      prisma.category.count({ where: { eventId, active: true } }),
+    ]);
+
+    return { metrics: { total, checkedIn, assignedQr, categories } };
+  });
+
   app.get("/registrations", async (request) => {
     await requireStaff(app, request);
     const query = z.object({ search: z.string().optional() }).parse(request.query);

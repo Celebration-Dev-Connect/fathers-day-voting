@@ -19,6 +19,13 @@ export type Category = {
   };
 };
 
+export type DashboardMetrics = {
+  total: number;
+  checkedIn: number;
+  assignedQr: number;
+  categories: number;
+};
+
 export type VotingSettings = {
   id: string;
   name: string;

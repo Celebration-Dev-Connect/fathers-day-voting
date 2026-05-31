@@ -2,6 +2,7 @@ import type {
   AuditLog,
   Category,
   CategoryVotingTally,
+  DashboardMetrics,
   QrCard,
   Registration,
   RegistrationPayload,
@@ -76,6 +77,10 @@ export async function listRegistrations(search = "") {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   return request<{ registrations: Registration[] }>(`/registrations?${params.toString()}`);
+}
+
+export async function getDashboardMetrics() {
+  return request<{ metrics: DashboardMetrics }>("/registrations/metrics");
 }
 
 export async function createRegistration(payload: RegistrationPayload) {

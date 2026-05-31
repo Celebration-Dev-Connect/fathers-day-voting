@@ -1,11 +1,12 @@
 import { Car, CheckCircle2, Plus, QrCode, Tags } from "lucide-react";
 import { Button, Metric, PageHeader } from "@carshow/carshow-components";
+import type { DashboardMetrics } from "@carshow/carshow-components";
 
 export function DashboardView({
   metrics,
   onRegister,
 }: {
-  metrics: { total: number; checkedIn: number; assignedQr: number; categories: number };
+  metrics: DashboardMetrics;
   onRegister: () => void;
 }) {
   return (

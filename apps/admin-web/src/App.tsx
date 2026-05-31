@@ -1,7 +1,7 @@
 import { AdminShell as AdminShellTemplate, Alert, LoginCard } from "@carshow/carshow-components";
-import type { Category, Registration, StaffUser } from "@carshow/carshow-components";
-import { useEffect, useMemo, useState } from "react";
-import { clearToken, devLogin, listCategories, listRegistrations, me, setToken } from "./api";
+import type { Category, DashboardMetrics, Registration, StaffUser } from "@carshow/carshow-components";
+import { useEffect, useState } from "react";
+import { clearToken, devLogin, getDashboardMetrics, listCategories, listRegistrations, me, setToken } from "./api";
 import { Sidebar } from "./organisms/Sidebar";
 import { CategoriesView } from "./views/CategoriesView";
 import { DashboardView } from "./views/DashboardView";
@@ -70,6 +70,12 @@ function AdminShellConnected({
   const [view, setView] = useState<View>("dashboard");
   const [categories, setCategories] = useState<Category[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    total: 0,
+    checkedIn: 0,
+    assignedQr: 0,
+    categories: 0,
+  });
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Registration | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -78,6 +84,12 @@ function AdminShellConnected({
   useEffect(() => {
     listCategories()
       .then(({ categories }) => setCategories(categories))
+      .catch((loadError) => setError(loadError.message));
+  }, [refreshKey]);
+
+  useEffect(() => {
+    getDashboardMetrics()
+      .then(({ metrics }) => setMetrics(metrics))
       .catch((loadError) => setError(loadError.message));
   }, [refreshKey]);
 
@@ -96,17 +108,6 @@ function AdminShellConnected({
 
     return () => window.clearTimeout(timeout);
   }, [refreshKey, search, selected?.id]);
-
-  const metrics = useMemo(() => {
-    const checkedIn = registrations.filter((r) => r.status === "CHECKED_IN").length;
-    const assignedQr = registrations.filter((r) => r.qrCard).length;
-    return {
-      total: registrations.length,
-      checkedIn,
-      assignedQr,
-      categories: categories.filter((c) => c.active).length,
-    };
-  }, [categories, registrations]);
 
   function refresh() {
     setRefreshKey((v) => v + 1);

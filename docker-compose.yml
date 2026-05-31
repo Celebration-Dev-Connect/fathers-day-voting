@@ -56,5 +56,17 @@ services:
     depends_on:
       - api
 
+  judge-web:
+    build:
+      context: .
+      dockerfile: apps/judge-web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/carshow/api}
+        VITE_PUBLIC_BASE_PATH: ${VITE_JUDGE_PUBLIC_BASE_PATH:-/carshow/judge}
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
+
 volumes:
   postgres-data:

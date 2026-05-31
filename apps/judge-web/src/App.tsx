@@ -6,7 +6,7 @@ import type {
   Registration,
   StaffUser,
 } from "@carshow/carshow-components";
-import { ArrowDown, ArrowUp, Check, ClipboardList, LogOut, Save, Trophy, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ClipboardList, Clock, LogOut, Save, ShieldCheck, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   clearToken,
@@ -74,6 +74,7 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingCategory, setLoadingCategory] = useState(false);
   const selectedCategory = session?.categories.find((item) => item.category.id === selectedCategoryId) ?? null;
 
   async function refreshSession() {
@@ -92,12 +93,14 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
   useEffect(() => {
     if (!selectedCategoryId) return;
     setError("");
+    setLoadingCategory(true);
     Promise.all([listJudgeVehicles(selectedCategoryId), getJudgeBallot(selectedCategoryId)])
       .then(([vehicleResult, ballotResult]) => {
         setVehicles(vehicleResult.registrations);
         setBallot(ballotResult);
       })
-      .catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Could not load category ballot"));
+      .catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Could not load category ballot"))
+      .finally(() => setLoadingCategory(false));
   }, [selectedCategoryId]);
 
   async function saveBallot(nextPicks = ballot?.picks ?? []) {
@@ -130,24 +133,21 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
       </header>
 
       <section className="judge-content">
-        <PageHeader
-          eyebrow="Judge Ballots"
-          title={selectedCategory?.category.name ?? "Category Review"}
-          actions={
-            <StatusPill
-              label={session?.judgingOpen ? "Judging open" : "Judging closed"}
-              active={session?.judgingOpen ?? false}
-            />
-          }
-        />
+        <PageHeader eyebrow="Judge Ballots" title={selectedCategory?.category.name ?? "Category Review"} />
 
         {error ? <Alert variant="danger">{error}</Alert> : null}
         {message ? <Alert>{message}</Alert> : null}
+
+        {session ? <JudgeEventBanner session={session} selectedCategory={selectedCategory} /> : null}
 
         <div className="judge-status">
           <div>
             <span>Signed in as</span>
             <strong>{staff.displayName}</strong>
+          </div>
+          <div>
+            <span>Category</span>
+            <strong>{selectedCategory?.category.name ?? "None assigned"}</strong>
           </div>
           <div>
             <span>Ballot progress</span>
@@ -156,7 +156,14 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
         </div>
 
         {loading ? <div className="empty-state">Loading judging console...</div> : null}
-        {!loading && session ? (
+        {!loading && session && !session.categories.length ? (
+          <div className="judge-empty-panel">
+            <ShieldCheck size={34} />
+            <strong>No judging categories are available yet.</strong>
+            <span>Once admin enables categories for judging, they will appear here.</span>
+          </div>
+        ) : null}
+        {!loading && session && session.categories.length ? (
           <div className="judge-layout">
             <CategoryRail
               categories={session.categories}
@@ -165,6 +172,8 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
             />
             <BallotWorkspace
               judgingOpen={session.judgingOpen}
+              loading={loadingCategory}
+              selectedCategory={selectedCategory}
               vehicles={vehicles}
               ballot={ballot}
               onChange={setBallot}
@@ -174,6 +183,37 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
         ) : null}
       </section>
     </main>
+  );
+}
+
+function JudgeEventBanner({
+  session,
+  selectedCategory,
+}: {
+  session: JudgeSession;
+  selectedCategory: JudgeCategorySummary | null;
+}) {
+  const rankedCount = selectedCategory?.rankedCount ?? 0;
+  const eligibleCount = selectedCategory?.eligibleVehicleCount ?? 0;
+
+  return (
+    <section className={session.judgingOpen ? "judge-event-banner open" : "judge-event-banner closed"}>
+      <div>
+        {session.judgingOpen ? <ShieldCheck size={24} /> : <Clock size={24} />}
+        <div>
+          <strong>{session.judgingOpen ? "Judging is open" : "Judging is closed"}</strong>
+          <span>
+            {session.judgingOpen
+              ? "Save your draft as you rank. Admin can tally saved picks while final ballot locking is being built."
+              : "Ballots are read-only while judging is closed."}
+          </span>
+        </div>
+      </div>
+      <div className="judge-event-stats">
+        <StatusPill label={`${rankedCount}/10 ranked`} active={rankedCount > 0} />
+        <StatusPill label={`${eligibleCount} eligible`} active={eligibleCount > 0} />
+      </div>
+    </section>
   );
 }
 
@@ -202,6 +242,7 @@ function CategoryRail({
           <span>{item.category.name}</span>
           <strong>{item.rankedCount}/10</strong>
           <small>{item.eligibleVehicleCount} eligible</small>
+          <i>{item.rankedCount === 0 ? "Not started" : item.rankedCount >= 10 ? "Ready to review" : "Draft in progress"}</i>
         </button>
       ))}
     </aside>
@@ -210,12 +251,16 @@ function CategoryRail({
 
 function BallotWorkspace({
   judgingOpen,
+  loading,
+  selectedCategory,
   vehicles,
   ballot,
   onChange,
   onSave,
 }: {
   judgingOpen: boolean;
+  loading: boolean;
+  selectedCategory: JudgeCategorySummary | null;
   vehicles: Registration[];
   ballot: JudgeBallot | null;
   onChange: (ballot: JudgeBallot) => void;
@@ -262,8 +307,16 @@ function BallotWorkspace({
           </div>
           <span>{vehicles.length}</span>
         </div>
+        {loading ? <div className="empty-state">Loading vehicles...</div> : null}
+        {!loading && selectedCategory && !vehicles.length ? (
+          <div className="judge-empty-panel compact">
+            <ClipboardList size={28} />
+            <strong>No checked-in vehicles yet.</strong>
+            <span>This category will populate as vehicles are checked in.</span>
+          </div>
+        ) : null}
         <div className="judge-vehicle-list">
-          {vehicles.map((registration) => (
+          {!loading && vehicles.map((registration) => (
             <article className="judge-vehicle-card" key={registration.id}>
               <div>
                 <small>#{registration.entryNumber.toString().padStart(3, "0")}</small>
@@ -294,6 +347,7 @@ function BallotWorkspace({
             Save Draft
           </Button>
         </div>
+        {!judgingOpen ? <Alert>Judging is closed. You can review this ballot, but changes are disabled.</Alert> : null}
         <div className="judge-ranked-list">
           {picks.length ? (
             picks.map((pick, index) => (

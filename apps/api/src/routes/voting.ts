@@ -1,0 +1,179 @@
+import { prisma } from "@carshow/db";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { requireAdmin, requireStaff } from "../auth.js";
+import { eventId } from "../config.js";
+import { buildVotingTallies, votingRegistrationInclude } from "../services/votingTally.js";
+
+const eventControlsSelect = {
+  id: true,
+  name: true,
+  registrationOpen: true,
+  votingOpen: true,
+  judgingOpen: true,
+  resultsPublished: true,
+  peopleChoiceCutoff: true,
+};
+
+export async function registerVotingRoutes(app: FastifyInstance) {
+  app.get("/voting/settings", async (request) => {
+    await requireStaff(app, request);
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: eventControlsSelect,
+    });
+
+    if (!event) throw app.httpErrors.notFound("Event not found");
+    return { event };
+  });
+
+  app.patch("/voting/settings", async (request) => {
+    await requireAdmin(app, request);
+    const body = z
+      .object({
+        votingOpen: z.boolean().optional(),
+        registrationOpen: z.boolean().optional(),
+        judgingOpen: z.boolean().optional(),
+        resultsPublished: z.boolean().optional(),
+        peopleChoiceCutoff: z.string().datetime().nullable().optional(),
+      })
+      .parse(request.body);
+
+    const event = await prisma.event.update({
+      where: { id: eventId },
+      data: {
+        registrationOpen: body.registrationOpen,
+        votingOpen: body.votingOpen,
+        judgingOpen: body.judgingOpen,
+        resultsPublished: body.resultsPublished,
+        peopleChoiceCutoff:
+          body.peopleChoiceCutoff === undefined
+            ? undefined
+            : body.peopleChoiceCutoff
+              ? new Date(body.peopleChoiceCutoff)
+              : null,
+      },
+      select: eventControlsSelect,
+    });
+
+    return { event };
+  });
+
+  app.get("/voting/tallies", async (request) => {
+    await requireStaff(app, request);
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        votingOpen: true,
+        registrationOpen: true,
+        judgingOpen: true,
+        resultsPublished: true,
+        peopleChoiceCutoff: true,
+      },
+    });
+
+    if (!event) throw app.httpErrors.notFound("Event not found");
+
+    const [categories, voteGroups, judgePicks, winnerOverrides] = await Promise.all([
+      prisma.category.findMany({
+        where: { eventId },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      }),
+      prisma.peopleChoiceVote.groupBy({
+        by: ["vehicleEntryId"],
+        where: {
+          eventId,
+          createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
+        },
+        _count: { _all: true },
+        orderBy: { _count: { vehicleEntryId: "desc" } },
+      }),
+      prisma.judgeCategoryPick.findMany({
+        where: { eventId, rank: { gte: 1, lte: 10 } },
+        include: {
+          category: true,
+          vehicleEntry: { include: votingRegistrationInclude },
+        },
+        orderBy: [{ category: { sortOrder: "asc" } }, { judgeKey: "asc" }, { rank: "asc" }],
+      }),
+      prisma.categoryWinnerOverride.findMany({
+        where: { eventId, rank: { in: [1, 2, 3] } },
+        include: {
+          vehicleEntry: { include: votingRegistrationInclude },
+          adminStaffUser: true,
+        },
+        orderBy: [{ categoryId: "asc" }, { rank: "asc" }],
+      }),
+    ]);
+
+    const votedVehicleIds = voteGroups.map((vote) => vote.vehicleEntryId);
+    const votedVehicles = votedVehicleIds.length
+      ? await prisma.vehicleEntry.findMany({
+          where: { id: { in: votedVehicleIds }, eventId },
+          include: votingRegistrationInclude,
+        })
+      : [];
+
+    return {
+      event,
+      categories: buildVotingTallies({
+        categories,
+        voteGroups,
+        votedVehicles,
+        judgePicks,
+        winnerOverrides,
+      }),
+    };
+  });
+
+  app.put("/voting/categories/:categoryId/winners", async (request) => {
+    const staff = await requireAdmin(app, request);
+    const params = z.object({ categoryId: z.string() }).parse(request.params);
+    const body = z
+      .object({
+        winners: z
+          .array(
+            z.object({
+              vehicleEntryId: z.string(),
+              rank: z.number().int().min(1).max(3),
+            }),
+          )
+          .length(3),
+        reason: z.string().trim().max(500).optional(),
+      })
+      .parse(request.body);
+
+    const category = await prisma.category.findFirst({ where: { id: params.categoryId, eventId } });
+    if (!category) throw app.httpErrors.notFound("Category not found");
+
+    const ranks = new Set(body.winners.map((winner) => winner.rank));
+    const vehicleIds = new Set(body.winners.map((winner) => winner.vehicleEntryId));
+    if (ranks.size !== 3 || vehicleIds.size !== 3) {
+      throw app.httpErrors.badRequest("Choose three different vehicles ranked 1, 2, and 3");
+    }
+
+    const vehicles = await prisma.vehicleEntry.findMany({
+      where: { id: { in: [...vehicleIds] }, eventId, categoryId: category.id },
+      select: { id: true },
+    });
+    if (vehicles.length !== 3) throw app.httpErrors.badRequest("All winners must be in this category");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.categoryWinnerOverride.deleteMany({ where: { eventId, categoryId: category.id } });
+      for (const winner of body.winners) {
+        await tx.categoryWinnerOverride.create({
+          data: {
+            eventId,
+            categoryId: category.id,
+            vehicleEntryId: winner.vehicleEntryId,
+            rank: winner.rank,
+            reason: body.reason ?? "Manual admin winner order",
+            adminStaffUserId: staff.id,
+          },
+        });
+      }
+    });
+
+    return { ok: true };
+  });
+}

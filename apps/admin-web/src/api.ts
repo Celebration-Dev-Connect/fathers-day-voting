@@ -125,7 +125,12 @@ export async function getVotingSettings() {
 }
 
 export async function updateVotingSettings(
-  input: Partial<Pick<VotingSettings, "votingOpen" | "judgingOpen" | "resultsPublished" | "peopleChoiceCutoff">>,
+  input: Partial<
+    Pick<
+      VotingSettings,
+      "registrationOpen" | "votingOpen" | "judgingOpen" | "resultsPublished" | "peopleChoiceCutoff"
+    >
+  >,
 ) {
   return request<{ event: VotingSettings }>("/voting/settings", {
     method: "PATCH",

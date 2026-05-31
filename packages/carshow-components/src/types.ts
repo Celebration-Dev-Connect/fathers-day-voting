@@ -22,6 +22,7 @@ export type Category = {
 export type VotingSettings = {
   id: string;
   name: string;
+  registrationOpen: boolean;
   votingOpen: boolean;
   judgingOpen: boolean;
   resultsPublished: boolean;

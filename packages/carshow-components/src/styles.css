@@ -9,6 +9,7 @@
   --primary: #b90a29;
   --deep-red: #cb1836;
   --success: #166534;
+  --warning: #a15c00;
   font-family: "Montserrat", system-ui, sans-serif;
   color: var(--on-surface);
   background: var(--light-grey);
@@ -543,15 +544,33 @@ textarea:focus {
   box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
   padding: 20px;
   display: grid;
-  grid-template-columns: 1.15fr 1fr repeat(3, minmax(150px, auto)) auto;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(190px, 1fr) repeat(4, minmax(150px, auto)) auto;
   gap: 14px;
   align-items: end;
   margin-bottom: 16px;
 }
 
+.voting-settings h2 {
+  margin-bottom: 4px;
+}
+
+.voting-settings span {
+  color: var(--muted-grey);
+  font-size: 13px;
+}
+
+.control-field {
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+}
+
+.control-field input {
+  grid-column: 1 / -1;
+}
+
 .toggle-row {
   min-height: 48px;
-  grid-template-columns: 24px 1fr;
+  grid-template-columns: 24px 18px 1fr;
   align-items: center;
   color: var(--on-surface);
   font-size: 12px;
@@ -560,6 +579,68 @@ textarea:focus {
 .toggle-row input {
   width: 20px;
   min-height: 20px;
+}
+
+.event-status-banner {
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: var(--pure-white);
+  border-left: 5px solid var(--primary);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
+}
+
+.event-status-banner h2,
+.event-status-banner p {
+  margin-bottom: 4px;
+}
+
+.event-status-banner span {
+  color: var(--muted-grey);
+  font-size: 13px;
+}
+
+.event-status-banner.published {
+  border-left-color: var(--success);
+}
+
+.event-status-banner.judging {
+  border-left-color: var(--warning);
+}
+
+.event-status-banner.locked {
+  border-left-color: var(--muted-grey);
+}
+
+.event-status-flags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.event-status-flags span {
+  min-height: 34px;
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-grey);
+  background: var(--light-grey);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+
+.event-status-flags span.active {
+  color: var(--success);
+  background: #dcfce7;
 }
 
 .tally-grid {

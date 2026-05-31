@@ -8,10 +8,11 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace @carshow/api",
+    "dev:api": "npm run dev --workspace @carshow/api",
     "dev:web": "npm run build:components && npm run dev --workspace @carshow/admin-web",
     "dev:judge": "npm run build:components && npm run dev --workspace @carshow/judge-web",
-    "dev:api": "npm run dev --workspace @carshow/api",
     "dev:public": "npm run build:components && npm run dev --workspace @carshow/public-web",
+    "dev:all": "npm run build:components && concurrently --names api,admin,judge,public --prefix-colors cyan,blue,magenta,green \"npm run dev --workspace @carshow/api\" \"npm run dev --workspace @carshow/admin-web\" \"npm run dev --workspace @carshow/judge-web\" \"npm run dev --workspace @carshow/public-web\"",
     "build:components": "npm run build --workspace @carshow/carshow-components",
     "build": "npm run build:components && npm run db:generate && npm run build --workspace @carshow/admin-web && npm run build --workspace @carshow/judge-web && npm run build --workspace @carshow/api",
     "typecheck": "npm run typecheck --workspaces",
@@ -23,6 +24,7 @@
     "deploy:prod": "./infra/deploy.sh --env prod"
   },
   "devDependencies": {
+    "concurrently": "^10.0.0",
     "typescript": "^5.8.3"
   }
 }

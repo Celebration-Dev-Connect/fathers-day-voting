@@ -8,6 +8,6 @@ export default defineConfig({
   base: normalizedBasePath,
   plugins: [react()],
   server: {
-    port: 3001,
+    port: 3002,
   },
 });

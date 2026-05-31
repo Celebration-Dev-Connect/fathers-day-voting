@@ -2,11 +2,12 @@ import { prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireStaff } from "../auth.js";
+import { config } from "../config.js";
 
 export async function registerAuthRoutes(app: FastifyInstance) {
   app.post("/auth/dev-login", async (request, reply) => {
-    if (process.env.NODE_ENV === "production") {
-      throw app.httpErrors.notFound("Dev login is disabled in production");
+    if (!config.enableDevLogin) {
+      throw app.httpErrors.notFound("Dev login is disabled");
     }
 
     const body = z.object({ email: z.string().email() }).parse(request.body);
@@ -50,4 +51,3 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     };
   });
 }
-

@@ -17,7 +17,10 @@
     "typecheck": "npm run typecheck --workspaces",
     "db:generate": "npm run db:generate --workspace @carshow/db",
     "db:migrate": "npm run db:migrate --workspace @carshow/db",
-    "db:seed": "npm run db:seed --workspace @carshow/db"
+    "db:seed": "npm run db:seed --workspace @carshow/db",
+    "deploy": "./infra/deploy.sh",
+    "deploy:test": "./infra/deploy.sh --env test",
+    "deploy:prod": "./infra/deploy.sh --env prod"
   },
   "devDependencies": {
     "typescript": "^5.8.3"

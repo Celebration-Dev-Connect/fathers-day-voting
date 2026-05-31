@@ -14,4 +14,5 @@ apps/api/var/
 infra/terraform/.terraform/
 *.tfstate
 *.tfstate.*
-terraform.tfvars
+*.tfvars
+!*.tfvars.example

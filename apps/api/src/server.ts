@@ -216,8 +216,8 @@ app.get("/health", async () => {
 });
 
 app.post("/auth/dev-login", async (request, reply) => {
-  if (config.isProduction) {
-    throw app.httpErrors.notFound("Dev login is disabled in production");
+  if (!config.enableDevLogin) {
+    throw app.httpErrors.notFound("Dev login is disabled");
   }
 
   const body = z.object({ email: z.string().email() }).parse(request.body);
@@ -991,6 +991,25 @@ function toPublicVehicle(
   };
 }
 
+app.get("/public/hero-photos", async () => {
+  const photos = await prisma.$queryRaw<
+    Array<{ url: string; altText: string | null; year: number; make: string; model: string; nickname: string | null }>
+  >`
+    SELECT p.url, p."altText", e.year, e.make, e.model, e.nickname
+    FROM "VehiclePhoto" p
+    JOIN "VehicleEntry" e ON e.id = p."vehicleEntryId"
+    WHERE e."eventId" = ${eventId}
+      AND e.status = 'CHECKED_IN'
+      AND p."moderationStatus" = 'APPROVED'
+      AND p.url IS NOT NULL
+      AND p."sortOrder" = 1
+    ORDER BY RANDOM()
+    LIMIT 10
+  `;
+
+  return { photos };
+});
+
 app.get("/public/event", async () => {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
@@ -1117,8 +1136,68 @@ app.post("/public/vehicles/:token/vote", async (request) => {
   return { ok: true, categoryName: vehicle.category.name };
 });
 
+app.get("/public/entries/:entryNumber", async (request) => {
+  const params = z.object({ entryNumber: z.coerce.number().int().positive() }).parse(request.params);
+
+  const vehicle = await prisma.vehicleEntry.findFirst({
+    where: { eventId, entryNumber: params.entryNumber, status: VehicleStatus.CHECKED_IN },
+    include: {
+      owner: true,
+      category: true,
+      photos: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+
+  if (!vehicle) throw app.httpErrors.notFound("Entry not found");
+
+  return { vehicle: toPublicVehicle(vehicle) };
+});
+
+const PAGE_SIZE = 12;
+
+app.post("/public/entries/:vehicleId/vote", async (request) => {
+  const params = z.object({ vehicleId: z.string().trim().min(1) }).parse(request.params);
+  const body = z.object({ voterKey: z.string().trim().min(1) }).parse(request.body);
+
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { votingOpen: true, peopleChoiceCutoff: true },
+  });
+
+  if (!event?.votingOpen) throw app.httpErrors.forbidden("Voting is not currently open");
+  if (event.peopleChoiceCutoff && new Date() > event.peopleChoiceCutoff) {
+    throw app.httpErrors.forbidden("Voting has closed");
+  }
+
+  const vehicle = await prisma.vehicleEntry.findFirst({
+    where: { id: params.vehicleId, eventId, status: VehicleStatus.CHECKED_IN },
+    include: { category: true },
+  });
+
+  if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
+
+  try {
+    await prisma.peopleChoiceVote.create({
+      data: {
+        eventId,
+        vehicleEntryId: vehicle.id,
+        categoryId: vehicle.categoryId,
+        voterKey: body.voterKey,
+      },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw app.httpErrors.conflict(`You've already voted in the ${vehicle.category.name} category`);
+    }
+    throw err;
+  }
+
+  return { ok: true as const, categoryName: vehicle.category.name };
+});
+
 app.get("/public/categories/:slug/entries", async (request) => {
   const params = z.object({ slug: z.string().trim().min(1) }).parse(request.params);
+  const query = z.object({ page: z.coerce.number().int().min(1).default(1) }).parse(request.query);
 
   const category = await prisma.category.findFirst({
     where: { eventId, slug: params.slug, active: true },
@@ -1126,23 +1205,37 @@ app.get("/public/categories/:slug/entries", async (request) => {
 
   if (!category) throw app.httpErrors.notFound("Category not found");
 
-  const vehicles = await prisma.vehicleEntry.findMany({
-    where: {
-      eventId,
-      categoryId: category.id,
-      qrCard: { status: "ASSIGNED" },
-    },
-    include: {
-      owner: true,
-      category: true,
-      photos: { orderBy: { sortOrder: "asc" }, take: 1 },
-    },
-    orderBy: { entryNumber: "asc" },
-  });
+  const where = { eventId, categoryId: category.id, status: VehicleStatus.CHECKED_IN };
+
+  const [total, vehicles] = await Promise.all([
+    prisma.vehicleEntry.count({ where }),
+    prisma.vehicleEntry.findMany({
+      where,
+      include: {
+        owner: true,
+        category: true,
+        photos: { orderBy: { sortOrder: "asc" }, take: 1 },
+      },
+      orderBy: { entryNumber: "asc" },
+      skip: (query.page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(query.page, totalPages);
 
   return {
     category: { id: category.id, name: category.name, slug: category.slug },
     entries: vehicles.map(toPublicVehicle),
+    pagination: {
+      page,
+      pageSize: PAGE_SIZE,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
   };
 });
 

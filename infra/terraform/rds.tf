@@ -22,8 +22,8 @@ resource "aws_db_instance" "main" {
   identifier        = "${var.project}-${var.environment}"
   engine            = "postgres"
   engine_version    = "16"
-  instance_class    = "db.t3.micro"
-  allocated_storage = 20
+  instance_class    = var.rds_instance_class
+  allocated_storage = var.rds_allocated_storage
   storage_type      = "gp3"
 
   db_name  = var.project
@@ -34,11 +34,11 @@ resource "aws_db_instance" "main" {
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  publicly_accessible     = false
-  deletion_protection     = true
-  skip_final_snapshot     = false
-  final_snapshot_identifier = "${var.project}-${var.environment}-final"
-  backup_retention_period = 1
+  publicly_accessible       = false
+  deletion_protection       = var.teardown_friendly ? false : true
+  skip_final_snapshot       = var.teardown_friendly ? true : false
+  final_snapshot_identifier = var.teardown_friendly ? null : "${var.project}-${var.environment}-final"
+  backup_retention_period   = var.rds_backup_retention
 
   tags = {
     Project     = var.project

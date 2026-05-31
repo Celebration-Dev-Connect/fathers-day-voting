@@ -1,6 +1,8 @@
+import { useState } from "react";
 import type { PublicEntry } from "../types.js";
 
 export function EntryCard({ entry }: { entry: PublicEntry }) {
+  const [loaded, setLoaded] = useState(false);
   const photo = entry.photos[0];
   const label = entry.nickname
     ? `${entry.year} ${entry.make} ${entry.model} — "${entry.nickname}"`
@@ -10,7 +12,16 @@ export function EntryCard({ entry }: { entry: PublicEntry }) {
     <article className="entry-card">
       <div className="entry-card-photo">
         {photo ? (
-          <img src={photo.url} alt={photo.altText ?? label} loading="lazy" />
+          <>
+            {!loaded && <div className="img-shimmer" aria-hidden="true" />}
+            <img
+              src={photo.url}
+              alt={photo.altText ?? label}
+              loading="lazy"
+              style={{ opacity: loaded ? 1 : 0 }}
+              onLoad={() => setLoaded(true)}
+            />
+          </>
         ) : (
           <div className="entry-card-photo-empty" />
         )}

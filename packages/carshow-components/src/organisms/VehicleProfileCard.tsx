@@ -1,21 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../atoms/Button.js";
 import { VoteSuccess } from "../molecules/VoteSuccess.js";
 import type { PublicVehicle } from "../types.js";
 
 type Props = {
   vehicle: PublicVehicle;
-  votingOpen: boolean;
-  cutoffPassed: boolean;
-  alreadyVoted: boolean;
-  onVote: () => void;
-  voting: boolean;
+  votingOpen?: boolean;
+  cutoffPassed?: boolean;
+  alreadyVoted?: boolean;
+  onVote?: () => void;
+  voting?: boolean;
+  showVoting?: boolean;
 };
 
-export function VehicleProfileCard({ vehicle, votingOpen, cutoffPassed, alreadyVoted, onVote, voting }: Props) {
+export function VehicleProfileCard({
+  vehicle,
+  votingOpen = false,
+  cutoffPassed = false,
+  alreadyVoted = false,
+  onVote,
+  voting = false,
+  showVoting = true,
+}: Props) {
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
   const photos = vehicle.photos;
   const currentPhoto = photos[photoIndex];
+  const currentLoaded = loadedIds.has(currentPhoto?.id ?? "");
+
+  useEffect(() => {
+    if (photos.length <= 1) return;
+    const id = setInterval(() => setPhotoIndex((i) => (i + 1) % photos.length), 5000);
+    return () => clearInterval(id);
+  }, [photos.length]);
+
+  function markLoaded(id: string) {
+    setLoadedIds((prev) => new Set([...prev, id]));
+  }
 
   const title = vehicle.nickname
     ? `${vehicle.year} ${vehicle.make} ${vehicle.model} — "${vehicle.nickname}"`
@@ -25,11 +46,17 @@ export function VehicleProfileCard({ vehicle, votingOpen, cutoffPassed, alreadyV
     <article className="vehicle-profile">
       {photos.length > 0 ? (
         <div className="vehicle-profile-photos">
-          <img
-            className="vehicle-profile-main-photo"
-            src={currentPhoto.url}
-            alt={currentPhoto.altText ?? title}
-          />
+          <div className="vehicle-profile-photo-wrap">
+            {!currentLoaded && <div className="img-shimmer" aria-hidden="true" />}
+            <img
+              key={currentPhoto.id}
+              className="vehicle-profile-main-photo"
+              src={currentPhoto.url}
+              alt={currentPhoto.altText ?? title}
+              style={{ opacity: currentLoaded ? 1 : 0, transition: "opacity 0.3s ease" }}
+              onLoad={() => markLoaded(currentPhoto.id)}
+            />
+          </div>
           {photos.length > 1 ? (
             <div className="vehicle-profile-thumbs">
               {photos.map((p, i) => (
@@ -39,7 +66,13 @@ export function VehicleProfileCard({ vehicle, votingOpen, cutoffPassed, alreadyV
                   onClick={() => setPhotoIndex(i)}
                   aria-label={`Photo ${i + 1}`}
                 >
-                  <img src={p.url} alt="" />
+                  {!loadedIds.has(p.id) && <div className="img-shimmer" aria-hidden="true" />}
+                  <img
+                    src={p.url}
+                    alt=""
+                    style={{ opacity: loadedIds.has(p.id) ? 1 : 0, transition: "opacity 0.25s ease" }}
+                    onLoad={() => markLoaded(p.id)}
+                  />
                 </button>
               ))}
             </div>
@@ -59,17 +92,19 @@ export function VehicleProfileCard({ vehicle, votingOpen, cutoffPassed, alreadyV
         {vehicle.exteriorColor ? <p className="muted-copy">{vehicle.exteriorColor}</p> : null}
       </div>
 
-      <div className="vehicle-profile-vote">
-        {alreadyVoted ? (
-          <VoteSuccess categoryName={vehicle.category.name} />
-        ) : !votingOpen || cutoffPassed ? (
-          <p className="muted-copy vote-closed-msg">Voting is not currently open.</p>
-        ) : (
-          <Button variant="primary" disabled={voting} onClick={onVote}>
-            {voting ? "Submitting…" : `Vote for this ${vehicle.category.name}`}
-          </Button>
-        )}
-      </div>
+      {showVoting ? (
+        <div className="vehicle-profile-vote">
+          {alreadyVoted ? (
+            <VoteSuccess categoryName={vehicle.category.name} />
+          ) : !votingOpen || cutoffPassed ? (
+            <p className="muted-copy vote-closed-msg">Voting is not currently open.</p>
+          ) : (
+            <Button variant="primary" disabled={voting} onClick={onVote}>
+              {voting ? "Submitting…" : `Vote for this ${vehicle.category.name}`}
+            </Button>
+          )}
+        </div>
+      ) : null}
     </article>
   );
 }

@@ -1,7 +1,8 @@
 # ── Photos ────────────────────────────────────────────────────────────────────
 
 resource "aws_s3_bucket" "photos" {
-  bucket = "${var.project}-photos-${var.environment}"
+  bucket        = "${var.project}-photos-${var.environment}"
+  force_destroy = var.teardown_friendly
 
   tags = {
     Project     = var.project
@@ -68,7 +69,8 @@ resource "aws_s3_bucket_policy" "photos" {
 # ── Admin web SPA ─────────────────────────────────────────────────────────────
 
 resource "aws_s3_bucket" "admin_web" {
-  bucket = "${var.project}-admin-web-${var.environment}"
+  bucket        = "${var.project}-admin-web-${var.environment}"
+  force_destroy = var.teardown_friendly
 
   tags = {
     Project     = var.project
@@ -115,7 +117,8 @@ resource "aws_s3_bucket_policy" "admin_web" {
 # ── Public web SPA ────────────────────────────────────────────────────────────
 
 resource "aws_s3_bucket" "public_web" {
-  bucket = "${var.project}-public-web-${var.environment}"
+  bucket        = "${var.project}-public-web-${var.environment}"
+  force_destroy = var.teardown_friendly
 
   tags = {
     Project     = var.project

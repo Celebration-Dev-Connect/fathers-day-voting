@@ -23,5 +23,8 @@ COPY --from=build /app/packages/db/prisma packages/db/prisma
 COPY package.json package.json
 COPY apps/api/package.json apps/api/package.json
 COPY packages/db/package.json packages/db/package.json
+COPY apps/api/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 EXPOSE 4000
-CMD ["node", "apps/api/dist/server.js"]
+# Entrypoint runs `prisma migrate deploy` (and optional seed) before the server.
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

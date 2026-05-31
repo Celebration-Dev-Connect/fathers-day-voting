@@ -1,18 +1,47 @@
 import { Outlet, Route, Routes, useNavigate } from "react-router-dom";
+import { VotePanel } from "./components/VotePanel";
+import { VotingProvider, useVoting } from "./context/VotingContext";
 import { BrowseView } from "./views/BrowseView";
 import { CategoryView } from "./views/CategoryView";
+import { EntryDetailView } from "./views/EntryDetailView";
 import { LandingView } from "./views/LandingView";
 import { VehicleView } from "./views/VehicleView";
 
 function Header() {
   const navigate = useNavigate();
+  const { votingOpen, cutoffPassed, categories, drafts, submitted, isPanelOpen, togglePanel, closePanel } = useVoting();
+
+  const showVoting = votingOpen && !cutoffPassed;
+  const totalInteracted = Object.keys(drafts).length + Object.keys(submitted).length;
+
   return (
-    <header className="public-header" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
-      <div>
-        <p className="public-header-brand">Celebration Church</p>
-        <h1 className="public-header-title">Father's Day Car Show</h1>
-      </div>
-    </header>
+    <>
+      <header
+        className="public-header"
+        onClick={() => navigate("/")}
+        style={{ cursor: "pointer" }}
+      >
+        <div>
+          <p className="public-header-brand">Celebration Church</p>
+          <h1 className="public-header-title">Father's Day Car Show</h1>
+        </div>
+        {showVoting && (
+          <button
+            className="vote-now-btn"
+            onClick={(e) => { e.stopPropagation(); togglePanel(); }}
+            aria-expanded={isPanelOpen}
+          >
+            Vote Now
+            {totalInteracted > 0 && (
+              <span className="vote-now-badge">
+                {Object.keys(submitted).length}/{categories.length}
+              </span>
+            )}
+          </button>
+        )}
+      </header>
+      {isPanelOpen && showVoting && <VotePanel onClose={closePanel} />}
+    </>
   );
 }
 
@@ -25,7 +54,7 @@ function WithHeader() {
   );
 }
 
-export function App() {
+function AppRoutes() {
   return (
     <div className="public-app">
       <Routes>
@@ -34,8 +63,17 @@ export function App() {
           <Route path="/v/:token" element={<VehicleView />} />
           <Route path="/browse" element={<BrowseView />} />
           <Route path="/browse/:slug" element={<CategoryView />} />
+          <Route path="/browse/entry/:entryNumber" element={<EntryDetailView />} />
         </Route>
       </Routes>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <VotingProvider>
+      <AppRoutes />
+    </VotingProvider>
   );
 }

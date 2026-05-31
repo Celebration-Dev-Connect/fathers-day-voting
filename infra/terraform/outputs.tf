@@ -1,3 +1,8 @@
+output "public_domain" {
+  description = "The public domain for this stack (used by the deploy script to build the SPAs)."
+  value       = var.domain
+}
+
 output "cloudfront_domain" {
   description = "Add a CNAME record in your DNS registrar: var.domain → this value."
   value       = aws_cloudfront_distribution.main.domain_name

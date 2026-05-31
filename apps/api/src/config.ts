@@ -19,6 +19,12 @@ const envSchema = z
     storageDriver: storageDriverSchema.default("local"),
     moderationDriver: moderationDriverSchema.default("mock"),
 
+    // Enables the email/dev-login path even when NODE_ENV=production.
+    // Used for test deployments that run real infra (S3/RDS/Rekognition) but
+    // keep local staff login while Planning Center OAuth is not yet wired up.
+    // Omit it and the default tracks NODE_ENV (on in dev, off in prod).
+    enableDevLogin: z.enum(["true", "false"]).optional(),
+
     // Local filesystem driver
     localStorageDir: z.string().default("var/media"),
     mediaPublicBaseUrl: z.string().default("http://localhost:4000"),
@@ -56,6 +62,7 @@ const parsed = envSchema.safeParse({
   jwtSecret: process.env.JWT_SECRET,
   storageDriver: process.env.STORAGE_DRIVER,
   moderationDriver: process.env.MODERATION_DRIVER,
+  enableDevLogin: process.env.ENABLE_DEV_LOGIN,
   localStorageDir: process.env.LOCAL_STORAGE_DIR,
   mediaPublicBaseUrl: process.env.MEDIA_PUBLIC_BASE_URL,
   awsRegion: process.env.AWS_REGION,
@@ -73,9 +80,13 @@ if (!parsed.success) {
 
 const env = parsed.data;
 
+// Defaults to the inverse of production unless explicitly overridden.
+const enableDevLogin = env.enableDevLogin ? env.enableDevLogin === "true" : !isProduction;
+
 export const config = {
   nodeEnv: env.nodeEnv,
   isProduction,
+  enableDevLogin,
   port: env.port,
   host: env.host,
   jwtSecret: env.jwtSecret,

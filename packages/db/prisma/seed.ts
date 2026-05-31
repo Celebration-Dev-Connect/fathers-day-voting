@@ -151,6 +151,9 @@ async function main() {
     ["admin@carshow.local", "Admin User", StaffRole.ADMIN],
     ["registrar1@carshow.local", "Registrar One", StaffRole.REGISTRAR],
     ["registrar2@carshow.local", "Registrar Two", StaffRole.REGISTRAR],
+    ["judge1@carshow.local", "Judge One", StaffRole.JUDGE],
+    ["judge2@carshow.local", "Judge Two", StaffRole.JUDGE],
+    ["judge3@carshow.local", "Judge Three", StaffRole.JUDGE],
   ] as const;
 
   for (const [email, displayName, role] of staff) {

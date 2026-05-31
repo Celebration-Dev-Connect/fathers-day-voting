@@ -1,7 +1,7 @@
 import { VehicleStatus, prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { requireStaff } from "../auth.js";
+import { requireJudge } from "../auth.js";
 import { eventId } from "../config.js";
 import { votingRegistrationInclude } from "../services/votingTally.js";
 
@@ -83,7 +83,7 @@ async function loadBallot(categoryId: string, judgeKey: string) {
 
 export async function registerJudgingRoutes(app: FastifyInstance) {
   app.get("/judging/session", async (request) => {
-    const staff = await requireStaff(app, request);
+    const staff = await requireJudge(app, request);
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       select: { judgingOpen: true, resultsPublished: true },
@@ -105,12 +105,12 @@ export async function registerJudgingRoutes(app: FastifyInstance) {
   });
 
   app.get("/judging/categories", async (request) => {
-    const staff = await requireStaff(app, request);
+    const staff = await requireJudge(app, request);
     return { categories: await loadCategorySummaries(judgeKeyForStaff(staff.id)) };
   });
 
   app.get("/judging/categories/:categoryId/vehicles", async (request) => {
-    await requireStaff(app, request);
+    await requireJudge(app, request);
     const params = z.object({ categoryId: z.string() }).parse(request.params);
 
     const registrations = await prisma.vehicleEntry.findMany({
@@ -127,7 +127,7 @@ export async function registerJudgingRoutes(app: FastifyInstance) {
   });
 
   app.get("/judging/categories/:categoryId/ballot", async (request) => {
-    const staff = await requireStaff(app, request);
+    const staff = await requireJudge(app, request);
     const params = z.object({ categoryId: z.string() }).parse(request.params);
     const ballot = await loadBallot(params.categoryId, judgeKeyForStaff(staff.id));
     if (!ballot) throw app.httpErrors.notFound("Ballot category not found");
@@ -135,7 +135,7 @@ export async function registerJudgingRoutes(app: FastifyInstance) {
   });
 
   app.put("/judging/categories/:categoryId/ballot", async (request) => {
-    const staff = await requireStaff(app, request);
+    const staff = await requireJudge(app, request);
     const params = z.object({ categoryId: z.string() }).parse(request.params);
     const body = z.object({ picks: z.array(ballotPickSchema).max(10) }).parse(request.body);
     const rankSet = new Set(body.picks.map((pick) => pick.rank));

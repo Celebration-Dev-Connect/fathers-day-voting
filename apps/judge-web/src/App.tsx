@@ -35,8 +35,9 @@ import {
 
 const DEV_LOGIN_OPTIONS = [
   { label: "Admin User", email: "admin@carshow.local" },
-  { label: "Registrar One", email: "registrar1@carshow.local" },
-  { label: "Registrar Two", email: "registrar2@carshow.local" },
+  { label: "Judge One", email: "judge1@carshow.local" },
+  { label: "Judge Two", email: "judge2@carshow.local" },
+  { label: "Judge Three", email: "judge3@carshow.local" },
 ];
 
 export function App() {

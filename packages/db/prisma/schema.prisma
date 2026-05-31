@@ -10,6 +10,7 @@ datasource db {
 enum StaffRole {
   ADMIN
   REGISTRAR
+  JUDGE
 }
 
 enum VehicleStatus {

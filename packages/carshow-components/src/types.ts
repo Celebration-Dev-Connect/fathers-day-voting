@@ -1,4 +1,4 @@
-export type StaffRole = "ADMIN" | "REGISTRAR";
+export type StaffRole = "ADMIN" | "REGISTRAR" | "JUDGE";
 export type VehicleStatus = "DRAFT" | "REGISTERED" | "CHECKED_IN";
 
 export type StaffUser = {

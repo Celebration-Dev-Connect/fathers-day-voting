@@ -45,3 +45,10 @@ export async function requireAdmin(app: FastifyInstance, request: FastifyRequest
   return staff;
 }
 
+export async function requireJudge(app: FastifyInstance, request: FastifyRequest) {
+  const staff = await requireStaff(app, request);
+  if (staff.role !== StaffRole.ADMIN && staff.role !== StaffRole.JUDGE) {
+    throw app.httpErrors.forbidden("Judge role required");
+  }
+  return staff;
+}

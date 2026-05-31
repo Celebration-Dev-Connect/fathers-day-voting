@@ -1,8 +1,12 @@
+import { config } from "./config.js";
 import { buildApp } from "./app.js";
+import { createStorage } from "./media/storage/index.js";
+import { createModerator } from "./media/moderation/index.js";
+import { PhotoModerationWorker } from "./media/worker.js";
 
-const app = await buildApp();
-const port = Number(process.env.API_PORT ?? 4000);
-const host = process.env.API_HOST ?? "0.0.0.0";
+const storage = createStorage();
+const moderator = createModerator();
+const { app, worker } = await buildApp({ storage, moderator });
 
-await app.listen({ port, host });
-
+await app.listen({ port: config.port, host: config.host });
+worker.start();

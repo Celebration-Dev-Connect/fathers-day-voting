@@ -271,12 +271,14 @@ async function main() {
           update: {
             url: demoPhotoUrl(category.name, make, model, categoryIndex, index, photoIndex),
             altText: `${year} ${make} ${model} photo ${photoIndex}`,
+            moderationStatus: "APPROVED",
           },
           create: {
             vehicleEntryId: vehicleId,
             sortOrder: photoIndex,
             url: demoPhotoUrl(category.name, make, model, categoryIndex, index, photoIndex),
             altText: `${year} ${make} ${model} photo ${photoIndex}`,
+            moderationStatus: "APPROVED",
           },
         });
       }
@@ -285,6 +287,7 @@ async function main() {
         data: Array.from({ length: Math.max(1, 24 - index) }, (_, voteIndex) => ({
           eventId,
           vehicleEntryId: vehicleId,
+          categoryId: category.id,
           voterKey: `seed-voter-${category.slug}-${index}-${voteIndex + 1}`,
           createdAt: new Date(`2026-06-21T18:${(voteIndex % 50).toString().padStart(2, "0")}:00.000Z`),
         })),

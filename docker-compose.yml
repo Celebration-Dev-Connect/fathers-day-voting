@@ -19,26 +19,17 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    # The image entrypoint runs `prisma migrate deploy` (and seeds when
+    # RUN_SEED=true) before starting the API — same path as the AWS deploy.
     environment:
       DATABASE_URL: postgresql://carshow:carshow@postgres:5432/carshow?schema=public
       API_PORT: 4000
       API_HOST: 0.0.0.0
       JWT_SECRET: local-proxmox-dev-secret-change-me
       NODE_ENV: development
+      RUN_SEED: "true"
     ports:
       - "4000:4000"
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-
-  migrate:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    command: sh -c "npx prisma migrate deploy --schema packages/db/prisma/schema.prisma && npm run db:seed --workspace @carshow/db"
-    environment:
-      DATABASE_URL: postgresql://carshow:carshow@postgres:5432/carshow?schema=public
-      NODE_ENV: development
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,7 +41,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/carshow/api}
         VITE_PUBLIC_BASE_PATH: ${VITE_PUBLIC_BASE_PATH:-/carshow}
-        VITE_PUBLIC_APP_URL: ${VITE_PUBLIC_APP_URL:-https://automationsolutions.ddns.net/carshow}
+        VITE_PUBLIC_APP_URL: ${VITE_PUBLIC_APP_URL:-https://automationsolutions.ddns.net/show}
     ports:
       - "3000:80"
     depends_on:
@@ -63,6 +54,18 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/carshow/api}
         VITE_PUBLIC_BASE_PATH: ${VITE_JUDGE_PUBLIC_BASE_PATH:-/carshow/judge}
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
+
+  public-web:
+    build:
+      context: .
+      dockerfile: apps/public-web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_PUBLIC_API_URL:-/show/api}
+        VITE_PUBLIC_BASE_PATH: ${VITE_PUBLIC_WEB_BASE_PATH:-/show}
     ports:
       - "3001:80"
     depends_on:

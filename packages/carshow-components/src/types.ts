@@ -186,3 +186,42 @@ export type RegistrationPayload = {
     internalNotes?: string;
   };
 };
+
+// Public visitor types
+
+export type PublicCategory = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type PublicPhoto = {
+  id: string;
+  url: string;
+  altText: string | null;
+  sortOrder: number;
+};
+
+export type PublicVehicle = {
+  id: string;
+  entryNumber: number;
+  year: number;
+  make: string;
+  model: string;
+  nickname: string | null;
+  exteriorColor: string | null;
+  category: PublicCategory;
+  ownerName: string | null;
+  photos: PublicPhoto[];
+};
+
+export type PublicEntry = PublicVehicle;
+
+export type PublicEvent = {
+  name: string;
+  eventDate: string;
+  venueName: string;
+  votingOpen: boolean;
+  peopleChoiceCutoff: string | null;
+  resultsPublished: boolean;
+};

@@ -1,0 +1,34 @@
+# Copy to prod.tfvars and fill in values. Full-size, protected PRODUCTION stack.
+# Deploy with the "prod" Terraform workspace:
+#   ./infra/deploy.sh --env prod
+#
+# prod.tfvars is gitignored — never commit it.
+
+region      = "ca-central-1"
+project     = "carshow"
+environment = "prod"
+domain      = "carshow.celebrationedmonton.com"
+db_username = "carshow"
+
+# ── Full resources (defaults; shown for clarity) ──
+app_runner_cpu        = "1024"
+app_runner_memory     = "2048"
+app_runner_min_size   = 1
+app_runner_max_size   = 3
+rds_instance_class    = "db.t3.micro"
+rds_allocated_storage = 20
+rds_backup_retention  = 1
+
+# ── Production posture ──
+# Planning Center OAuth (no local login), no auto-seed, and protected data
+# (deletion protection + final snapshot block a casual `terraform destroy`).
+enable_dev_login  = false
+run_seed          = false
+teardown_friendly = false
+
+# Bootstrap order (handled automatically by ./infra/deploy.sh):
+#   1. terraform apply -target=aws_ecr_repository.api
+#   2. docker build + push to ECR with a commit SHA tag
+#   3. terraform apply -var="app_runner_image_tag=<sha>"
+# Never use "latest" once the service is live.
+app_runner_image_tag = "latest"

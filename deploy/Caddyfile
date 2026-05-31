@@ -2,6 +2,15 @@ carshow.internal {
   tls internal
 
   redir /carshow /carshow/
+  redir /show /show/
+
+  handle_path /show/api/* {
+    reverse_proxy 127.0.0.1:4000
+  }
+
+  handle_path /show/* {
+    reverse_proxy 127.0.0.1:3001
+  }
 
   handle_path /carshow/api/* {
     reverse_proxy 127.0.0.1:4000
@@ -27,6 +36,15 @@ carshow.internal {
 automationsolutions.ddns.net {
   redir / /carshow/
   redir /carshow /carshow/
+  redir /show /show/
+
+  handle_path /show/api/* {
+    reverse_proxy 127.0.0.1:4000
+  }
+
+  handle_path /show/* {
+    reverse_proxy 127.0.0.1:3001
+  }
 
   handle_path /carshow/api/* {
     reverse_proxy 127.0.0.1:4000

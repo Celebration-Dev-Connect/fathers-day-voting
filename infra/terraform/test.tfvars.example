@@ -1,0 +1,25 @@
+# Copy to test.tfvars and adjust. Cheap, disposable, real-infra TEST stack.
+# Deploy with the "test" Terraform workspace:
+#   ./infra/deploy.sh --env test
+
+region      = "ca-central-1"
+project     = "carshow"
+environment = "test"
+domain      = "carshow-test.celebrationedmonton.com"
+db_username = "carshow"
+
+# ── Reduced resources (≤5 concurrent testers) ──
+app_runner_cpu        = "512"
+app_runner_memory     = "1024"
+app_runner_min_size   = 1
+app_runner_max_size   = 1
+rds_instance_class    = "db.t3.micro"
+rds_allocated_storage = 20
+rds_backup_retention  = 0
+
+# ── Test behavior ──
+enable_dev_login  = true
+run_seed          = true
+teardown_friendly = true
+
+app_runner_image_tag = "latest"

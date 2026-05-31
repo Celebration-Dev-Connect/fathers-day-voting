@@ -1,4 +1,4 @@
-import { prisma } from "@carshow/db";
+import { VehicleStatus, prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAdmin, requireStaff } from "../auth.js";
@@ -122,6 +122,76 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         votedVehicles,
         judgePicks,
         winnerOverrides,
+      }),
+    };
+  });
+
+  app.get("/voting/judge-completion", async (request) => {
+    await requireStaff(app, request);
+
+    const [categories, picks] = await Promise.all([
+      prisma.category.findMany({
+        where: { eventId },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        include: {
+          _count: {
+            select: {
+              vehicleEntries: {
+                where: { status: VehicleStatus.CHECKED_IN },
+              },
+            },
+          },
+        },
+      }),
+      prisma.judgeCategoryPick.findMany({
+        where: { eventId, rank: { gte: 1, lte: 10 } },
+        select: {
+          categoryId: true,
+          judgeKey: true,
+          judgeName: true,
+          updatedAt: true,
+        },
+        orderBy: [{ categoryId: "asc" }, { judgeKey: "asc" }],
+      }),
+    ]);
+
+    const judgesByCategory = new Map<
+      string,
+      Map<string, { judgeKey: string; judgeName: string; rankedCount: number; updatedAt: Date | null }>
+    >();
+
+    for (const pick of picks) {
+      const categoryJudges = judgesByCategory.get(pick.categoryId) ?? new Map();
+      const judge = categoryJudges.get(pick.judgeKey) ?? {
+        judgeKey: pick.judgeKey,
+        judgeName: pick.judgeName ?? "Judge",
+        rankedCount: 0,
+        updatedAt: null,
+      };
+
+      judge.rankedCount += 1;
+      judge.updatedAt = !judge.updatedAt || pick.updatedAt > judge.updatedAt ? pick.updatedAt : judge.updatedAt;
+      categoryJudges.set(pick.judgeKey, judge);
+      judgesByCategory.set(pick.categoryId, categoryJudges);
+    }
+
+    return {
+      categories: categories.map((category) => {
+        const judges = Array.from(judgesByCategory.get(category.id)?.values() ?? [])
+          .map((judge) => ({
+            ...judge,
+            complete: judge.rankedCount >= 10,
+          }))
+          .sort((first, second) => first.judgeName.localeCompare(second.judgeName));
+
+        return {
+          category,
+          eligibleVehicleCount: category._count.vehicleEntries,
+          judgeCount: judges.length,
+          completeJudgeCount: judges.filter((judge) => judge.complete).length,
+          totalPicks: judges.reduce((total, judge) => total + judge.rankedCount, 0),
+          judges,
+        };
       }),
     };
   });

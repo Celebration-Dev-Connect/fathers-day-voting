@@ -5,13 +5,21 @@ import {
   fromDateTimeLocalValue,
   toDateTimeLocalValue,
   type CategoryVotingTally,
+  type JudgeCategoryCompletion,
   type Registration,
   type StaffUser,
   type VotingSettings as VotingSettingsType,
 } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
-import { getVotingSettings, getVotingTallies, updateCategoryWinners, updateVotingSettings } from "../api";
+import {
+  getJudgeCompletion,
+  getVotingSettings,
+  getVotingTallies,
+  updateCategoryWinners,
+  updateVotingSettings,
+} from "../api";
 import { EventStatusBanner } from "./voting/EventStatusBanner";
+import { JudgeCompletionPanel } from "./voting/JudgeCompletionPanel";
 import { JudgingGuideDrawer } from "./voting/JudgingGuideDrawer";
 import { ManualWinnersDrawer } from "./voting/ManualWinnersDrawer";
 import { TallyGrid } from "./voting/TallyGrid";
@@ -22,6 +30,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
   const [settings, setSettings] = useState<VotingSettingsType | null>(null);
   const [cutoff, setCutoff] = useState("");
   const [tallies, setTallies] = useState<CategoryVotingTally[]>([]);
+  const [judgeCompletion, setJudgeCompletion] = useState<JudgeCategoryCompletion[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -35,10 +44,15 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
     setLoading(true);
     setError("");
     try {
-      const [settingsResult, tallyResult] = await Promise.all([getVotingSettings(), getVotingTallies()]);
+      const [settingsResult, tallyResult, completionResult] = await Promise.all([
+        getVotingSettings(),
+        getVotingTallies(),
+        getJudgeCompletion(),
+      ]);
       setSettings(settingsResult.event);
       setCutoff(toDateTimeLocalValue(settingsResult.event.peopleChoiceCutoff));
       setTallies(tallyResult.categories);
+      setJudgeCompletion(completionResult.categories);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load voting results");
     } finally {
@@ -133,6 +147,8 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
         onSettingChange={updateSetting}
         onSave={saveSettings}
       />
+
+      {!loading ? <JudgeCompletionPanel categories={judgeCompletion} /> : null}
 
       {loading ? <div className="empty-state">Loading voting tallies...</div> : null}
       {!loading ? (

@@ -136,6 +136,23 @@ export type JudgeSession = {
   categories: JudgeCategorySummary[];
 };
 
+export type JudgeCompletionJudge = {
+  judgeKey: string;
+  judgeName: string;
+  rankedCount: number;
+  complete: boolean;
+  updatedAt?: string | null;
+};
+
+export type JudgeCategoryCompletion = {
+  category: Category;
+  eligibleVehicleCount: number;
+  judgeCount: number;
+  completeJudgeCount: number;
+  totalPicks: number;
+  judges: JudgeCompletionJudge[];
+};
+
 export type JudgeBallotPick = {
   rank: number;
   registration: Registration;

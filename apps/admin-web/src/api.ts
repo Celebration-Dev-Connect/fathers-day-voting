@@ -3,6 +3,7 @@ import type {
   Category,
   CategoryVotingTally,
   DashboardMetrics,
+  JudgeCategoryCompletion,
   QrCard,
   Registration,
   RegistrationPayload,
@@ -145,6 +146,10 @@ export async function updateVotingSettings(
 
 export async function getVotingTallies() {
   return request<{ event: Omit<VotingSettings, "id" | "name">; categories: CategoryVotingTally[] }>("/voting/tallies");
+}
+
+export async function getJudgeCompletion() {
+  return request<{ categories: JudgeCategoryCompletion[] }>("/voting/judge-completion");
 }
 
 export async function updateCategoryWinners(

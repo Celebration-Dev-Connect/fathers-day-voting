@@ -9,9 +9,10 @@
   "scripts": {
     "dev": "npm run dev --workspace @carshow/api",
     "dev:web": "npm run build:components && npm run dev --workspace @carshow/admin-web",
+    "dev:judge": "npm run build:components && npm run dev --workspace @carshow/judge-web",
     "dev:api": "npm run dev --workspace @carshow/api",
     "build:components": "npm run build --workspace @carshow/carshow-components",
-    "build": "npm run build:components && npm run db:generate && npm run build --workspace @carshow/admin-web && npm run build --workspace @carshow/api",
+    "build": "npm run build:components && npm run db:generate && npm run build --workspace @carshow/admin-web && npm run build --workspace @carshow/judge-web && npm run build --workspace @carshow/api",
     "typecheck": "npm run typecheck --workspaces",
     "db:generate": "npm run db:generate --workspace @carshow/db",
     "db:migrate": "npm run db:migrate --workspace @carshow/db",

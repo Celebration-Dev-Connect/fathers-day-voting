@@ -4,6 +4,7 @@ import sensible from "@fastify/sensible";
 import Fastify from "fastify";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerCategoryRoutes } from "./routes/categories.js";
+import { registerJudgingRoutes } from "./routes/judging.js";
 import { registerQrCardRoutes } from "./routes/qrCards.js";
 import { registerRegistrationRoutes } from "./routes/registrations.js";
 import { registerVotingRoutes } from "./routes/voting.js";
@@ -31,9 +32,9 @@ export async function buildApp() {
   await registerAuthRoutes(app);
   await registerCategoryRoutes(app);
   await registerVotingRoutes(app);
+  await registerJudgingRoutes(app);
   await registerRegistrationRoutes(app);
   await registerQrCardRoutes(app);
 
   return app;
 }
-

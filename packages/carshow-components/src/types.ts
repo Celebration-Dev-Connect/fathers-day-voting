@@ -122,6 +122,32 @@ export type CategoryVotingTally = {
   judgingDescription: string;
 };
 
+export type JudgeCategorySummary = {
+  category: Category;
+  eligibleVehicleCount: number;
+  rankedCount: number;
+  submitted: boolean;
+};
+
+export type JudgeSession = {
+  staff: StaffUser;
+  judgingOpen: boolean;
+  resultsPublished: boolean;
+  categories: JudgeCategorySummary[];
+};
+
+export type JudgeBallotPick = {
+  rank: number;
+  registration: Registration;
+};
+
+export type JudgeBallot = {
+  category: Category;
+  judgingOpen: boolean;
+  submitted: boolean;
+  picks: JudgeBallotPick[];
+};
+
 export type RegistrationPayload = {
   owner: {
     firstName: string;

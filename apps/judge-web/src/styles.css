@@ -208,19 +208,58 @@
   border-radius: 8px;
   padding: 14px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
 }
 
-.judge-vehicle-card div,
+.judge-vehicle-card.ranked {
+  border-color: #cf1238;
+  background: #fff8f8;
+}
+
+.judge-vehicle-card > div,
 .judge-ranked-card div {
   display: grid;
   gap: 4px;
 }
 
+.judge-vehicle-media {
+  width: 74px;
+  aspect-ratio: 4 / 3;
+  border: 1px solid #e3e3e0;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #6e7177;
+  background: #f2f2f0;
+  cursor: pointer;
+}
+
+.judge-vehicle-media img,
+.judge-drawer-photos img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.judge-card-actions,
+.judge-save-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .judge-ranked-card {
   grid-template-columns: 42px minmax(0, 1fr) auto;
+}
+
+.judge-ranked-card.empty {
+  color: #8a8d93;
+  background: #f8f8f6;
+  border-style: dashed;
 }
 
 .judge-ranked-card b {
@@ -231,6 +270,20 @@
   border-radius: 999px;
   background: #cf1238;
   color: #fff;
+}
+
+.judge-ranked-card.empty b {
+  background: #d7d7d1;
+  color: #52565d;
+}
+
+.judge-ranked-summary {
+  border: 0;
+  padding: 0;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 }
 
 .judge-rank-actions {
@@ -262,6 +315,143 @@
   min-height: 160px;
 }
 
+.judge-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: flex-end;
+  background: rgb(21 25 31 / 42%);
+}
+
+.judge-vehicle-drawer {
+  width: min(460px, 100%);
+  min-height: 100%;
+  padding: 20px;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 18px;
+  overflow-y: auto;
+  background: #fff;
+  box-shadow: -18px 0 44px rgb(0 0 0 / 20%);
+}
+
+.judge-vehicle-drawer header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.judge-vehicle-drawer header div {
+  display: grid;
+  gap: 4px;
+}
+
+.judge-vehicle-drawer header small,
+.judge-vehicle-drawer header span,
+.judge-vehicle-facts dt {
+  color: #6e7177;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.judge-vehicle-drawer header strong {
+  font-size: 1.5rem;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.judge-drawer-photos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 132px;
+  gap: 8px;
+}
+
+.judge-drawer-photos img,
+.judge-drawer-photos > div {
+  border-radius: 8px;
+  background: #f2f2f0;
+}
+
+.judge-drawer-photos img:first-child {
+  grid-column: 1 / -1;
+  min-height: 210px;
+}
+
+.judge-drawer-photos > div {
+  min-height: 210px;
+  grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: #6e7177;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.judge-vehicle-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.judge-vehicle-facts div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e3e3e0;
+  border-radius: 8px;
+}
+
+.judge-vehicle-facts dd {
+  margin: 4px 0 0;
+  font-weight: 900;
+}
+
+.judge-drawer-rank {
+  align-self: end;
+  display: grid;
+  gap: 12px;
+}
+
+.judge-drawer-rank > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+}
+
+.judge-rank-picker {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.judge-rank-picker button {
+  min-height: 42px;
+  border: 1px solid #d5d5d1;
+  border-radius: 6px;
+  background: #fff;
+  color: #15191f;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.judge-rank-picker button.active {
+  border-color: #cf1238;
+  background: #cf1238;
+  color: #fff;
+}
+
+.judge-rank-picker button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 @media (max-width: 920px) {
   .judge-layout,
   .judge-ballot-grid,
@@ -291,12 +481,36 @@
     padding-inline: 14px;
   }
 
-  .judge-vehicle-card,
+  .judge-vehicle-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .judge-card-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
   .judge-ranked-card {
     grid-template-columns: 1fr;
   }
 
   .judge-rank-actions {
     justify-content: flex-start;
+  }
+
+  .judge-vehicle-drawer {
+    width: 100%;
+  }
+
+  .judge-drawer-photos {
+    grid-auto-rows: 108px;
+  }
+
+  .judge-drawer-photos img:first-child {
+    min-height: 178px;
+  }
+
+  .judge-vehicle-facts {
+    grid-template-columns: 1fr;
   }
 }

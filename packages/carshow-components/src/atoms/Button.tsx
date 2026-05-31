@@ -11,7 +11,7 @@ export function Button({
   light?: boolean;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
   children: React.ReactNode;
   "aria-label"?: string;
 }) {

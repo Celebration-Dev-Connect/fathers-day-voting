@@ -16,6 +16,7 @@ import {
   ImageIcon,
   LogOut,
   Save,
+  Search,
   ShieldCheck,
   Star,
   Trophy,
@@ -293,6 +294,22 @@ function BallotWorkspace({
 }) {
   const picks = ballot?.picks ?? [];
   const [detailVehicle, setDetailVehicle] = useState<Registration | null>(null);
+  const [vehicleSearch, setVehicleSearch] = useState("");
+  const normalizedSearch = vehicleSearch.trim().toLowerCase();
+  const visibleVehicles = normalizedSearch
+    ? vehicles.filter((registration) =>
+        [
+          registration.entryNumber.toString(),
+          vehicleName(registration),
+          registration.owner.firstName,
+          registration.owner.lastName,
+          registration.exteriorColor ?? "",
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedSearch),
+      )
+    : vehicles;
 
   function updatePicks(nextRegistrations: Registration[]) {
     if (!ballot) return;
@@ -341,8 +358,18 @@ function BallotWorkspace({
               <ClipboardList size={22} />
               <strong>Eligible Vehicles</strong>
             </div>
-            <span>{vehicles.length}</span>
+            <span>{visibleVehicles.length}</span>
           </div>
+          <label className="judge-search-field">
+            <Search size={18} />
+            <input
+              type="search"
+              value={vehicleSearch}
+              onChange={(event) => setVehicleSearch(event.target.value)}
+              placeholder="Search vehicles"
+              aria-label="Search eligible vehicles"
+            />
+          </label>
           {loading ? <div className="empty-state">Loading vehicles...</div> : null}
           {!loading && selectedCategory && !vehicles.length ? (
             <div className="judge-empty-panel compact">
@@ -351,16 +378,35 @@ function BallotWorkspace({
               <span>This category will populate as vehicles are checked in.</span>
             </div>
           ) : null}
+          {!loading && vehicles.length > 0 && visibleVehicles.length === 0 ? (
+            <div className="judge-empty-panel compact">
+              <Search size={28} />
+              <strong>No vehicles match that search.</strong>
+              <span>Try an entry number, owner name, vehicle, or color.</span>
+            </div>
+          ) : null}
           <div className="judge-vehicle-list">
-            {!loading && vehicles.map((registration) => {
+            {!loading && visibleVehicles.map((registration) => {
               const firstPhoto = registration.photos?.[0];
               const rank = picks.find((pick) => pick.registration.id === registration.id)?.rank;
 
               return (
-                <article className={rank ? "judge-vehicle-card ranked" : "judge-vehicle-card"} key={registration.id}>
-                  <button className="judge-vehicle-media" type="button" onClick={() => setDetailVehicle(registration)}>
+                <article
+                  className={rank ? "judge-vehicle-card ranked" : "judge-vehicle-card"}
+                  key={registration.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDetailVehicle(registration)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setDetailVehicle(registration);
+                    }
+                  }}
+                >
+                  <div className="judge-vehicle-media" aria-hidden="true">
                     {firstPhoto ? <img src={firstPhoto.url} alt={firstPhoto.altText ?? vehicleName(registration)} /> : <ImageIcon size={24} />}
-                  </button>
+                  </div>
                   <div>
                     <small>#{registration.entryNumber.toString().padStart(3, "0")}</small>
                     <strong>{vehicleName(registration)}</strong>
@@ -368,13 +414,23 @@ function BallotWorkspace({
                   </div>
                   <div className="judge-card-actions">
                     {rank ? <Badge variant="rank">{rank}</Badge> : null}
-                    <Button variant="icon" onClick={() => setDetailVehicle(registration)} aria-label="View vehicle details">
+                    <Button
+                      variant="icon"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setDetailVehicle(registration);
+                      }}
+                      aria-label="View vehicle details"
+                    >
                       <Eye size={18} />
                     </Button>
                     <Button
                       variant="secondary"
                       disabled={!judgingOpen || Boolean(rank) || picks.length >= 10}
-                      onClick={() => addVehicle(registration)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        addVehicle(registration);
+                      }}
                     >
                       <Check size={18} />
                       Rank

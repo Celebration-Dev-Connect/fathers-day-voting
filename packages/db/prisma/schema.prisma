@@ -88,6 +88,7 @@ model Category {
   vehicleEntries VehicleEntry[]
   judgeCategoryPicks JudgeCategoryPick[]
   winnerOverrides    CategoryWinnerOverride[]
+  peopleChoiceVotes  PeopleChoiceVote[]
 
   @@unique([eventId, slug])
 }
@@ -172,14 +173,16 @@ model PeopleChoiceVote {
   id             String        @id @default(cuid())
   eventId        String
   vehicleEntryId String
+  categoryId     String
   voterKey       String?
   createdAt      DateTime      @default(now())
   event          Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   vehicleEntry   VehicleEntry  @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@index([eventId, vehicleEntryId])
   @@index([eventId, createdAt])
-  @@unique([eventId, vehicleEntryId, voterKey])
+  @@unique([eventId, categoryId, voterKey])
 }
 
 model JudgeCategoryPick {

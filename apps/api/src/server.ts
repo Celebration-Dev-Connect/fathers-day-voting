@@ -960,6 +960,194 @@ app.get("/qr-audit", async (request) => {
   return { auditLogs };
 });
 
+// ---------------------------------------------------------------------------
+// Public (unauthenticated) endpoints
+// ---------------------------------------------------------------------------
+
+function toPublicVehicle(
+  vehicle: Prisma.VehicleEntryGetPayload<{
+    include: {
+      owner: true;
+      category: true;
+      photos: true;
+    };
+  }>,
+) {
+  return {
+    id: vehicle.id,
+    entryNumber: vehicle.entryNumber,
+    year: vehicle.year,
+    make: vehicle.make,
+    model: vehicle.model,
+    nickname: vehicle.nickname ?? null,
+    exteriorColor: vehicle.exteriorColor ?? null,
+    category: {
+      id: vehicle.category.id,
+      name: vehicle.category.name,
+      slug: vehicle.category.slug,
+    },
+    ownerName: vehicle.owner.publicNameOptIn ? (vehicle.owner.publicName || `${vehicle.owner.firstName} ${vehicle.owner.lastName}`) : null,
+    photos: vehicle.photos.map((p) => ({ id: p.id, url: p.url, altText: p.altText ?? null, sortOrder: p.sortOrder })),
+  };
+}
+
+app.get("/public/event", async () => {
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: {
+      name: true,
+      eventDate: true,
+      venueName: true,
+      votingOpen: true,
+      peopleChoiceCutoff: true,
+      resultsPublished: true,
+    },
+  });
+
+  if (!event) throw app.httpErrors.notFound("Event not found");
+
+  const categories = await prisma.category.findMany({
+    where: { eventId, active: true },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, slug: true },
+  });
+
+  return { event, categories };
+});
+
+app.get("/public/vehicles/:token", async (request) => {
+  const params = z.object({ token: z.string().trim().min(1) }).parse(request.params);
+  const query = z.object({ voterKey: z.string().optional() }).parse(request.query);
+
+  const qrCard = await prisma.qrCard.findUnique({
+    where: { publicToken: params.token },
+    include: {
+      vehicleEntry: {
+        include: {
+          owner: true,
+          category: true,
+          photos: { orderBy: { sortOrder: "asc" } },
+        },
+      },
+    },
+  });
+
+  if (!qrCard) throw app.httpErrors.notFound("QR code not found");
+
+  if (!qrCard.vehicleEntry) {
+    return { assigned: false as const };
+  }
+
+  const vehicle = qrCard.vehicleEntry;
+
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { votingOpen: true, peopleChoiceCutoff: true },
+  });
+
+  const cutoffPassed = event?.peopleChoiceCutoff ? new Date() > event.peopleChoiceCutoff : false;
+
+  let alreadyVotedInCategory = false;
+  if (query.voterKey && event?.votingOpen && !cutoffPassed) {
+    const existing = await prisma.peopleChoiceVote.findUnique({
+      where: {
+        eventId_categoryId_voterKey: {
+          eventId,
+          categoryId: vehicle.categoryId,
+          voterKey: query.voterKey,
+        },
+      },
+    });
+    alreadyVotedInCategory = existing !== null;
+  }
+
+  return {
+    assigned: true as const,
+    vehicle: toPublicVehicle(vehicle),
+    votingOpen: event?.votingOpen ?? false,
+    cutoffPassed,
+    alreadyVotedInCategory,
+  };
+});
+
+app.post("/public/vehicles/:token/vote", async (request) => {
+  const params = z.object({ token: z.string().trim().min(1) }).parse(request.params);
+  const body = z.object({ voterKey: z.string().trim().min(1) }).parse(request.body);
+
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { votingOpen: true, peopleChoiceCutoff: true },
+  });
+
+  if (!event?.votingOpen) {
+    throw app.httpErrors.forbidden("Voting is not currently open");
+  }
+
+  if (event.peopleChoiceCutoff && new Date() > event.peopleChoiceCutoff) {
+    throw app.httpErrors.forbidden("Voting has closed");
+  }
+
+  const qrCard = await prisma.qrCard.findUnique({
+    where: { publicToken: params.token },
+    include: { vehicleEntry: { include: { category: true } } },
+  });
+
+  if (!qrCard?.vehicleEntry) {
+    throw app.httpErrors.notFound("Vehicle not found");
+  }
+
+  const vehicle = qrCard.vehicleEntry;
+
+  try {
+    await prisma.peopleChoiceVote.create({
+      data: {
+        eventId,
+        vehicleEntryId: vehicle.id,
+        categoryId: vehicle.categoryId,
+        voterKey: body.voterKey,
+      },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw app.httpErrors.conflict(`You've already voted in the ${vehicle.category.name} category`);
+    }
+    throw err;
+  }
+
+  return { ok: true, categoryName: vehicle.category.name };
+});
+
+app.get("/public/categories/:slug/entries", async (request) => {
+  const params = z.object({ slug: z.string().trim().min(1) }).parse(request.params);
+
+  const category = await prisma.category.findFirst({
+    where: { eventId, slug: params.slug, active: true },
+  });
+
+  if (!category) throw app.httpErrors.notFound("Category not found");
+
+  const vehicles = await prisma.vehicleEntry.findMany({
+    where: {
+      eventId,
+      categoryId: category.id,
+      qrCard: { status: "ASSIGNED" },
+    },
+    include: {
+      owner: true,
+      category: true,
+      photos: { orderBy: { sortOrder: "asc" }, take: 1 },
+    },
+    orderBy: { entryNumber: "asc" },
+  });
+
+  return {
+    category: { id: category.id, name: category.name, slug: category.slug },
+    entries: vehicles.map(toPublicVehicle),
+  };
+});
+
+// ---------------------------------------------------------------------------
+
 // ---- Photo upload + moderation ----
 
 app.post(

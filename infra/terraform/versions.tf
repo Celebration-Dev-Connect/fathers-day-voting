@@ -6,12 +6,27 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 
-  # Local state for now. Migrate to an S3 backend before multi-operator use:
-  # backend "s3" { bucket = "..." key = "carshow/terraform.tfstate" region = "..." }
+  # Uncomment before multi-operator use. Create the bucket manually first — it
+  # cannot be managed by the same Terraform state it stores.
+  # backend "s3" {
+  #   bucket = "carshow-tf-state"
+  #   key    = "carshow/terraform.tfstate"
+  #   region = "ca-central-1"
+  # }
 }
 
 provider "aws" {
   region = var.region
+}
+
+# CloudFront requires ACM certificates in us-east-1 regardless of app region.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
 }

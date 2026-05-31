@@ -11,6 +11,7 @@
     "dev:web": "npm run build:components && npm run dev --workspace @carshow/admin-web",
     "dev:judge": "npm run build:components && npm run dev --workspace @carshow/judge-web",
     "dev:api": "npm run dev --workspace @carshow/api",
+    "dev:public": "npm run build:components && npm run dev --workspace @carshow/public-web",
     "build:components": "npm run build --workspace @carshow/carshow-components",
     "build": "npm run build:components && npm run db:generate && npm run build --workspace @carshow/admin-web && npm run build --workspace @carshow/judge-web && npm run build --workspace @carshow/api",
     "typecheck": "npm run typecheck --workspaces",

@@ -50,7 +50,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/carshow/api}
         VITE_PUBLIC_BASE_PATH: ${VITE_PUBLIC_BASE_PATH:-/carshow}
-        VITE_PUBLIC_APP_URL: ${VITE_PUBLIC_APP_URL:-https://automationsolutions.ddns.net/carshow}
+        VITE_PUBLIC_APP_URL: ${VITE_PUBLIC_APP_URL:-https://automationsolutions.ddns.net/show}
     ports:
       - "3000:80"
     depends_on:
@@ -63,6 +63,18 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/carshow/api}
         VITE_PUBLIC_BASE_PATH: ${VITE_JUDGE_PUBLIC_BASE_PATH:-/carshow/judge}
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
+
+  public-web:
+    build:
+      context: .
+      dockerfile: apps/public-web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_PUBLIC_API_URL:-/show/api}
+        VITE_PUBLIC_BASE_PATH: ${VITE_PUBLIC_WEB_BASE_PATH:-/show}
     ports:
       - "3001:80"
     depends_on:

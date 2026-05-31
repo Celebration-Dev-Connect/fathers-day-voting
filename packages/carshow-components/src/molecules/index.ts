@@ -1,7 +1,9 @@
 export { AuditRow } from "./AuditRow.js";
 export { CategoryCard } from "./CategoryCard.js";
+export { EntryCard } from "./EntryCard.js";
 export { PageHeader } from "./PageHeader.js";
 export { RegistrationRow } from "./RegistrationRow.js";
 export { SearchBox } from "./SearchBox.js";
 export { SidebarNavButton } from "./SidebarNavButton.js";
 export { StaffCard } from "./StaffCard.js";
+export { VoteSuccess } from "./VoteSuccess.js";

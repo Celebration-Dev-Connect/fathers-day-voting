@@ -1,40 +1,216 @@
-resource "aws_cloudfront_origin_access_control" "photos" {
-  name                              = "${var.project}-photos-oac"
+# ── ACM certificate (must be in us-east-1 for CloudFront) ────────────────────
+
+resource "aws_acm_certificate" "main" {
+  provider          = aws.us_east_1
+  domain_name       = var.domain
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# DNS is managed outside AWS. After apply, add the records from
+# output "acm_validation_records" in your registrar to validate the cert.
+# The CloudFront distribution will show "In Progress" until validation completes.
+
+# ── Shared OAC for all S3 origins ─────────────────────────────────────────────
+
+resource "aws_cloudfront_origin_access_control" "s3" {
+  name                              = "${var.project}-${var.environment}-s3"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
 }
 
-# Long-TTL caching: approved objects are immutable (keyed by photo id), so no
-# invalidation is ever required.
-resource "aws_cloudfront_distribution" "photos" {
-  enabled = true
-  comment = "${var.project} approved vehicle photos"
+# ── Managed cache / origin-request policy lookups ────────────────────────────
 
+data "aws_cloudfront_cache_policy" "disabled" {
+  name = "Managed-CachingDisabled"
+}
+
+data "aws_cloudfront_cache_policy" "optimized" {
+  name = "Managed-CachingOptimized"
+}
+
+# Forwards all viewer headers and query strings except Host.
+# Required for App Runner: forwarding the client Host header causes App Runner
+# to reject requests because the hostname won't match its own service URL.
+data "aws_cloudfront_origin_request_policy" "all_except_host" {
+  name = "Managed-AllViewerExceptHostHeader"
+}
+
+# ── CloudFront Functions ───────────────────────────────────────────────────────
+
+# /api/* — strips the /api prefix before forwarding to App Runner so the
+# Fastify routes receive requests at / rather than /api/.
+resource "aws_cloudfront_function" "strip_api_prefix" {
+  name    = "${var.project}-${var.environment}-strip-api-prefix"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      request.uri = request.uri.replace(/^\/api/, '') || '/';
+      return request;
+    }
+  EOT
+}
+
+# /admin* — strips the /admin prefix so S3 receives paths relative to the
+# bucket root, then falls back to /index.html for any path without a file
+# extension (enables Vite client-side routing).
+resource "aws_cloudfront_function" "admin_routing" {
+  name    = "${var.project}-${var.environment}-admin-routing"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      var uri = request.uri.replace(/^\/admin/, '') || '/';
+      request.uri = uri.includes('.') ? uri : '/index.html';
+      return request;
+    }
+  EOT
+}
+
+# /photos/* — rewrites /photos/<id> to /public/<id> to match the S3 key
+# layout used by the moderation pipeline (pending/ and public/ prefixes).
+resource "aws_cloudfront_function" "photos_prefix" {
+  name    = "${var.project}-${var.environment}-photos-prefix"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      request.uri = request.uri.replace(/^\/photos\//, '/public/');
+      return request;
+    }
+  EOT
+}
+
+# /* default — SPA routing for the public-web app. Paths with no file extension
+# are served as /index.html; asset paths (hashed filenames) pass through.
+resource "aws_cloudfront_function" "spa_routing" {
+  name    = "${var.project}-${var.environment}-spa-routing"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      if (!request.uri.includes('.')) {
+        request.uri = '/index.html';
+      }
+      return request;
+    }
+  EOT
+}
+
+# ── Distribution ──────────────────────────────────────────────────────────────
+
+resource "aws_cloudfront_distribution" "main" {
+  enabled     = true
+  aliases     = [var.domain]
+  comment     = "${var.project} ${var.environment}"
+  price_class = "PriceClass_100"
+
+  # Origin 1: App Runner API
   origin {
-    domain_name              = aws_s3_bucket.photos.bucket_regional_domain_name
-    origin_id                = "photos-s3"
-    origin_access_control_id = aws_cloudfront_origin_access_control.photos.id
-    # Only the public/ prefix is ever served; pending/ is unreachable via the CDN.
-    origin_path = "/public"
+    origin_id   = "api"
+    domain_name = aws_apprunner_service.api.service_url
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
   }
 
-  default_cache_behavior {
-    target_origin_id       = "photos-s3"
+  # Origin 2: Admin web SPA (S3)
+  origin {
+    origin_id                = "admin-web"
+    domain_name              = aws_s3_bucket.admin_web.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
+  }
+
+  # Origin 3: Photos (S3) — CF function rewrites /photos/<id> → /public/<id>
+  origin {
+    origin_id                = "photos"
+    domain_name              = aws_s3_bucket.photos.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
+  }
+
+  # Origin 4: Public web SPA (S3) — default origin
+  origin {
+    origin_id                = "public-web"
+    domain_name              = aws_s3_bucket.public_web.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
+  }
+
+  # Behavior 1 (priority 1): /api/* → App Runner
+  ordered_cache_behavior {
+    path_pattern             = "/api/*"
+    target_origin_id         = "api"
+    viewer_protocol_policy   = "redirect-to-https"
+    allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods           = ["GET", "HEAD"]
+    cache_policy_id          = data.aws_cloudfront_cache_policy.disabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.strip_api_prefix.arn
+    }
+  }
+
+  # Behavior 2 (priority 2): /admin* → admin-web S3 bucket
+  ordered_cache_behavior {
+    path_pattern           = "/admin*"
+    target_origin_id       = "admin-web"
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
 
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.admin_routing.arn
     }
+  }
 
-    min_ttl     = 0
-    default_ttl = 86400
-    max_ttl     = 31536000
+  # Behavior 3 (priority 3): /photos/* → photos S3 bucket (public/ prefix)
+  ordered_cache_behavior {
+    path_pattern           = "/photos/*"
+    target_origin_id       = "photos"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.photos_prefix.arn
+    }
+  }
+
+  # Default behavior: /* → public-web S3 bucket
+  default_cache_behavior {
+    target_origin_id       = "public-web"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.spa_routing.arn
+    }
   }
 
   restrictions {
@@ -44,7 +220,9 @@ resource "aws_cloudfront_distribution" "photos" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate.main.arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 
   tags = {

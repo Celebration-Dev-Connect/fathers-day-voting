@@ -5,14 +5,18 @@
 region      = "ca-central-1"
 project     = "carshow"
 environment = "test"
-domain      = "carshow-test.celebrationedmonton.com"
+domain      = "carshow.chasesspace.com"
 db_username = "carshow"
 
+# Set to your Route 53 hosted zone ID to auto-manage ACM validation + the alias
+# record (single-apply). Leave empty ("") for externally-managed DNS.
+route53_zone_id = ""
+
 # ── Reduced resources (≤5 concurrent testers) ──
-app_runner_cpu        = "512"
-app_runner_memory     = "1024"
-app_runner_min_size   = 1
-app_runner_max_size   = 1
+ecs_cpu               = "512"
+ecs_memory            = "1024"
+ecs_min_size          = 1
+ecs_max_size          = 1
 rds_instance_class    = "db.t3.micro"
 rds_allocated_storage = 20
 rds_backup_retention  = 0
@@ -22,4 +26,4 @@ enable_dev_login  = true
 run_seed          = true
 teardown_friendly = true
 
-app_runner_image_tag = "latest"
+image_tag = "latest"

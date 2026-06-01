@@ -22,6 +22,18 @@ variable "domain" {
   default     = "carshow.celebrationedmonton.com"
 }
 
+variable "route53_zone_id" {
+  description = <<-EOT
+    Route 53 hosted zone ID for the domain. When set, Terraform creates the ACM
+    validation record, waits for the certificate to be issued, and creates the
+    CloudFront alias record automatically (single-apply). Leave empty for
+    externally-managed DNS, in which case you must add the validation and alias
+    records yourself and the certificate must be issued before CloudFront builds.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "db_username" {
   description = "PostgreSQL master username."
   type        = string
@@ -30,26 +42,26 @@ variable "db_username" {
 
 # ── Resource sizing (lower these for cheap test stacks) ──────────────────────
 
-variable "app_runner_cpu" {
-  description = "App Runner vCPU units. Valid: 256, 512, 1024, 2048, 4096. Test: 512."
+variable "ecs_cpu" {
+  description = "Fargate task CPU units. Valid: 256, 512, 1024, 2048, 4096. Test: 512."
   type        = string
   default     = "1024"
 }
 
-variable "app_runner_memory" {
-  description = "App Runner memory (MB). Must pair with cpu (e.g. 512→1024, 1024→2048). Test: 1024."
+variable "ecs_memory" {
+  description = "Fargate task memory (MB). Must pair with cpu (e.g. 512->1024, 1024->2048). Test: 1024."
   type        = string
   default     = "2048"
 }
 
-variable "app_runner_min_size" {
-  description = "App Runner min instances (always-on; >=1). Test: 1."
+variable "ecs_min_size" {
+  description = "ECS service minimum task count. Test: 1."
   type        = number
   default     = 1
 }
 
-variable "app_runner_max_size" {
-  description = "App Runner max instances. Test: 1 (≤5 concurrent testers)."
+variable "ecs_max_size" {
+  description = "ECS service maximum task count for auto scaling. Test: 1."
   type        = number
   default     = 3
 }
@@ -104,10 +116,10 @@ variable "teardown_friendly" {
   default     = false
 }
 
-variable "app_runner_image_tag" {
+variable "image_tag" {
   description = <<-EOT
-    ECR image tag for the App Runner service.
-    Use a git commit SHA in production — never "latest" once the service is live.
+    ECR image tag for the ECS task definition.
+    Use a git commit SHA in production -- never "latest" once the service is live.
     Bootstrap order: run `terraform apply -target=aws_ecr_repository.api` first,
     push an image, then run `terraform apply` for the full stack.
   EOT

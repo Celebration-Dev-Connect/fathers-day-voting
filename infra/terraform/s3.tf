@@ -114,6 +114,54 @@ resource "aws_s3_bucket_policy" "admin_web" {
   depends_on = [aws_s3_bucket_public_access_block.admin_web]
 }
 
+# ── Judge web SPA ────────────────────────────────────────────────────────────
+
+resource "aws_s3_bucket" "judge_web" {
+  bucket        = "${var.project}-judge-web-${var.environment}"
+  force_destroy = var.teardown_friendly
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "judge_web" {
+  bucket                  = aws_s3_bucket.judge_web.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_ownership_controls" "judge_web" {
+  bucket = aws_s3_bucket.judge_web.id
+  rule { object_ownership = "BucketOwnerEnforced" }
+}
+
+data "aws_iam_policy_document" "judge_web_bucket" {
+  statement {
+    sid       = "AllowCloudFrontRead"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.judge_web.arn}/*"]
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.main.arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "judge_web" {
+  bucket     = aws_s3_bucket.judge_web.id
+  policy     = data.aws_iam_policy_document.judge_web_bucket.json
+  depends_on = [aws_s3_bucket_public_access_block.judge_web]
+}
+
 # ── Public web SPA ────────────────────────────────────────────────────────────
 
 resource "aws_s3_bucket" "public_web" {

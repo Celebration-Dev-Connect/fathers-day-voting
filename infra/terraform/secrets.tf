@@ -1,4 +1,4 @@
-# Two plain-string secrets so App Runner can inject each as a discrete env var.
+# Two plain-string secrets so ECS can inject each as a discrete env var.
 # The RDS password and address are not known until rds.tf resources are created;
 # Terraform resolves the dependency order automatically.
 

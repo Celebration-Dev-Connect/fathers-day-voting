@@ -15,9 +15,10 @@ resource "aws_acm_certificate" "main" {
   }
 }
 
-# DNS is managed outside AWS. After apply, add the records from
-# output "acm_validation_records" in your registrar to validate the cert.
-# The CloudFront distribution will show "In Progress" until validation completes.
+# Certificate validation: when var.route53_zone_id is set, Terraform creates the
+# validation record and waits for issuance automatically (see dns.tf). With
+# external DNS, add the records from output "acm_validation_records" at your
+# registrar and ensure the cert is issued before the distribution can build.
 
 # ── Shared OAC for all S3 origins ─────────────────────────────────────────────
 
@@ -63,8 +64,11 @@ resource "aws_cloudfront_function" "strip_api_prefix" {
 }
 
 # /admin* — strips the /admin prefix so S3 receives paths relative to the
-# bucket root, then falls back to /index.html for any path without a file
+# bucket root, then falls back to /admin.html for any path without a file
 # extension (enables Vite client-side routing).
+# Uses /admin.html (not /index.html) to avoid a CloudFront cache key collision:
+# CloudFront shares one cache across all behaviors, so every SPA must use a
+# distinct fallback filename.
 resource "aws_cloudfront_function" "admin_routing" {
   name    = "${var.project}-${var.environment}-admin-routing"
   runtime = "cloudfront-js-2.0"
@@ -73,7 +77,7 @@ resource "aws_cloudfront_function" "admin_routing" {
     function handler(event) {
       var request = event.request;
       var uri = request.uri.replace(/^\/admin/, '') || '/';
-      request.uri = uri.includes('.') ? uri : '/index.html';
+      request.uri = uri.includes('.') ? uri : '/admin.html';
       return request;
     }
   EOT
@@ -94,8 +98,28 @@ resource "aws_cloudfront_function" "photos_prefix" {
   EOT
 }
 
+# /judge* — strips the /judge prefix so S3 receives paths relative to the
+# bucket root, then falls back to /judge.html for SPA client-side routing.
+# Unique fallback filename avoids the shared CloudFront cache key collision.
+resource "aws_cloudfront_function" "judge_routing" {
+  name    = "${var.project}-${var.environment}-judge-routing"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      var uri = request.uri.replace(/^\/judge/, '') || '/';
+      request.uri = uri.includes('.') ? uri : '/judge.html';
+      return request;
+    }
+  EOT
+}
+
 # /* default — SPA routing for the public-web app. Paths with no file extension
 # are served as /index.html; asset paths (hashed filenames) pass through.
+# Sub-app paths (/admin, /judge, /api, /photos) are hard-rejected here so the
+# public-web origin can never serve them, even if the ordered behaviors somehow
+# miss (belt-and-suspenders guard).
 resource "aws_cloudfront_function" "spa_routing" {
   name    = "${var.project}-${var.environment}-spa-routing"
   runtime = "cloudfront-js-2.0"
@@ -103,7 +127,14 @@ resource "aws_cloudfront_function" "spa_routing" {
   code    = <<-EOT
     function handler(event) {
       var request = event.request;
-      if (!request.uri.includes('.')) {
+      var uri = request.uri;
+      var subApps = ['/admin', '/judge', '/api', '/photos'];
+      for (var i = 0; i < subApps.length; i++) {
+        if (uri === subApps[i] || uri.startsWith(subApps[i] + '/')) {
+          return { statusCode: 404, statusDescription: 'Not Found' };
+        }
+      }
+      if (!uri.includes('.')) {
         request.uri = '/index.html';
       }
       return request;
@@ -119,15 +150,15 @@ resource "aws_cloudfront_distribution" "main" {
   comment     = "${var.project} ${var.environment}"
   price_class = "PriceClass_100"
 
-  # Origin 1: App Runner API
+  # Origin 1: ECS Fargate API via ALB (HTTP — TLS is terminated at CloudFront)
   origin {
     origin_id   = "api"
-    domain_name = aws_apprunner_service.api.service_url
+    domain_name = aws_lb.api.dns_name
 
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "https-only"
+      origin_protocol_policy = "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
@@ -146,7 +177,14 @@ resource "aws_cloudfront_distribution" "main" {
     origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
   }
 
-  # Origin 4: Public web SPA (S3) — default origin
+  # Origin 4: Judge web SPA (S3)
+  origin {
+    origin_id                = "judge-web"
+    domain_name              = aws_s3_bucket.judge_web.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
+  }
+
+  # Origin 5: Public web SPA (S3) — default origin
   origin {
     origin_id                = "public-web"
     domain_name              = aws_s3_bucket.public_web.bucket_regional_domain_name
@@ -184,7 +222,22 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Behavior 3 (priority 3): /photos/* → photos S3 bucket (public/ prefix)
+  # Behavior 3 (priority 3): /judge* → judge-web S3 bucket
+  ordered_cache_behavior {
+    path_pattern           = "/judge*"
+    target_origin_id       = "judge-web"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.judge_routing.arn
+    }
+  }
+
+  # Behavior 5 (priority 5): /photos/* → photos S3 bucket (public/ prefix)
   ordered_cache_behavior {
     path_pattern           = "/photos/*"
     target_origin_id       = "photos"
@@ -220,7 +273,10 @@ resource "aws_cloudfront_distribution" "main" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = aws_acm_certificate.main.arn
+    # When managing DNS, depend on the validation resource so CloudFront only
+    # builds once the certificate is issued. Otherwise use the cert directly
+    # (external DNS: the cert must already be validated).
+    acm_certificate_arn      = local.manage_dns ? aws_acm_certificate_validation.main[0].certificate_arn : aws_acm_certificate.main.arn
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }

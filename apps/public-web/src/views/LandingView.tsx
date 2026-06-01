@@ -10,6 +10,11 @@ export function LandingView() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    document.documentElement.classList.add("landing");
+    return () => document.documentElement.classList.remove("landing");
+  }, []);
+
+  useEffect(() => {
     getHeroPhotos()
       .then(({ photos }) => setPhotos(photos))
       .catch(() => {});

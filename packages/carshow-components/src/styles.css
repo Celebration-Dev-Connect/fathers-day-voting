@@ -1393,6 +1393,7 @@ textarea:focus {
 
 .public-app {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--light-grey);
 }
 
@@ -1778,7 +1779,7 @@ textarea:focus {
 .public-header {
   background: var(--inverse-surface);
   color: var(--pure-white);
-  padding: 16px 20px;
+  padding: calc(16px + env(safe-area-inset-top)) 20px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2162,6 +2163,7 @@ textarea:focus {
 .hero-carousel {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background: var(--inverse-surface);
   display: flex;
@@ -2192,12 +2194,13 @@ textarea:focus {
   z-index: 10;
   flex: 1;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 60px 24px 100px;
+  padding: calc(60px + env(safe-area-inset-top)) 24px calc(100px + env(safe-area-inset-bottom));
   color: #ffffff;
   background: linear-gradient(
     180deg,
@@ -2301,7 +2304,7 @@ textarea:focus {
 
 .hero-dots {
   position: absolute;
-  bottom: 28px;
+  bottom: calc(28px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -2325,6 +2328,23 @@ textarea:focus {
   background: #ffffff;
   border-color: #ffffff;
   transform: scale(1.25);
+}
+
+/* Landing page: the hero fills the entire screen, bleeding under the iOS
+   status bar / dynamic island and the home indicator. This works because
+   index.html sets viewport-fit=cover and .hero-carousel is min-height:100dvh,
+   so the carousel (and its object-fit:cover image) starts at physical y=0 and
+   spans the full screen including the safe areas.
+
+   We only set dark backgrounds here so that rubber-band overscroll areas show
+   the dark hero colour instead of a white bar. We deliberately do NOT set
+   overflow:hidden — that would disable pull-to-refresh / rubber-band scroll,
+   which we want to keep. */
+html.landing,
+html.landing body,
+html.landing #root,
+html.landing .public-app {
+  background: var(--inverse-surface);
 }
 
 /* Legacy landing hero (keep for any existing usage) */

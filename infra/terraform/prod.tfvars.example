@@ -10,11 +10,17 @@ environment = "prod"
 domain      = "carshow.celebrationedmonton.com"
 db_username = "carshow"
 
+# Route 53 hosted zone ID for the domain (auto-manages ACM validation + alias).
+# Leave empty if celebrationedmonton.com DNS is managed outside this account —
+# you'll then add the validation + alias records manually and the cert must be
+# issued before CloudFront can build.
+route53_zone_id = ""
+
 # ── Full resources (defaults; shown for clarity) ──
-app_runner_cpu        = "1024"
-app_runner_memory     = "2048"
-app_runner_min_size   = 1
-app_runner_max_size   = 3
+ecs_cpu        = "1024"
+ecs_memory     = "2048"
+ecs_min_size   = 1
+ecs_max_size   = 3
 rds_instance_class    = "db.t3.micro"
 rds_allocated_storage = 20
 rds_backup_retention  = 1
@@ -29,6 +35,6 @@ teardown_friendly = false
 # Bootstrap order (handled automatically by ./infra/deploy.sh):
 #   1. terraform apply -target=aws_ecr_repository.api
 #   2. docker build + push to ECR with a commit SHA tag
-#   3. terraform apply -var="app_runner_image_tag=<sha>"
+#   3. terraform apply -var="image_tag=<sha>"
 # Never use "latest" once the service is live.
-app_runner_image_tag = "latest"
+image_tag = "latest"

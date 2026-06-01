@@ -1,86 +1,67 @@
-import { Alert, VehicleProfileCard, VoteConfirmDialog } from "@carshow/carshow-components";
+import { Alert } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { castVote, getVehicle, type VehicleResponse } from "../api";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { getVehicle } from "../api";
 import { getOrCreateVoterKey } from "../voter";
+
+type Status = "loading" | "redirecting" | "unassigned" | "error";
 
 export function VehicleView() {
   const { token = "" } = useParams<{ token: string }>();
-  const [data, setData] = useState<VehicleResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [confirming, setConfirming] = useState(false);
-  const [voting, setVoting] = useState(false);
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<Status>("loading");
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (!token) return;
     const voterKey = getOrCreateVoterKey();
-    setLoading(true);
-    setError("");
     getVehicle(token, voterKey)
-      .then(setData)
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [token]);
+      .then((result) => {
+        if (result.assigned) {
+          setStatus("redirecting");
+          navigate(`/browse/entry/${result.vehicle.entryNumber}`, { replace: true });
+        } else {
+          setStatus("unassigned");
+        }
+      })
+      .catch((err: Error) => {
+        setErrorMsg(err.message);
+        setStatus("error");
+      });
+  }, [token, navigate]);
 
-  async function handleVoteConfirmed() {
-    if (!data?.assigned) return;
-    const voterKey = getOrCreateVoterKey();
-    setConfirming(false);
-    setVoting(true);
-    try {
-      await castVote(token, voterKey);
-      setData({ ...data, alreadyVotedInCategory: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Vote failed");
-    } finally {
-      setVoting(false);
-    }
-  }
-
-  if (loading) {
+  if (status === "loading" || status === "redirecting") {
     return (
       <div className="public-content">
-        <p className="muted-copy">Loading vehicle…</p>
+        <p className="muted-copy">Looking up vehicle…</p>
       </div>
     );
   }
 
-  if (error) {
+  if (status === "error") {
     return (
       <div className="public-content">
-        <Alert variant="danger">{error}</Alert>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  if (!data.assigned) {
-    return (
-      <div className="public-content">
-        <Alert variant="info">This QR code hasn't been assigned to a vehicle yet. Check back soon!</Alert>
+        <Alert variant="danger">{errorMsg}</Alert>
       </div>
     );
   }
 
   return (
     <div className="public-content">
-      {confirming ? (
-        <VoteConfirmDialog
-          categoryName={data.vehicle.category.name}
-          onConfirm={handleVoteConfirmed}
-          onCancel={() => setConfirming(false)}
-        />
-      ) : null}
-      <VehicleProfileCard
-        vehicle={data.vehicle}
-        votingOpen={data.votingOpen}
-        cutoffPassed={data.cutoffPassed}
-        alreadyVoted={data.alreadyVotedInCategory}
-        onVote={() => setConfirming(true)}
-        voting={voting}
-      />
+      <div className="not-found-card">
+        <p className="not-found-icon">🚗</p>
+        <h1 className="not-found-title">Car Not Found</h1>
+        <p className="not-found-body">
+          This QR code isn't linked to a registered car yet.
+        </p>
+        <p className="not-found-body">
+          <strong>Visitor?</strong> Try scanning a different QR code — each car has its own.
+        </p>
+        <p className="not-found-body">
+          <strong>Car owner?</strong> Please visit the registration desk and they can get this sorted out for you.
+        </p>
+        <Link to="/browse" className="not-found-browse-link">← Browse all cars</Link>
+      </div>
     </div>
   );
 }

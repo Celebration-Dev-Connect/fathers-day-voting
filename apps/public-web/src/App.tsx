@@ -1,4 +1,4 @@
-import { Outlet, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom";
 import { VotePanel } from "./components/VotePanel";
 import { VotingProvider, useVoting } from "./context/VotingContext";
 import { BrowseView } from "./views/BrowseView";
@@ -65,6 +65,7 @@ function AppRoutes() {
           <Route path="/browse/:slug" element={<CategoryView />} />
           <Route path="/browse/entry/:entryNumber" element={<EntryDetailView />} />
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );

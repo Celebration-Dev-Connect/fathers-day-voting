@@ -30,6 +30,8 @@ SKIP_IMAGE=false
 SKIP_SPAS=false
 DO_PLAN=false
 DO_DESTROY=false
+DO_SUSPEND=false
+DO_RESUME=false
 AUTO_APPROVE=false
 
 # ── Pretty output ────────────────────────────────────────────────────────────
@@ -63,6 +65,10 @@ OPTIONS:
       --skip-spas         Don't build/sync the public-web and admin-web SPAs.
       --plan              Show the Terraform plan for the env and exit.
       --destroy           Tear down the selected environment, then exit.
+      --suspend           Stop ECS tasks and RDS without touching CloudFront/ACM.
+                          Saves ~$35/mo. Resume with --resume. Max 7 days before
+                          AWS auto-restarts the RDS instance.
+      --resume            Start ECS and RDS after a --suspend (no image rebuild).
   -y, --auto-approve      Skip interactive confirmation prompts.
   -h, --help              Show this help.
 
@@ -78,6 +84,10 @@ EXAMPLES:
 
   # Tear down the test stack
   infra/deploy.sh --env test --destroy
+
+  # Stop compute between sessions (keeps CloudFront/ACM/Route53 intact)
+  infra/deploy.sh --env test --suspend
+  infra/deploy.sh --env test --resume
 
 NOTES:
   * Requires a matching tfvars file: infra/terraform/<env>.tfvars
@@ -100,6 +110,8 @@ while [[ $# -gt 0 ]]; do
     --skip-spas)      SKIP_SPAS=true; shift ;;
     --plan)           DO_PLAN=true; shift ;;
     --destroy)        DO_DESTROY=true; shift ;;
+    --suspend)        DO_SUSPEND=true; shift ;;
+    --resume)         DO_RESUME=true; shift ;;
     -y|--auto-approve) AUTO_APPROVE=true; shift ;;
     -h|--help)        usage; exit 0 ;;
     *)                usage; die "Unknown argument: $1" ;;
@@ -164,7 +176,7 @@ select_workspace
 if $DO_PLAN; then
   PLAN_TAG="${IMAGE_TAG:-latest}"
   info "terraform plan ($ENVIRONMENT)"
-  tf plan "${tf_var_args[@]}" -var="app_runner_image_tag=$PLAN_TAG"
+  tf plan "${tf_var_args[@]}" -var="image_tag=$PLAN_TAG"
   exit 0
 fi
 
@@ -177,8 +189,45 @@ if $DO_DESTROY; then
     confirm "Type 'yes' to destroy:" || die "Aborted."
   fi
   APPROVE=(); $AUTO_APPROVE && APPROVE=(-auto-approve)
-  tf destroy "${tf_var_args[@]}" -var="app_runner_image_tag=latest" "${APPROVE[@]}"
+  tf destroy "${tf_var_args[@]}" -var="image_tag=latest" "${APPROVE[@]+"${APPROVE[@]}"}"
   ok "Destroyed $ENVIRONMENT."
+  exit 0
+fi
+
+# ── --suspend: stop compute, leave CloudFront/ACM/Route53 intact ─────────────
+# Saves ~$35/mo between sessions. RDS auto-restarts after 7 days if not resumed.
+if $DO_SUSPEND; then
+  CLUSTER="${project:-carshow}-${ENVIRONMENT}"
+  SERVICE="${project:-carshow}-${ENVIRONMENT}-api"
+  DB_ID="${project:-carshow}-${ENVIRONMENT}"
+  confirm "Suspend compute for '$ENVIRONMENT' (stop ECS + RDS)?" || die "Aborted."
+  info "Scaling ECS service to 0 tasks"
+  aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
+    --desired-count 0 --region "$REGION" >/dev/null
+  info "Stopping RDS instance (takes ~1 min)"
+  aws rds stop-db-instance --db-instance-identifier "$DB_ID" \
+    --region "$REGION" >/dev/null
+  ok "Suspended. CloudFront, ACM, Route53, ALB, VPC remain intact."
+  ok "Resume with: ./infra/deploy.sh --env $ENVIRONMENT --resume"
+  exit 0
+fi
+
+# ── --resume: restart compute after a suspend ─────────────────────────────────
+if $DO_RESUME; then
+  CLUSTER="${project:-carshow}-${ENVIRONMENT}"
+  SERVICE="${project:-carshow}-${ENVIRONMENT}-api"
+  DB_ID="${project:-carshow}-${ENVIRONMENT}"
+  info "Starting RDS instance"
+  aws rds start-db-instance --db-instance-identifier "$DB_ID" \
+    --region "$REGION" >/dev/null
+  info "Waiting for RDS to be available (typically 2-3 min)…"
+  aws rds wait db-instance-available --db-instance-identifier "$DB_ID" \
+    --region "$REGION"
+  ok "RDS available"
+  info "Scaling ECS service back to 1 task"
+  aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
+    --desired-count 1 --region "$REGION" >/dev/null
+  ok "Resumed. App will be healthy once the task passes health checks (~2 min)."
   exit 0
 fi
 
@@ -196,7 +245,7 @@ fi
 # ── Bootstrap: ensure the ECR repo exists before docker push ─────────────────
 if ! $SKIP_INFRA; then
   info "Ensuring ECR repository exists"
-  tf apply "${tf_var_args[@]}" -var="app_runner_image_tag=$IMAGE_TAG" \
+  tf apply "${tf_var_args[@]}" -var="image_tag=$IMAGE_TAG" \
     -target=aws_ecr_repository.api -auto-approve >/dev/null
 fi
 
@@ -225,7 +274,7 @@ fi
 if ! $SKIP_INFRA; then
   info "Applying full Terraform stack ($ENVIRONMENT)"
   APPROVE=(); $AUTO_APPROVE && APPROVE=(-auto-approve)
-  tf apply "${tf_var_args[@]}" -var="app_runner_image_tag=$IMAGE_TAG" "${APPROVE[@]}"
+  tf apply "${tf_var_args[@]}" -var="image_tag=$IMAGE_TAG" "${APPROVE[@]+"${APPROVE[@]}"}"
   ok "Infrastructure applied"
 fi
 
@@ -235,12 +284,15 @@ if ! $SKIP_SPAS; then
   DIST_ID="$(tf output -raw cloudfront_distribution_id)"
   PUBLIC_BUCKET="$(tf output -raw public_web_bucket)"
   ADMIN_BUCKET="$(tf output -raw admin_web_bucket)"
+  JUDGE_BUCKET="$(tf output -raw judge_web_bucket)"
 
   info "Installing workspace deps + building shared components"
   ( cd "$REPO_ROOT" && npm install --no-audit --no-fund >/dev/null && npm run build:components >/dev/null )
 
-  info "Building public-web (base=/) and syncing to s3://$PUBLIC_BUCKET"
-  ( cd "$REPO_ROOT" && VITE_PUBLIC_BASE_PATH=/ npm run build --workspace apps/public-web >/dev/null )
+  info "Building public-web (base=/, api=/api) and syncing to s3://$PUBLIC_BUCKET"
+  ( cd "$REPO_ROOT" \
+      && VITE_PUBLIC_BASE_PATH=/ VITE_API_URL=/api \
+         npm run build --workspace apps/public-web >/dev/null )
   aws s3 sync "$REPO_ROOT/apps/public-web/dist/" "s3://$PUBLIC_BUCKET/" --delete >/dev/null
 
   info "Building admin-web (base=/admin, api=/api) and syncing to s3://$ADMIN_BUCKET"
@@ -248,6 +300,18 @@ if ! $SKIP_SPAS; then
       && VITE_PUBLIC_BASE_PATH=/admin VITE_API_URL=/api VITE_PUBLIC_APP_URL="https://$DOMAIN" \
          npm run build --workspace apps/admin-web >/dev/null )
   aws s3 sync "$REPO_ROOT/apps/admin-web/dist/" "s3://$ADMIN_BUCKET/" --delete >/dev/null
+  # CloudFront shares one cache across all behaviors; using a unique fallback
+  # filename per SPA avoids cache key collisions with /index.html.
+  aws s3 cp "s3://$ADMIN_BUCKET/index.html" "s3://$ADMIN_BUCKET/admin.html" \
+    --content-type "text/html" >/dev/null
+
+  info "Building judge-web (base=/judge, api=/api) and syncing to s3://$JUDGE_BUCKET"
+  ( cd "$REPO_ROOT" \
+      && VITE_PUBLIC_BASE_PATH=/judge VITE_API_URL=/api \
+         npm run build --workspace apps/judge-web >/dev/null )
+  aws s3 sync "$REPO_ROOT/apps/judge-web/dist/" "s3://$JUDGE_BUCKET/" --delete >/dev/null
+  aws s3 cp "s3://$JUDGE_BUCKET/index.html" "s3://$JUDGE_BUCKET/judge.html" \
+    --content-type "text/html" >/dev/null
 
   info "Invalidating CloudFront cache"
   aws cloudfront create-invalidation --distribution-id "$DIST_ID" \
@@ -265,7 +329,8 @@ if ! $SKIP_INFRA; then
   echo "  • DNS (first run): terraform -chdir=$TF_DIR output acm_validation_records"
   echo "  •                  terraform -chdir=$TF_DIR output cloudfront_domain  (CNAME target)"
   if [[ "$ENVIRONMENT" == "test" ]]; then
-    echo "  • Admin login:    /admin  →  admin@carshow.local  (dev-login)"
+    echo "  • Admin login:    /admin    →  admin@carshow.local  (dev-login)"
+    echo "  • Judge app:      /judge"
     echo "  • After 1st boot: set run_seed = false in test.tfvars and re-run to stop re-seeding."
   fi
 fi

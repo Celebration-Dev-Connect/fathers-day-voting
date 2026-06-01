@@ -446,16 +446,31 @@
   background: #f4f4f4;
 }
 
-.judge-profile-card .vehicle-profile-thumbs {
+.judge-profile-card .judge-photo-strip {
+  position: relative;
+  z-index: 1;
+  display: flex !important;
+  width: 100%;
   min-height: 76px;
   padding: 10px 12px;
   align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
   background: #fff;
   border-top: 1px solid #e7e7e3;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
-.judge-profile-card .vehicle-profile-thumbs.no-photos {
+.judge-profile-card .judge-photo-strip.no-photos {
   justify-content: flex-start;
+}
+
+.judge-profile-card .judge-photo-strip .vehicle-profile-thumb {
+  display: grid !important;
+  place-items: center;
+  flex: 0 0 56px;
 }
 
 .judge-profile-card .vehicle-profile-no-photo {

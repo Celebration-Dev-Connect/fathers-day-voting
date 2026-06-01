@@ -692,7 +692,10 @@ function JudgeVehicleProfileCard({
             <div className="vehicle-profile-no-photo" />
           )}
         </div>
-        <div className={`vehicle-profile-thumbs${photos.length === 0 ? " no-photos" : ""}`} aria-label="Vehicle photos">
+        <div
+          className={`vehicle-profile-thumbs judge-photo-strip${photos.length === 0 ? " no-photos" : ""}`}
+          aria-label="Vehicle photos"
+        >
           {photos.map((photo, index) => (
             <button
               key={photo.id}

@@ -438,6 +438,10 @@
   gap: 12px;
 }
 
+.judge-profile-card {
+  flex: 0 0 auto;
+}
+
 .judge-profile-card .vehicle-profile-photos {
   background: #fff;
 }

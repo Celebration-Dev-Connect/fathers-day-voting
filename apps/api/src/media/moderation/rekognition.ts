@@ -1,26 +1,62 @@
-import { DetectModerationLabelsCommand, RekognitionClient } from "@aws-sdk/client-rekognition";
-import type { ImageModerator } from "./types.js";
+import {
+  DetectLabelsCommand,
+  DetectModerationLabelsCommand,
+  RekognitionClient,
+  type Image,
+} from "@aws-sdk/client-rekognition";
+import type { ImageModerator, ModerationResult, ScanInput } from "./types.js";
 
-/** Prod driver: AWS Rekognition DetectModerationLabels over inline bytes (≤5MB).
- *  Any returned moderation label above MinConfidence marks the image unsafe. */
+const VEHICLE_LABELS = new Set([
+  "Car", "Automobile", "Vehicle", "Motor Vehicle", "Transportation",
+  "Sports Car", "Coupe", "Sedan", "Convertible", "Race Car", "Classic Car",
+  "SUV", "Truck", "Pickup Truck", "Van", "Minivan", "Bus", "Motorcycle",
+  "Bike", "Motorbike", "Wheel", "Alloy Wheel", "Tire",
+]);
+
+const VEHICLE_LABEL_MIN_CONFIDENCE = 20;
+const MODERATION_LABEL_MIN_CONFIDENCE = 50;
+
 export class RekognitionModerator implements ImageModerator {
   private readonly client: RekognitionClient;
 
-  constructor(
-    region: string,
-    private readonly minConfidence: number,
-  ) {
+  constructor(region: string) {
     this.client = new RekognitionClient({ region });
   }
 
-  async scan(image: { bytes: Buffer; contentType: string }) {
-    const res = await this.client.send(
+  async scan(input: ScanInput): Promise<ModerationResult> {
+    const image: Image =
+      input.kind === "s3"
+        ? { S3Object: { Bucket: input.bucket, Name: input.key } }
+        : { Bytes: input.bytes };
+
+    // Step 1: check for unsafe content.
+    const modRes = await this.client.send(
       new DetectModerationLabelsCommand({
-        Image: { Bytes: image.bytes },
-        MinConfidence: this.minConfidence,
+        Image: image,
+        MinConfidence: MODERATION_LABEL_MIN_CONFIDENCE,
       }),
     );
-    const labels = res.ModerationLabels ?? [];
-    return { safe: labels.length === 0, labels };
+    const moderationLabels = modRes.ModerationLabels ?? [];
+
+    if (moderationLabels.length > 0) {
+      return { decision: "REJECTED", moderationLabels, vehicleLabels: [] };
+    }
+
+    // Step 2: check for vehicle-related content.
+    const labelRes = await this.client.send(
+      new DetectLabelsCommand({
+        Image: image,
+        MinConfidence: VEHICLE_LABEL_MIN_CONFIDENCE,
+      }),
+    );
+    const vehicleLabels = (labelRes.Labels ?? []).filter((l) =>
+      VEHICLE_LABELS.has(l.Name ?? ""),
+    );
+
+    if (vehicleLabels.length > 0) {
+      return { decision: "APPROVED", moderationLabels: [], vehicleLabels };
+    }
+
+    return { decision: "HUMAN_REVIEW", moderationLabels: [], vehicleLabels: [] };
   }
 }

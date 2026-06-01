@@ -26,6 +26,10 @@ export class LocalFsPhotoStorage implements PhotoStorage {
     return readFile(this.path(storageKey));
   }
 
+  s3Location(_storageKey: string) {
+    return null;
+  }
+
   async moveToPublic(id: string) {
     const from = this.path(pendingKey(id));
     const storageKey = publicKey(id);

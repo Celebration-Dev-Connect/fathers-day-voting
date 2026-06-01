@@ -82,3 +82,17 @@ export async function submitBrowseVote(vehicleId: string, voterKey: string) {
     { method: "POST", body: JSON.stringify({ voterKey }) },
   );
 }
+
+export async function uploadVisitorPhoto(vehicleId: string, file: File) {
+  const form = new FormData();
+  form.append("photo", file);
+  const response = await fetch(`${API_URL}/public/entries/${encodeURIComponent(vehicleId)}/photos`, {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message ?? body.error ?? `Upload failed with ${response.status}`);
+  }
+  return response.json() as Promise<{ id: string; status: string }>;
+}

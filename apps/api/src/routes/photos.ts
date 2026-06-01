@@ -31,10 +31,14 @@ async function createPendingPhoto(
   { storage, worker }: PhotosDeps,
   vehicleEntryId: string,
   uploadedBy: string,
+  source: "STAFF" | "VISITOR",
   image: { bytes: Buffer; contentType: string },
 ) {
   const activeCount = await prisma.vehiclePhoto.count({
-    where: { vehicleEntryId, moderationStatus: { in: ["PENDING", "APPROVED"] } },
+    where: {
+      vehicleEntryId,
+      moderationStatus: { in: ["PENDING", "PROCESSING", "HUMAN_REVIEW", "APPROVED"] },
+    },
   });
   if (activeCount >= config.photos.perVehicleCap) {
     throw app.httpErrors.conflict("This vehicle already has the maximum number of photos");
@@ -55,6 +59,7 @@ async function createPendingPhoto(
           contentType: image.contentType,
           moderationStatus: "PENDING",
           uploadedBy,
+          source,
         },
       });
       break;
@@ -89,7 +94,7 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
       });
       if (!qrCard?.vehicleEntryId) throw app.httpErrors.notFound("Vehicle not found");
       const image = await readUploadedImage(app, request);
-      const result = await createPendingPhoto(app, deps, qrCard.vehicleEntryId, `visitor:${request.ip}`, image);
+      const result = await createPendingPhoto(app, deps, qrCard.vehicleEntryId, `visitor:${request.ip}`, "VISITOR", image);
       return reply.code(202).send(result);
     },
   );
@@ -103,9 +108,25 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
     });
     if (!vehicle) throw app.httpErrors.notFound("Registration not found");
     const image = await readUploadedImage(app, request);
-    const result = await createPendingPhoto(app, deps, vehicle.id, `staff:${staff.id}`, image);
+    const result = await createPendingPhoto(app, deps, vehicle.id, `staff:${staff.id}`, "STAFF", image);
     return reply.code(202).send(result);
   });
+
+  app.post(
+    "/public/entries/:vehicleId/photos",
+    { config: { rateLimit: { max: 12, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const params = z.object({ vehicleId: z.string().trim().min(1) }).parse(request.params);
+      const vehicle = await prisma.vehicleEntry.findFirst({
+        where: { id: params.vehicleId, eventId },
+        select: { id: true },
+      });
+      if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
+      const image = await readUploadedImage(app, request);
+      const result = await createPendingPhoto(app, deps, vehicle.id, `visitor:${request.ip}`, "VISITOR", image);
+      return reply.code(202).send(result);
+    },
+  );
 
   app.get("/v/:publicToken", async (request) => {
     const params = z.object({ publicToken: z.string().trim().min(1) }).parse(request.params);

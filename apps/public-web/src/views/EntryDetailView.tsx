@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getEntryByNumber } from "../api";
 import { EntrySearch } from "../components/EntrySearch";
+import { PhotoUploadModal } from "../components/PhotoUploadModal";
 import { useVoting } from "../context/VotingContext";
 
 function VoteSection({ vehicle }: { vehicle: PublicVehicle }) {
@@ -67,6 +68,7 @@ export function EntryDetailView() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
+  const [uploadOpen, setUploadOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -127,11 +129,24 @@ export function EntryDetailView() {
 
   if (!vehicle) return null;
 
+  const vehicleTitle = `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
+
   return (
     <div className="public-content">
       <button className="back-link" onClick={() => navigate(-1)}>← Back</button>
-      <VehicleProfileCard vehicle={vehicle} showVoting={false} />
+      <VehicleProfileCard
+        vehicle={vehicle}
+        showVoting={false}
+        onUploadPhoto={() => setUploadOpen(true)}
+      />
       <VoteSection vehicle={vehicle} />
+      {uploadOpen && (
+        <PhotoUploadModal
+          vehicleId={vehicle.id}
+          vehicleTitle={vehicleTitle}
+          onClose={() => setUploadOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,8 +1,14 @@
 export interface PhotoStorage {
   /** Store raw bytes under the pending prefix. */
   putPending(id: string, bytes: Buffer, contentType: string): Promise<{ storageKey: string }>;
-  /** Read bytes back (used by the moderator, backend-agnostic). */
+  /** Read bytes back — used by the local driver for moderation. */
   getBytes(storageKey: string): Promise<Buffer>;
+  /**
+   * Return the S3 bucket + key for a storage key so Rekognition can read the
+   * image directly without the bytes passing through this server.
+   * Returns null for non-S3 drivers (local dev).
+   */
+  s3Location(storageKey: string): { bucket: string; key: string } | null;
   /** Promote pending/<id> → public/<id>. */
   moveToPublic(id: string): Promise<{ storageKey: string }>;
   deletePending(id: string): Promise<void>;

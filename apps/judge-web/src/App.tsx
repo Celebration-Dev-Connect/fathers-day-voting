@@ -675,22 +675,24 @@ function JudgeVehicleProfileCard({
   return (
     <article className="vehicle-profile judge-profile-card">
       <div className="vehicle-profile-photos">
-        {photos.length > 0 && currentPhoto ? (
-          <div className="vehicle-profile-photo-wrap">
-            {!currentLoaded && <div className="img-shimmer" aria-hidden="true" />}
-            <img
-              key={currentPhoto.id}
-              className="vehicle-profile-main-photo"
-              src={currentPhoto.url}
-              alt={currentPhoto.altText ?? title}
-              style={{ opacity: currentLoaded ? 1 : 0, transition: "opacity 0.3s ease" }}
-              onLoad={() => markLoaded(currentPhoto.id)}
-            />
-          </div>
-        ) : (
-          <div className="vehicle-profile-no-photo" />
-        )}
-        <div className="vehicle-profile-thumbs" aria-label="Vehicle photos">
+        <div className="vehicle-profile-photo-wrap">
+          {photos.length > 0 && currentPhoto ? (
+            <>
+              {!currentLoaded && <div className="img-shimmer" aria-hidden="true" />}
+              <img
+                key={currentPhoto.id}
+                className="vehicle-profile-main-photo"
+                src={currentPhoto.url}
+                alt={currentPhoto.altText ?? title}
+                style={{ opacity: currentLoaded ? 1 : 0, transition: "opacity 0.3s ease" }}
+                onLoad={() => markLoaded(currentPhoto.id)}
+              />
+            </>
+          ) : (
+            <div className="vehicle-profile-no-photo" />
+          )}
+        </div>
+        <div className={`vehicle-profile-thumbs${photos.length === 0 ? " no-photos" : ""}`} aria-label="Vehicle photos">
           {photos.map((photo, index) => (
             <button
               key={photo.id}

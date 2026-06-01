@@ -438,6 +438,30 @@
   gap: 12px;
 }
 
+.judge-profile-card .vehicle-profile-photos {
+  background: #fff;
+}
+
+.judge-profile-card .vehicle-profile-photo-wrap {
+  background: #f4f4f4;
+}
+
+.judge-profile-card .vehicle-profile-thumbs {
+  min-height: 76px;
+  padding: 10px 12px;
+  align-items: center;
+  background: #fff;
+  border-top: 1px solid #e7e7e3;
+}
+
+.judge-profile-card .vehicle-profile-thumbs.no-photos {
+  justify-content: flex-start;
+}
+
+.judge-profile-card .vehicle-profile-no-photo {
+  display: block;
+}
+
 .judge-vehicle-drawer header {
   position: sticky;
   top: -20px;

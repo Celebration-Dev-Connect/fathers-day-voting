@@ -73,3 +73,24 @@ export async function saveJudgeBallot(categoryId: string, picks: Array<{ vehicle
     body: JSON.stringify({ picks }),
   });
 }
+
+export async function uploadRegistrationPhoto(registrationId: string, file: File) {
+  const token = getToken();
+  const body = new FormData();
+  body.append("file", file);
+
+  const response = await fetch(`${API_URL}/registrations/${encodeURIComponent(registrationId)}/photos`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    const responseBody = await response.json().catch(() => ({}));
+    throw new Error(responseBody.message ?? responseBody.error ?? `Upload failed with ${response.status}`);
+  }
+
+  return response.json() as Promise<{ id: string; status: "PENDING" }>;
+}

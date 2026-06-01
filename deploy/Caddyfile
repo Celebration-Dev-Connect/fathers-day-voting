@@ -9,7 +9,7 @@ carshow.internal {
   }
 
   handle_path /show/* {
-    reverse_proxy 127.0.0.1:3001
+    reverse_proxy 127.0.0.1:3002
   }
 
   handle_path /carshow/api/* {
@@ -43,7 +43,7 @@ automationsolutions.ddns.net {
   }
 
   handle_path /show/* {
-    reverse_proxy 127.0.0.1:3001
+    reverse_proxy 127.0.0.1:3002
   }
 
   handle_path /carshow/api/* {

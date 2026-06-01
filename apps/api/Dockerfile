@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/db/package.json packages/db/package.json
-RUN npm install
+RUN npm install --include=optional
 
 FROM deps AS build
 WORKDIR /app

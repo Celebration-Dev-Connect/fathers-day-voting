@@ -229,6 +229,11 @@
   gap: 10px;
 }
 
+.judge-vehicle-list {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  align-items: stretch;
+}
+
 .judge-vehicle-card,
 .judge-ranked-card {
   border: 1px solid #e3e3e0;
@@ -241,7 +246,18 @@
 }
 
 .judge-vehicle-card {
+  padding: 0;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  overflow: hidden;
+  background: #fff;
   cursor: pointer;
+}
+
+.judge-vehicle-card .entry-card {
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .judge-vehicle-card:focus-visible {
@@ -254,7 +270,6 @@
   background: #fff8f8;
 }
 
-.judge-vehicle-card > div,
 .judge-ranked-card div {
   display: grid;
   gap: 4px;
@@ -291,6 +306,17 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.judge-card-actions {
+  min-height: 60px;
+  padding: 10px 12px 12px;
+  justify-content: flex-end;
+  border-top: 1px solid #e9e9e6;
+}
+
+.judge-card-actions .rank-badge {
+  margin-right: auto;
 }
 
 .judge-ranked-card {
@@ -366,7 +392,7 @@
 }
 
 .judge-vehicle-drawer {
-  width: min(460px, 100%);
+  width: min(640px, 100%);
   min-height: 100%;
   padding: 20px;
   display: flex;
@@ -375,6 +401,41 @@
   overflow-y: auto;
   background: #fff;
   box-shadow: -18px 0 44px rgb(0 0 0 / 20%);
+}
+
+.judge-detail-top-banner {
+  margin: -20px -20px 0;
+  padding: 22px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #282d36;
+  color: #fff;
+}
+
+.judge-detail-top-banner p {
+  margin: 0 0 6px;
+  color: #d8dce4;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.judge-detail-top-banner strong {
+  display: block;
+  max-width: 360px;
+  font-size: clamp(1.45rem, 5vw, 2.25rem);
+  line-height: 1.08;
+  text-transform: uppercase;
+}
+
+.judge-detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .judge-vehicle-drawer header {
@@ -489,13 +550,17 @@
   border-radius: 8px;
 }
 
+.judge-vehicle-facts .wide {
+  grid-column: 1 / -1;
+}
+
 .judge-vehicle-facts dd {
   margin: 4px 0 0;
   font-weight: 900;
 }
 
 .judge-drawer-rank {
-  align-self: end;
+  align-self: stretch;
   display: grid;
   gap: 12px;
 }
@@ -534,6 +599,76 @@
   opacity: 0.5;
 }
 
+.judge-upload-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(21 25 31 / 58%);
+}
+
+.judge-upload-dialog {
+  width: min(520px, 100%);
+  max-height: min(720px, calc(100vh - 40px));
+  overflow-y: auto;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 22px 70px rgb(0 0 0 / 26%);
+}
+
+.judge-upload-dialog header {
+  min-height: 70px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e3e3e0;
+}
+
+.judge-upload-dialog header strong {
+  font-size: 1.35rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.judge-upload-body {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.judge-upload-vehicle {
+  margin: 0;
+  color: #6e7177;
+  font-weight: 900;
+}
+
+.judge-upload-input {
+  display: none;
+}
+
+.judge-upload-preview {
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #f2f2f0;
+}
+
+.judge-upload-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.judge-upload-hint {
+  margin: 0;
+  color: #8a8d93;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 920px) {
   .judge-layout,
   .judge-ballot-grid,
@@ -564,14 +699,14 @@
   }
 
   .judge-vehicle-card {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: 1fr;
   }
 
   .judge-card-actions {
-    grid-column: auto;
+    grid-column: 1;
     justify-content: flex-end;
-    flex-direction: column;
-    align-self: stretch;
+    flex-direction: row;
+    align-self: auto;
   }
 
   .judge-ranked-card {
@@ -585,6 +720,11 @@
   .judge-vehicle-drawer {
     width: 100%;
     padding: 18px;
+  }
+
+  .judge-detail-top-banner {
+    margin: -18px -18px 0;
+    padding: 20px 18px;
   }
 
   .judge-vehicle-drawer header {
@@ -610,6 +750,10 @@
   }
 
   .judge-vehicle-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .judge-upload-actions {
     grid-template-columns: 1fr;
   }
 }

@@ -10,7 +10,7 @@ COPY package.json package-lock.json* ./
 COPY apps/admin-web/package.json apps/admin-web/package.json
 COPY packages/carshow-components/package.json packages/carshow-components/package.json
 COPY packages/db/package.json packages/db/package.json
-RUN npm install
+RUN npm install --include=optional && npm install --no-save @rollup/rollup-linux-x64-musl@4.60.4
 COPY tsconfig.base.json ./
 COPY apps/admin-web apps/admin-web
 COPY packages/carshow-components packages/carshow-components

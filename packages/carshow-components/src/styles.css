@@ -1998,6 +1998,19 @@ textarea:focus {
   object-fit: cover;
 }
 
+.vehicle-profile-add-photo {
+  display: grid;
+  place-items: center;
+  border: 2px dashed #d5d5d1;
+  color: var(--muted-grey);
+  background: var(--pure-white);
+}
+
+.vehicle-profile-add-photo:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .vehicle-profile-no-photo {
   width: 100%;
   aspect-ratio: 4 / 3;

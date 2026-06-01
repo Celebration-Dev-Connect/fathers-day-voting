@@ -1,8 +1,19 @@
-import { Alert, Badge, Button, LoginCard, PageHeader, vehicleName } from "@carshow/carshow-components";
+import {
+  Alert,
+  Badge,
+  Button,
+  EntryCard,
+  LoginCard,
+  PageHeader,
+  VehicleProfileCard,
+  vehicleName,
+} from "@carshow/carshow-components";
 import type {
   JudgeBallot,
   JudgeCategorySummary,
   JudgeSession,
+  PublicEntry,
+  PublicVehicle,
   Registration,
   StaffUser,
 } from "@carshow/carshow-components";
@@ -10,11 +21,10 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  Camera,
   Check,
   ClipboardList,
   Clock,
-  Eye,
-  ImageIcon,
   LogOut,
   Save,
   Search,
@@ -23,7 +33,7 @@ import {
   Trophy,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   clearToken,
   devLogin,
@@ -33,6 +43,7 @@ import {
   me,
   saveJudgeBallot,
   setToken,
+  uploadRegistrationPhoto,
 } from "./api";
 
 const DEV_LOGIN_OPTIONS = [
@@ -93,6 +104,7 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
   const [loading, setLoading] = useState(true);
   const [loadingCategory, setLoadingCategory] = useState(false);
   const [savedBallotSignature, setSavedBallotSignature] = useState("");
+  const [categoryReloadKey, setCategoryReloadKey] = useState(0);
   const selectedCategory = session?.categories.find((item) => item.category.id === selectedCategoryId) ?? null;
 
   async function refreshSession() {
@@ -120,7 +132,7 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
       })
       .catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Could not load category ballot"))
       .finally(() => setLoadingCategory(false));
-  }, [selectedCategoryId]);
+  }, [selectedCategoryId, categoryReloadKey]);
 
   async function saveBallot(nextPicks = ballot?.picks ?? []) {
     if (!selectedCategoryId) return;
@@ -199,6 +211,10 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
               isDirty={ballot ? ballotSignature(ballot) !== savedBallotSignature : false}
               onChange={setBallot}
               onSave={() => saveBallot()}
+              onPhotoUploaded={() => {
+                setMessage("Photo submitted for review.");
+                setCategoryReloadKey((key) => key + 1);
+              }}
             />
           </div>
         ) : null}
@@ -283,6 +299,7 @@ function BallotWorkspace({
   isDirty,
   onChange,
   onSave,
+  onPhotoUploaded,
 }: {
   judgingOpen: boolean;
   loading: boolean;
@@ -292,6 +309,7 @@ function BallotWorkspace({
   isDirty: boolean;
   onChange: (ballot: JudgeBallot) => void;
   onSave: () => void;
+  onPhotoUploaded: () => void;
 }) {
   const picks = ballot?.picks ?? [];
   const [detailVehicle, setDetailVehicle] = useState<Registration | null>(null);
@@ -388,7 +406,6 @@ function BallotWorkspace({
           ) : null}
           <div className="judge-vehicle-list">
             {!loading && visibleVehicles.map((registration) => {
-              const firstPhoto = registration.photos?.[0];
               const rank = picks.find((pick) => pick.registration.id === registration.id)?.rank;
 
               return (
@@ -405,26 +422,9 @@ function BallotWorkspace({
                     }
                   }}
                 >
-                  <div className="judge-vehicle-media" aria-hidden="true">
-                    {firstPhoto ? <img src={firstPhoto.url} alt={firstPhoto.altText ?? vehicleName(registration)} /> : <ImageIcon size={24} />}
-                  </div>
-                  <div>
-                    <small>#{registration.entryNumber.toString().padStart(3, "0")}</small>
-                    <strong>{vehicleName(registration)}</strong>
-                    <span>{registration.exteriorColor ?? "Color not listed"}</span>
-                  </div>
+                  <EntryCard entry={toPublicEntry(registration)} />
                   <div className="judge-card-actions">
                     {rank ? <Badge variant="rank">{rank}</Badge> : null}
-                    <Button
-                      variant="icon"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setDetailVehicle(registration);
-                      }}
-                      aria-label="View vehicle details"
-                    >
-                      <Eye size={18} />
-                    </Button>
                     <Button
                       variant="secondary"
                       disabled={!judgingOpen || Boolean(rank) || picks.length >= 10}
@@ -499,11 +499,43 @@ function BallotWorkspace({
         pickedRank={detailVehicle ? picks.find((pick) => pick.registration.id === detailVehicle.id)?.rank ?? null : null}
         vehicle={detailVehicle}
         onClose={() => setDetailVehicle(null)}
+        onPhotoUploaded={onPhotoUploaded}
         onRemove={(vehicleId) => removeVehicle(vehicleId)}
         onRankAt={(registration, rank) => rankVehicleAt(registration, rank)}
       />
     </>
   );
+}
+
+function publicOwnerName(registration: Registration) {
+  if (registration.owner.publicNameOptIn) {
+    return registration.owner.publicName || `${registration.owner.firstName} ${registration.owner.lastName}`;
+  }
+  return `${registration.owner.firstName} ${registration.owner.lastName}`;
+}
+
+function toPublicEntry(registration: Registration): PublicEntry {
+  return {
+    id: registration.id,
+    entryNumber: registration.entryNumber,
+    year: registration.year,
+    make: registration.make,
+    model: registration.model,
+    nickname: registration.nickname ?? null,
+    exteriorColor: registration.exteriorColor ?? null,
+    category: {
+      id: registration.category.id,
+      name: registration.category.name,
+      slug: registration.category.slug,
+    },
+    ownerName: publicOwnerName(registration),
+    photos: (registration.photos ?? []).map((photo) => ({
+      id: photo.id,
+      url: photo.url,
+      altText: photo.altText ?? null,
+      sortOrder: photo.sortOrder,
+    })),
+  };
 }
 
 function JudgeVehicleDrawer({
@@ -512,6 +544,7 @@ function JudgeVehicleDrawer({
   pickedRank,
   vehicle,
   onClose,
+  onPhotoUploaded,
   onRemove,
   onRankAt,
 }: {
@@ -520,65 +553,63 @@ function JudgeVehicleDrawer({
   pickedRank: number | null;
   vehicle: Registration | null;
   onClose: () => void;
+  onPhotoUploaded: () => void;
   onRemove: (vehicleId: string) => void;
   onRankAt: (vehicle: Registration, rank: number) => void;
 }) {
+  const [uploadOpen, setUploadOpen] = useState(false);
   if (!vehicle) return null;
+
+  const publicVehicle: PublicVehicle = toPublicEntry(vehicle);
 
   return (
     <div className="judge-drawer-backdrop" role="presentation" onClick={onClose}>
       <aside className="judge-vehicle-drawer" aria-label="Vehicle details" onClick={(event) => event.stopPropagation()}>
-        <header>
-          <button className="judge-drawer-back-button" type="button" onClick={onClose}>
-            <ArrowLeft size={18} />
-            Back to vehicles
-          </button>
+        <div className="judge-detail-top-banner">
           <div>
-            <small>#{vehicle.entryNumber.toString().padStart(3, "0")}</small>
-            <strong>{vehicleName(vehicle)}</strong>
-            <span>{vehicle.category.name}</span>
+            <p>Celebration Church</p>
+            <strong>Father's Day Car Show</strong>
           </div>
+          <Badge variant="status" modifier={judgingOpen ? "active" : "closed"}>
+            Judging
+          </Badge>
+        </div>
+
+        <div className="judge-detail-toolbar">
+          <button className="back-link" type="button" onClick={onClose}>
+            <ArrowLeft size={18} />
+            Back
+          </button>
           <Button variant="icon" onClick={onClose} aria-label="Close vehicle details">
             <X size={20} />
           </Button>
-        </header>
+        </div>
+
+        <VehicleProfileCard
+          vehicle={publicVehicle}
+          showVoting={false}
+          onAddPhoto={() => setUploadOpen(true)}
+          addPhotoLabel="Add vehicle photo"
+        />
 
         <dl className="judge-vehicle-facts">
-          <div>
-            <dt>Owner</dt>
-            <dd>{vehicle.owner.publicNameOptIn && vehicle.owner.publicName ? vehicle.owner.publicName : `${vehicle.owner.firstName} ${vehicle.owner.lastName}`}</dd>
-          </div>
-          <div>
-            <dt>Color</dt>
-            <dd>{vehicle.exteriorColor ?? "Not listed"}</dd>
-          </div>
           <div>
             <dt>Status</dt>
             <dd>{vehicle.status.replace("_", " ")}</dd>
           </div>
-          {vehicle.nickname ? (
+          {vehicle.plateNumber ? (
             <div>
-              <dt>Nickname</dt>
-              <dd>{vehicle.nickname}</dd>
+              <dt>Plate</dt>
+              <dd>{vehicle.plateNumber}</dd>
+            </div>
+          ) : null}
+          {vehicle.internalNotes ? (
+            <div className="wide">
+              <dt>Notes</dt>
+              <dd>{vehicle.internalNotes}</dd>
             </div>
           ) : null}
         </dl>
-
-        <section className="judge-drawer-photo-section" aria-label="Vehicle photos">
-          <strong>Photos</strong>
-          <div className="judge-drawer-photos">
-            {vehicle.photos?.length ? (
-              vehicle.photos.map((photo) => (
-                <img key={photo.id} src={photo.url} alt={photo.altText ?? vehicleName(vehicle)} />
-              ))
-            ) : (
-              <div>
-                <ImageIcon size={30} />
-                <span>No photos</span>
-              </div>
-            )}
-          </div>
-        </section>
 
         <section className="judge-drawer-rank">
           <div>
@@ -605,7 +636,109 @@ function JudgeVehicleDrawer({
             </Button>
           ) : null}
         </section>
+        {uploadOpen ? (
+          <JudgePhotoUploadDialog
+            vehicle={vehicle}
+            onClose={() => setUploadOpen(false)}
+            onUploaded={() => {
+              setUploadOpen(false);
+              onPhotoUploaded();
+            }}
+          />
+        ) : null}
       </aside>
+    </div>
+  );
+}
+
+function JudgePhotoUploadDialog({
+  vehicle,
+  onClose,
+  onUploaded,
+}: {
+  vehicle: Registration;
+  onClose: () => void;
+  onUploaded: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  function chooseFile(nextFile: File | null) {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setError("");
+    setFile(nextFile);
+    setPreviewUrl(nextFile ? URL.createObjectURL(nextFile) : "");
+  }
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  async function submitPhoto() {
+    if (!file) {
+      inputRef.current?.click();
+      return;
+    }
+    setUploading(true);
+    setError("");
+    try {
+      await uploadRegistrationPhoto(vehicle.id, file);
+      onUploaded();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="judge-upload-backdrop" role="presentation" onClick={onClose}>
+      <section className="judge-upload-dialog" aria-label="Add vehicle photo" onClick={(event) => event.stopPropagation()}>
+        <header>
+          <strong>Add vehicle photo</strong>
+          <Button variant="icon" onClick={onClose} aria-label="Close upload dialog">
+            <X size={20} />
+          </Button>
+        </header>
+        <div className="judge-upload-body">
+          <p className="judge-upload-vehicle">{vehicle.year} {vehicle.make} {vehicle.model}</p>
+          <p className="muted-copy">
+            Add a photo for judges to review. Uploaded photos are queued for moderation before they appear publicly.
+          </p>
+          {previewUrl ? (
+            <img className="judge-upload-preview" src={previewUrl} alt="Selected vehicle upload preview" />
+          ) : null}
+          {error ? <Alert variant="danger">{error}</Alert> : null}
+          <input
+            ref={inputRef}
+            className="judge-upload-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
+          />
+          {!file ? (
+            <Button variant="secondary" onClick={() => inputRef.current?.click()}>
+              <Camera size={18} />
+              Choose Photo
+            </Button>
+          ) : (
+            <div className="judge-upload-actions">
+              <Button disabled={uploading} onClick={submitPhoto}>
+                {uploading ? "Uploading..." : "Upload Photo"}
+              </Button>
+              <Button variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()}>
+                Choose Different
+              </Button>
+            </div>
+          )}
+          <p className="judge-upload-hint">JPEG, PNG, or WebP. Max one photo per submission.</p>
+        </div>
+      </section>
     </div>
   );
 }

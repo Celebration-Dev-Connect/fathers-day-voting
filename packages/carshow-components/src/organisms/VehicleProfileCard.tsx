@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Camera } from "lucide-react";
 import { Button } from "../atoms/Button.js";
 import { VoteSuccess } from "../molecules/VoteSuccess.js";
 import type { PublicVehicle } from "../types.js";
@@ -11,6 +12,8 @@ type Props = {
   onVote?: () => void;
   voting?: boolean;
   showVoting?: boolean;
+  onAddPhoto?: () => void;
+  addPhotoLabel?: string;
 };
 
 export function VehicleProfileCard({
@@ -21,6 +24,8 @@ export function VehicleProfileCard({
   onVote,
   voting = false,
   showVoting = true,
+  onAddPhoto,
+  addPhotoLabel = "Add photo",
 }: Props) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
@@ -42,10 +47,12 @@ export function VehicleProfileCard({
     ? `${vehicle.year} ${vehicle.make} ${vehicle.model} — "${vehicle.nickname}"`
     : `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
 
+  const showPhotoActions = photos.length > 1 || Boolean(onAddPhoto);
+
   return (
     <article className="vehicle-profile">
-      {photos.length > 0 ? (
-        <div className="vehicle-profile-photos">
+      <div className="vehicle-profile-photos">
+        {photos.length > 0 && currentPhoto ? (
           <div className="vehicle-profile-photo-wrap">
             {!currentLoaded && <div className="img-shimmer" aria-hidden="true" />}
             <img
@@ -57,30 +64,40 @@ export function VehicleProfileCard({
               onLoad={() => markLoaded(currentPhoto.id)}
             />
           </div>
-          {photos.length > 1 ? (
-            <div className="vehicle-profile-thumbs">
-              {photos.map((p, i) => (
-                <button
-                  key={p.id}
-                  className={`vehicle-profile-thumb${i === photoIndex ? " active" : ""}`}
-                  onClick={() => setPhotoIndex(i)}
-                  aria-label={`Photo ${i + 1}`}
-                >
-                  {!loadedIds.has(p.id) && <div className="img-shimmer" aria-hidden="true" />}
-                  <img
-                    src={p.url}
-                    alt=""
-                    style={{ opacity: loadedIds.has(p.id) ? 1 : 0, transition: "opacity 0.25s ease" }}
-                    onLoad={() => markLoaded(p.id)}
-                  />
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <div className="vehicle-profile-no-photo" />
-      )}
+        ) : (
+          <div className="vehicle-profile-no-photo" />
+        )}
+        {showPhotoActions ? (
+          <div className="vehicle-profile-thumbs">
+            {photos.map((p, i) => (
+              <button
+                key={p.id}
+                className={`vehicle-profile-thumb${i === photoIndex ? " active" : ""}`}
+                onClick={() => setPhotoIndex(i)}
+                aria-label={`Photo ${i + 1}`}
+              >
+                {!loadedIds.has(p.id) && <div className="img-shimmer" aria-hidden="true" />}
+                <img
+                  src={p.url}
+                  alt=""
+                  style={{ opacity: loadedIds.has(p.id) ? 1 : 0, transition: "opacity 0.25s ease" }}
+                  onLoad={() => markLoaded(p.id)}
+                />
+              </button>
+            ))}
+            {onAddPhoto ? (
+              <button
+                className="vehicle-profile-thumb vehicle-profile-add-photo"
+                onClick={onAddPhoto}
+                aria-label={addPhotoLabel}
+                type="button"
+              >
+                <Camera size={26} />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       <div className="vehicle-profile-body">
         <div className="vehicle-profile-meta">

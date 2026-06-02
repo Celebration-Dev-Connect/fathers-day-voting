@@ -27,6 +27,10 @@ const emptyPayload: RegistrationPayload = {
   },
 };
 
+function ownerAccessCodeFor(registration: Registration) {
+  return registration.ownerAccessCode || String(registration.entryNumber % 100000).padStart(5, "0");
+}
+
 export function RegistrationEditor({
   categories,
   registration,
@@ -120,7 +124,7 @@ export function RegistrationEditor({
       {error ? <Alert variant="danger">{error}</Alert> : null}
       {registration ? (
         <Alert variant="info">
-          Owner app access code: <strong>{registration.ownerAccessCode}</strong>
+          Owner app access code: <strong>{ownerAccessCodeFor(registration)}</strong>
         </Alert>
       ) : null}
 

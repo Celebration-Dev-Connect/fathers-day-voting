@@ -117,9 +117,10 @@ resource "aws_cloudfront_function" "judge_routing" {
 
 # /* default — SPA routing for the public-web app. Paths with no file extension
 # are served as /index.html; asset paths (hashed filenames) pass through.
-# Sub-app paths (/admin, /judge, /api, /photos) are hard-rejected here so the
-# public-web origin can never serve them, even if the ordered behaviors somehow
-# miss (belt-and-suspenders guard).
+# Owner-web is stored under /owner in the public-web bucket and falls back to
+# /owner/index.html for owner routes. Sub-app paths (/admin, /judge, /api,
+# /photos) are hard-rejected here so the public-web origin can never serve them,
+# even if the ordered behaviors somehow miss (belt-and-suspenders guard).
 resource "aws_cloudfront_function" "spa_routing" {
   name    = "${var.project}-${var.environment}-spa-routing"
   runtime = "cloudfront-js-2.0"
@@ -133,6 +134,10 @@ resource "aws_cloudfront_function" "spa_routing" {
         if (uri === subApps[i] || uri.startsWith(subApps[i] + '/')) {
           return { statusCode: 404, statusDescription: 'Not Found' };
         }
+      }
+      if (uri === '/owner' || uri.startsWith('/owner/')) {
+        request.uri = uri.includes('.') ? uri : '/owner/index.html';
+        return request;
       }
       if (!uri.includes('.')) {
         request.uri = '/index.html';

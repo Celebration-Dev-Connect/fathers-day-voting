@@ -62,7 +62,7 @@ OPTIONS:
   -t, --image-tag <tag>   API image tag to build/deploy (default: git short SHA).
       --skip-infra        Don't run Terraform; deploy app/SPAs to existing infra.
       --skip-image        Don't build/push the API image; reuse --image-tag.
-      --skip-spas         Don't build/sync the public-web and admin-web SPAs.
+      --skip-spas         Don't build/sync the public/admin/judge/owner SPAs.
       --plan              Show the Terraform plan for the env and exit.
       --destroy           Tear down the selected environment, then exit.
       --suspend           Stop ECS tasks and RDS without touching CloudFront/ACM.
@@ -294,6 +294,12 @@ if ! $SKIP_SPAS; then
       && VITE_PUBLIC_BASE_PATH=/ VITE_API_URL=/api \
          npm run build --workspace apps/public-web >/dev/null )
   aws s3 sync "$REPO_ROOT/apps/public-web/dist/" "s3://$PUBLIC_BUCKET/" --delete >/dev/null
+
+  info "Building owner-web (base=/owner, api=/api) and syncing to s3://$PUBLIC_BUCKET/owner"
+  ( cd "$REPO_ROOT" \
+      && VITE_PUBLIC_BASE_PATH=/owner VITE_API_URL=/api \
+         npm run build --workspace apps/owner-web >/dev/null )
+  aws s3 sync "$REPO_ROOT/apps/owner-web/dist/" "s3://$PUBLIC_BUCKET/owner/" --delete >/dev/null
 
   info "Building admin-web (base=/admin, api=/api) and syncing to s3://$ADMIN_BUCKET"
   ( cd "$REPO_ROOT" \

@@ -30,6 +30,14 @@ export class LocalFsPhotoStorage implements PhotoStorage {
     return null;
   }
 
+  async putPublicVariant(id: string, suffix: "medium" | "thumb", bytes: Buffer, _contentType: string) {
+    const storageKey = `public/${id}-${suffix}`;
+    const dest = this.path(storageKey);
+    await mkdir(dirname(dest), { recursive: true });
+    await writeFile(dest, bytes);
+    return { storageKey };
+  }
+
   async moveToPublic(id: string) {
     const from = this.path(pendingKey(id));
     const storageKey = publicKey(id);

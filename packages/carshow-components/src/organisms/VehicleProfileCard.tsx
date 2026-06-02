@@ -75,7 +75,7 @@ export function VehicleProfileCard({
               >
                 {!loadedIds.has(p.id) && <div className="img-shimmer" aria-hidden="true" />}
                 <img
-                  src={p.url}
+                  src={p.thumbUrl ?? p.url}
                   alt=""
                   style={{ opacity: loadedIds.has(p.id) ? 1 : 0, transition: "opacity 0.25s ease" }}
                   onLoad={() => markLoaded(p.id)}

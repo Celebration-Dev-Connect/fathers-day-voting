@@ -21,6 +21,23 @@ export class RekognitionModerator implements ImageModerator {
 
   constructor(region: string) {
     this.client = new RekognitionClient({ region });
+    // Log the resolved region and full error at the HTTP layer to diagnose
+    // the AccessDeniedException: UnknownError we're seeing at runtime.
+    void this.client.config.region().then((r) =>
+      console.log("[rekognition-client] resolved region:", r),
+    );
+    this.client.middlewareStack.add(
+      (next, _ctx) => async (args) => {
+        try {
+          return await next(args);
+        } catch (err: unknown) {
+          // Dump every property on the error — the SDK message is often incomplete.
+          console.error("[rekognition-error] full error:", JSON.stringify(err, Object.getOwnPropertyNames(err as object)));
+          throw err;
+        }
+      },
+      { step: "deserialize", priority: "low", name: "debugMiddleware" },
+    );
   }
 
   async scan(input: ScanInput): Promise<ModerationResult> {

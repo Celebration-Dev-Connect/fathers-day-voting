@@ -198,6 +198,8 @@ export type PublicCategory = {
 export type PublicPhoto = {
   id: string;
   url: string;
+  mediumUrl: string | null;
+  thumbUrl: string | null;
   altText: string | null;
   sortOrder: number;
 };

@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { createReadStream } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { requireStaff } from "../auth.js";
+import { requireAdmin, requireStaff } from "../auth.js";
 import { config, eventId } from "../config.js";
 import type { PhotoModerationWorker } from "../media/worker.js";
 import type { PhotoStorage } from "../media/storage/index.js";
@@ -83,6 +83,160 @@ async function createPendingPhoto(
 }
 
 export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDeps) {
+  app.get("/photos/review", async (request) => {
+    await requireAdmin(app, request);
+    const query = z
+      .object({
+        status: z.enum(["needs-review", "approved", "rejected", "all"]).default("needs-review"),
+      })
+      .parse(request.query);
+
+    const statusWhere: Prisma.VehiclePhotoWhereInput =
+      query.status === "needs-review"
+        ? { moderationStatus: { in: ["PENDING", "PROCESSING", "HUMAN_REVIEW", "FAILED"] } }
+        : query.status === "approved"
+          ? { moderationStatus: "APPROVED" }
+          : query.status === "rejected"
+            ? { moderationStatus: "REJECTED" }
+            : {};
+
+    const photos = await prisma.vehiclePhoto.findMany({
+      where: {
+        vehicleEntry: { eventId },
+        ...statusWhere,
+      },
+      include: {
+        vehicleEntry: {
+          include: {
+            owner: true,
+            category: true,
+            qrCard: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+
+    return {
+      photos: photos.map((photo) => ({
+        id: photo.id,
+        url: photo.url,
+        contentType: photo.contentType,
+        altText: photo.altText,
+        sortOrder: photo.sortOrder,
+        moderationStatus: photo.moderationStatus,
+        moderationLabels: photo.moderationLabels,
+        source: photo.source,
+        uploadedBy: photo.uploadedBy,
+        processingStartedAt: photo.processingStartedAt?.toISOString() ?? null,
+        processedAt: photo.processedAt?.toISOString() ?? null,
+        createdAt: photo.createdAt.toISOString(),
+        vehicleEntry: {
+          id: photo.vehicleEntry.id,
+          entryNumber: photo.vehicleEntry.entryNumber,
+          year: photo.vehicleEntry.year,
+          make: photo.vehicleEntry.make,
+          model: photo.vehicleEntry.model,
+          nickname: photo.vehicleEntry.nickname,
+          exteriorColor: photo.vehicleEntry.exteriorColor,
+          status: photo.vehicleEntry.status,
+          category: {
+            id: photo.vehicleEntry.category.id,
+            name: photo.vehicleEntry.category.name,
+            slug: photo.vehicleEntry.category.slug,
+          },
+          owner: {
+            id: photo.vehicleEntry.owner.id,
+            firstName: photo.vehicleEntry.owner.firstName,
+            lastName: photo.vehicleEntry.owner.lastName,
+            phone: photo.vehicleEntry.owner.phone,
+            email: photo.vehicleEntry.owner.email,
+            publicName: photo.vehicleEntry.owner.publicName,
+            publicNameOptIn: photo.vehicleEntry.owner.publicNameOptIn,
+            waiverAccepted: photo.vehicleEntry.owner.waiverAccepted,
+          },
+          qrCard: photo.vehicleEntry.qrCard
+            ? {
+                id: photo.vehicleEntry.qrCard.id,
+                visibleCode: photo.vehicleEntry.qrCard.visibleCode,
+                publicToken: photo.vehicleEntry.qrCard.publicToken,
+                status: photo.vehicleEntry.qrCard.status,
+                vehicleEntryId: photo.vehicleEntry.qrCard.vehicleEntryId,
+                printedAt: photo.vehicleEntry.qrCard.printedAt?.toISOString() ?? null,
+                assignedAt: photo.vehicleEntry.qrCard.assignedAt?.toISOString() ?? null,
+              }
+            : null,
+        },
+      })),
+    };
+  });
+
+  app.get("/photos/review/:id/image", async (request, reply) => {
+    await requireAdmin(app, request);
+    const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
+    const photo = await prisma.vehiclePhoto.findFirst({
+      where: { id: params.id, vehicleEntry: { eventId }, storageKey: { not: null } },
+      select: { storageKey: true, contentType: true },
+    });
+    if (!photo?.storageKey) throw app.httpErrors.notFound("Photo image not found");
+
+    const bytes = await deps.storage.getBytes(photo.storageKey);
+    reply.header("Content-Type", photo.contentType ?? "application/octet-stream");
+    reply.header("Cache-Control", "private, max-age=30");
+    return reply.send(bytes);
+  });
+
+  app.patch("/photos/review/:id", async (request) => {
+    await requireAdmin(app, request);
+    const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
+    const body = z.object({ status: z.enum(["APPROVED", "REJECTED"]) }).parse(request.body);
+
+    const photo = await prisma.vehiclePhoto.findFirst({
+      where: { id: params.id, vehicleEntry: { eventId } },
+      select: { id: true, storageKey: true, moderationStatus: true },
+    });
+    if (!photo) throw app.httpErrors.notFound("Photo not found");
+
+    if (body.status === "APPROVED") {
+      let storageKey = photo.storageKey;
+      let url: string | null = null;
+      if (storageKey && !storageKey.startsWith("public/")) {
+        const moved = await deps.storage.moveToPublic(photo.id);
+        storageKey = moved.storageKey;
+      }
+      if (storageKey) url = deps.storage.publicUrl(storageKey);
+
+      const updated = await prisma.vehiclePhoto.update({
+        where: { id: photo.id },
+        data: {
+          moderationStatus: "APPROVED",
+          storageKey,
+          url,
+          processedAt: new Date(),
+          processingStartedAt: null,
+        },
+      });
+      return { photo: updated };
+    }
+
+    if (photo.storageKey && !photo.storageKey.startsWith("public/")) {
+      await deps.storage.deletePending(photo.id).catch((err) =>
+        app.log.warn({ err, photoId: photo.id }, "could not delete rejected pending photo bytes"),
+      );
+    }
+
+    const updated = await prisma.vehiclePhoto.update({
+      where: { id: photo.id },
+      data: {
+        moderationStatus: "REJECTED",
+        processedAt: new Date(),
+        processingStartedAt: null,
+      },
+    });
+    return { photo: updated };
+  });
+
   app.post(
     "/v/:publicToken/photos",
     { config: { rateLimit: { max: 12, timeWindow: "1 minute" } } },

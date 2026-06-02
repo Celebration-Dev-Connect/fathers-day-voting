@@ -4,6 +4,8 @@ import type {
   CategoryVotingTally,
   DashboardMetrics,
   JudgeCategoryCompletion,
+  PhotoModerationStatus,
+  PhotoReviewItem,
   QrCard,
   Registration,
   RegistrationPayload,
@@ -161,4 +163,27 @@ export async function updateCategoryWinners(
     method: "PUT",
     body: JSON.stringify({ winners, reason }),
   });
+}
+
+export type PhotoReviewQueue = "needs-review" | "approved" | "rejected" | "all";
+
+export async function listPhotoReviews(status: PhotoReviewQueue) {
+  const params = new URLSearchParams({ status });
+  return request<{ photos: PhotoReviewItem[] }>(`/photos/review?${params.toString()}`);
+}
+
+export async function updatePhotoReviewStatus(id: string, status: Extract<PhotoModerationStatus, "APPROVED" | "REJECTED">) {
+  return request<{ photo: { id: string; moderationStatus: PhotoModerationStatus } }>(`/photos/review/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function getPhotoReviewImageUrl(id: string) {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/photos/review/${encodeURIComponent(id)}/image`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) throw new Error(`Image failed with ${response.status}`);
+  return URL.createObjectURL(await response.blob());
 }

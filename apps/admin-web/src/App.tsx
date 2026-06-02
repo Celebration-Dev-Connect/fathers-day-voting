@@ -6,10 +6,11 @@ import { Sidebar } from "./organisms/Sidebar";
 import { CategoriesView } from "./views/CategoriesView";
 import { DashboardView } from "./views/DashboardView";
 import { QrCardsView } from "./views/QrCardsView";
+import { PhotoReviewView } from "./views/PhotoReviewView";
 import { RegistrationsView } from "./views/RegistrationsView";
 import { VotingView } from "./views/VotingView";
 
-export type View = "dashboard" | "registrations" | "qr-cards" | "categories" | "voting";
+export type View = "dashboard" | "registrations" | "qr-cards" | "categories" | "photo-review" | "voting";
 
 const DEV_LOGIN_OPTIONS = [
   { label: "Admin User", email: "admin@carshow.local" },
@@ -136,6 +137,7 @@ function AdminShellConnected({
       {view === "categories" ? (
         <CategoriesView staff={staff} categories={categories} onRefresh={refresh} />
       ) : null}
+      {view === "photo-review" ? <PhotoReviewView /> : null}
       {view === "voting" ? <VotingView staff={staff} /> : null}
     </AdminShellTemplate>
   );

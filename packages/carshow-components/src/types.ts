@@ -67,6 +67,25 @@ export type VehiclePhoto = {
   createdAt: string;
 };
 
+export type PhotoModerationStatus = "PENDING" | "PROCESSING" | "HUMAN_REVIEW" | "APPROVED" | "REJECTED" | "FAILED";
+export type PhotoSource = "STAFF" | "VISITOR";
+
+export type PhotoReviewItem = {
+  id: string;
+  url?: string | null;
+  contentType?: string | null;
+  altText?: string | null;
+  sortOrder: number;
+  moderationStatus: PhotoModerationStatus;
+  moderationLabels?: unknown;
+  source: PhotoSource;
+  uploadedBy?: string | null;
+  processingStartedAt?: string | null;
+  processedAt?: string | null;
+  createdAt: string;
+  vehicleEntry: Registration;
+};
+
 export type Registration = {
   id: string;
   entryNumber: number;

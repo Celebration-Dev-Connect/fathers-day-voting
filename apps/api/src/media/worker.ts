@@ -74,8 +74,8 @@ export class PhotoModerationWorker {
       if (result.decision === "APPROVED") {
 
         const [mediumBytes, thumbBytes] = await Promise.all([
-          sharp(originalBytes).resize(192, 144, { fit: "cover" }).webp({ quality: 82 }).toBuffer(),
-          sharp(originalBytes).resize(56, 56, { fit: "cover" }).webp({ quality: 80 }).toBuffer(),
+          sharp(originalBytes).resize(384, 288, { fit: "cover" }).webp({ quality: 82 }).toBuffer(),
+          sharp(originalBytes).resize(128, 128, { fit: "cover" }).webp({ quality: 80 }).toBuffer(),
         ]);
 
         const [{ storageKey: mediumKey }, { storageKey: thumbKey }, { storageKey }] = await Promise.all([

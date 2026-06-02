@@ -1994,8 +1994,8 @@ textarea:focus {
   position: relative;
   flex-shrink: 0;
   scroll-snap-align: start;
-  width: 56px;
-  height: 56px;
+  width: 80px;
+  height: 80px;
   padding: 0;
   border: 2px solid transparent;
   border-radius: 4px;

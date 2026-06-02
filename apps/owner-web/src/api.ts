@@ -19,6 +19,7 @@ export type OwnerVehicle = {
   plateNumber: string | null;
   exteriorColor: string | null;
   buildStory: string;
+  ownerAccessCode: string;
   status: "DRAFT" | "REGISTERED" | "CHECKED_IN";
   category: { id: string; name: string; slug: string };
   owner: {
@@ -32,6 +33,16 @@ export type OwnerVehicle = {
     waiverAccepted: boolean;
   };
   photos: OwnerPhoto[];
+};
+
+export type OwnerVehicleSummary = {
+  id: string;
+  entryNumber: number;
+  year: number;
+  make: string;
+  model: string;
+  nickname: string | null;
+  category: { id: string; name: string; slug: string };
 };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -48,12 +59,26 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function getOwnerVehicle(publicToken: string) {
-  return request<{ vehicle: OwnerVehicle }>(`/owner/vehicles/${encodeURIComponent(publicToken)}`);
+function ownerHeaders(token: string) {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function createOwnerSession(payload: { lastName: string; accessCode: string }) {
+  return request<{ token: string; vehicle: OwnerVehicle; vehicles: OwnerVehicleSummary[] }>("/owner/session", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getOwnerVehicle(vehicleId: string, token: string) {
+  return request<{ vehicle: OwnerVehicle; vehicles: OwnerVehicleSummary[] }>(`/owner/vehicles/${encodeURIComponent(vehicleId)}`, {
+    headers: ownerHeaders(token),
+  });
 }
 
 export async function updateOwnerVehicle(
-  publicToken: string,
+  vehicleId: string,
+  token: string,
   payload: {
     owner: {
       firstName: string;
@@ -74,17 +99,19 @@ export async function updateOwnerVehicle(
     };
   },
 ) {
-  return request<{ vehicle: OwnerVehicle }>(`/owner/vehicles/${encodeURIComponent(publicToken)}`, {
+  return request<{ vehicle: OwnerVehicle; vehicles: OwnerVehicleSummary[] }>(`/owner/vehicles/${encodeURIComponent(vehicleId)}`, {
     method: "PATCH",
+    headers: ownerHeaders(token),
     body: JSON.stringify(payload),
   });
 }
 
-export async function uploadOwnerPhoto(publicToken: string, file: File) {
+export async function uploadOwnerPhoto(vehicleId: string, token: string, file: File) {
   const form = new FormData();
   form.append("file", file);
-  return request<{ id: string; status: "PENDING" }>(`/v/${encodeURIComponent(publicToken)}/photos`, {
+  return request<{ id: string; status: "PENDING" }>(`/owner/vehicles/${encodeURIComponent(vehicleId)}/photos`, {
     method: "POST",
+    headers: ownerHeaders(token),
     body: form,
   });
 }

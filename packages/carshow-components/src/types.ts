@@ -98,6 +98,7 @@ export type Registration = {
   plateNumber?: string | null;
   exteriorColor?: string | null;
   internalNotes?: string | null;
+  ownerAccessCode: string;
   status: VehicleStatus;
   checkedInAt?: string | null;
   owner: Owner;

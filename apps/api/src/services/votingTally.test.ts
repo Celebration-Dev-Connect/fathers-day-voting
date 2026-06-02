@@ -28,6 +28,7 @@ function registration(id: string, entryNumber: number): VotingRegistration {
     categoryId: category.id,
     registeredByStaffId: null,
     entryNumber,
+    ownerAccessCode: entryNumber.toString().padStart(5, "0"),
     year: 1969,
     make: "Chevrolet",
     model: "Camaro",

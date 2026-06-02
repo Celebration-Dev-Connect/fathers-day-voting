@@ -7,6 +7,7 @@ import { requireAdmin, requireStaff } from "../auth.js";
 import { config, eventId } from "../config.js";
 import type { PhotoModerationWorker } from "../media/worker.js";
 import type { PhotoStorage } from "../media/storage/index.js";
+import { requireOwnerVehicle } from "./owner.js";
 
 type PhotosDeps = { storage: PhotoStorage; worker: PhotoModerationWorker };
 
@@ -253,6 +254,18 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
       if (!qrCard?.vehicleEntryId) throw app.httpErrors.notFound("Vehicle not found");
       const image = await readUploadedImage(app, request);
       const result = await createPendingPhoto(app, deps, qrCard.vehicleEntryId, `visitor:${request.ip}`, "VISITOR", image);
+      return reply.code(202).send(result);
+    },
+  );
+
+  app.post(
+    "/owner/vehicles/:id/photos",
+    { config: { rateLimit: { max: 20, timeWindow: "15 minutes" } } },
+    async (request, reply) => {
+      const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
+      const { vehicle } = await requireOwnerVehicle(app, request, params.id);
+      const image = await readUploadedImage(app, request);
+      const result = await createPendingPhoto(app, deps, vehicle.id, `owner:${vehicle.ownerId}`, "VISITOR", image);
       return reply.code(202).send(result);
     },
   );

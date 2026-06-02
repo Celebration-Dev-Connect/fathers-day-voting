@@ -16,6 +16,10 @@ async function nextEntryNumber() {
   return (latest?.entryNumber ?? 0) + 1;
 }
 
+function accessCodeForEntry(entryNumber: number) {
+  return (entryNumber % 100000).toString().padStart(5, "0");
+}
+
 export async function registerRegistrationRoutes(app: FastifyInstance) {
   app.get("/registrations/metrics", async (request) => {
     await requireStaff(app, request);
@@ -54,6 +58,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
           { owner: { lastName: { contains: search, mode: "insensitive" } } },
           { owner: { phone: { contains: search, mode: "insensitive" } } },
           { owner: { email: { contains: search, mode: "insensitive" } } },
+          { ownerAccessCode: { contains: search } },
           { qrCard: { visibleCode: { contains: search, mode: "insensitive" } } },
           { qrCard: { publicToken: { contains: search, mode: "insensitive" } } },
         ]
@@ -98,6 +103,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
       throw app.httpErrors.badRequest("Active category is required");
     }
 
+    const entryNumber = await nextEntryNumber();
     const registration = await prisma.$transaction(async (tx) => {
       const owner = await tx.owner.create({
         data: {
@@ -111,7 +117,8 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
           eventId,
           ownerId: owner.id,
           categoryId: body.vehicle.categoryId,
-          entryNumber: await nextEntryNumber(),
+          entryNumber,
+          ownerAccessCode: accessCodeForEntry(entryNumber),
           year: body.vehicle.year,
           make: body.vehicle.make,
           model: body.vehicle.model,

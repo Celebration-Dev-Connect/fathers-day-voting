@@ -1,5 +1,5 @@
 import { Prisma, prisma } from "@carshow/db";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { eventId } from "../config.js";
 
@@ -10,6 +10,32 @@ type OwnerVehiclePayload = Prisma.VehicleEntryGetPayload<{
 function nullableText(value: string | null | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+type OwnerSession = {
+  ownerSession: true;
+  ownerId: string;
+  vehicleEntryId: string;
+};
+
+function normalizeAccessCode(value: string) {
+  return value.replace(/\D/g, "").slice(0, 5);
+}
+
+function ownerVehicleSummary(vehicle: OwnerVehiclePayload) {
+  return {
+    id: vehicle.id,
+    entryNumber: vehicle.entryNumber,
+    year: vehicle.year,
+    make: vehicle.make,
+    model: vehicle.model,
+    nickname: vehicle.nickname ?? null,
+    category: {
+      id: vehicle.category.id,
+      name: vehicle.category.name,
+      slug: vehicle.category.slug,
+    },
+  };
 }
 
 function ownerVehicleResponse(vehicle: OwnerVehiclePayload) {
@@ -23,6 +49,7 @@ function ownerVehicleResponse(vehicle: OwnerVehiclePayload) {
     plateNumber: vehicle.plateNumber ?? null,
     exteriorColor: vehicle.exteriorColor ?? null,
     buildStory: vehicle.buildStory ?? "",
+    ownerAccessCode: vehicle.ownerAccessCode,
     status: vehicle.status,
     category: {
       id: vehicle.category.id,
@@ -50,15 +77,9 @@ function ownerVehicleResponse(vehicle: OwnerVehiclePayload) {
   };
 }
 
-async function findOwnerVehicleByToken(publicToken: string) {
-  const qrCard = await prisma.qrCard.findFirst({
-    where: { eventId, publicToken },
-    select: { vehicleEntryId: true },
-  });
-  if (!qrCard?.vehicleEntryId) return null;
-
+async function findOwnerVehicleById(vehicleId: string, ownerId?: string) {
   return prisma.vehicleEntry.findFirst({
-    where: { id: qrCard.vehicleEntryId, eventId },
+    where: { id: vehicleId, eventId, ...(ownerId ? { ownerId } : {}) },
     include: {
       owner: true,
       category: true,
@@ -67,16 +88,82 @@ async function findOwnerVehicleByToken(publicToken: string) {
   });
 }
 
+async function findOwnerVehicles(ownerId: string) {
+  return prisma.vehicleEntry.findMany({
+    where: { ownerId, eventId },
+    include: {
+      owner: true,
+      category: true,
+      photos: { orderBy: { sortOrder: "asc" } },
+    },
+    orderBy: { entryNumber: "asc" },
+  });
+}
+
+export async function requireOwnerVehicle(app: FastifyInstance, request: FastifyRequest, vehicleId: string) {
+  const authorization = z.object({ authorization: z.string().optional() }).parse(request.headers).authorization;
+  if (!authorization?.startsWith("Bearer ")) throw app.httpErrors.unauthorized("Missing owner session");
+
+  const session = app.jwt.verify<OwnerSession>(authorization.replace("Bearer ", ""));
+  if (!session.ownerSession || !session.ownerId) throw app.httpErrors.unauthorized("Invalid owner session");
+
+  const vehicle = await findOwnerVehicleById(vehicleId, session.ownerId);
+  if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
+  return { session, vehicle };
+}
+
 export async function registerOwnerRoutes(app: FastifyInstance) {
-  app.get("/owner/vehicles/:publicToken", async (request) => {
-    const params = z.object({ publicToken: z.string().trim().min(1) }).parse(request.params);
-    const vehicle = await findOwnerVehicleByToken(params.publicToken);
-    if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
-    return { vehicle: ownerVehicleResponse(vehicle) };
+  app.post("/owner/session", async (request) => {
+    const body = z
+      .object({
+        lastName: z.string().trim().min(1).max(80),
+        accessCode: z.string().trim().min(1),
+      })
+      .parse(request.body);
+    const accessCode = normalizeAccessCode(body.accessCode);
+    if (accessCode.length !== 5) throw app.httpErrors.badRequest("Access code must be 5 digits");
+
+    const vehicle = await prisma.vehicleEntry.findFirst({
+      where: {
+        eventId,
+        ownerAccessCode: accessCode,
+        owner: { lastName: { equals: body.lastName, mode: "insensitive" } },
+      },
+      include: {
+        owner: true,
+        category: true,
+        photos: { orderBy: { sortOrder: "asc" } },
+      },
+    });
+
+    if (!vehicle) throw app.httpErrors.unauthorized("Last name or access code did not match");
+
+    const vehicles = await findOwnerVehicles(vehicle.ownerId);
+    const signOwnerToken = app.jwt.sign as unknown as (payload: OwnerSession, options: { expiresIn: string }) => string;
+    const token = signOwnerToken(
+      { ownerSession: true, ownerId: vehicle.ownerId, vehicleEntryId: vehicle.id },
+      { expiresIn: "14d" },
+    );
+
+    return {
+      token,
+      vehicle: ownerVehicleResponse(vehicle),
+      vehicles: vehicles.map(ownerVehicleSummary),
+    };
   });
 
-  app.patch("/owner/vehicles/:publicToken", async (request) => {
-    const params = z.object({ publicToken: z.string().trim().min(1) }).parse(request.params);
+  app.get("/owner/vehicles/:id", async (request) => {
+    const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
+    const { vehicle, session } = await requireOwnerVehicle(app, request, params.id);
+    const vehicles = await findOwnerVehicles(session.ownerId);
+    return {
+      vehicle: ownerVehicleResponse(vehicle),
+      vehicles: vehicles.map(ownerVehicleSummary),
+    };
+  });
+
+  app.patch("/owner/vehicles/:id", async (request) => {
+    const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
     const body = z
       .object({
         owner: z
@@ -103,8 +190,7 @@ export async function registerOwnerRoutes(app: FastifyInstance) {
       })
       .parse(request.body);
 
-    const vehicle = await findOwnerVehicleByToken(params.publicToken);
-    if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
+    const { vehicle, session } = await requireOwnerVehicle(app, request, params.id);
 
     await prisma.$transaction(async (tx) => {
       if (body.owner) {
@@ -137,8 +223,9 @@ export async function registerOwnerRoutes(app: FastifyInstance) {
       }
     });
 
-    const updated = await findOwnerVehicleByToken(params.publicToken);
+    const updated = await findOwnerVehicleById(params.id, session.ownerId);
     if (!updated) throw app.httpErrors.notFound("Vehicle not found");
-    return { vehicle: ownerVehicleResponse(updated) };
+    const vehicles = await findOwnerVehicles(session.ownerId);
+    return { vehicle: ownerVehicleResponse(updated), vehicles: vehicles.map(ownerVehicleSummary) };
   });
 }

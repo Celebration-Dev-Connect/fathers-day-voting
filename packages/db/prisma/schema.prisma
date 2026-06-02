@@ -121,6 +121,7 @@ model VehicleEntry {
   exteriorColor        String?
   internalNotes        String?
   buildStory           String?
+  ownerAccessCode      String
   status               VehicleStatus          @default(REGISTERED)
   source               RegistrationSource     @default(ONSITE)
   checkedInAt          DateTime?
@@ -139,8 +140,10 @@ model VehicleEntry {
   photos               VehiclePhoto[]
 
   @@unique([eventId, entryNumber])
+  @@unique([eventId, ownerAccessCode])
   @@index([eventId, status])
   @@index([eventId, categoryId])
+  @@index([ownerId])
 }
 
 enum PhotoModerationStatus {

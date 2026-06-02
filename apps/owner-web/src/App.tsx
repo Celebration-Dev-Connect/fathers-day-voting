@@ -1,8 +1,23 @@
-import { ArrowLeft, Camera, CheckCircle2, CircleAlert, CloudUpload, ImagePlus, Loader2, Save } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Camera, CheckCircle2, CircleAlert, CloudUpload, ImagePlus, Loader2, LogOut, Save } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Route, Routes, useNavigate } from "react-router-dom";
 import { formatPhone } from "@carshow/carshow-components";
-import { getOwnerVehicle, type OwnerPhoto, type OwnerVehicle, updateOwnerVehicle, uploadOwnerPhoto } from "./api";
+import {
+  createOwnerSession,
+  getOwnerVehicle,
+  type OwnerPhoto,
+  type OwnerVehicle,
+  type OwnerVehicleSummary,
+  updateOwnerVehicle,
+  uploadOwnerPhoto,
+} from "./api";
+
+const OWNER_SESSION_KEY = "carshow-owner-session";
+
+type StoredOwnerSession = {
+  token: string;
+  vehicleId: string;
+};
 
 function AppHeader() {
   return (
@@ -16,15 +31,65 @@ function AppHeader() {
   );
 }
 
-function EmptyTokenView() {
+function OwnerLoginView({
+  onLogin,
+}: {
+  onLogin: (session: StoredOwnerSession, vehicle: OwnerVehicle, vehicles: OwnerVehicleSummary[]) => void;
+}) {
+  const [lastName, setLastName] = useState("");
+  const [accessCode, setAccessCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const result = await createOwnerSession({ lastName, accessCode });
+      const session = { token: result.token, vehicleId: result.vehicle.id };
+      localStorage.setItem(OWNER_SESSION_KEY, JSON.stringify(session));
+      onLogin(session, result.vehicle, result.vehicles);
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main className="owner-page owner-page-centered">
-      <section className="owner-card owner-empty">
-        <CircleAlert aria-hidden="true" />
-        <h2>Vehicle link needed</h2>
-        <p>Open this page from the owner QR or staff-provided owner link to edit photos and your build story.</p>
-      </section>
-    </main>
+    <>
+      <AppHeader />
+      <main className="owner-page owner-page-centered">
+        <form className="owner-card owner-login" onSubmit={submit}>
+          <p className="owner-header-brand">Owner Access</p>
+          <h2>Manage your vehicle</h2>
+          <p className="owner-muted">
+            Enter your last name and the 5 digit vehicle access code from your owner email.
+          </p>
+          {error ? <p className="owner-upload-error">{error}</p> : null}
+          <label>
+            Last name
+            <input value={lastName} autoComplete="family-name" onChange={(event) => setLastName(event.target.value)} />
+          </label>
+          <label>
+            5 digit code
+            <input
+              value={accessCode}
+              inputMode="numeric"
+              maxLength={5}
+              pattern="\d{5}"
+              placeholder="00000"
+              onChange={(event) => setAccessCode(event.target.value.replace(/\D/g, "").slice(0, 5))}
+            />
+          </label>
+          <button type="submit" disabled={loading || !lastName.trim() || accessCode.length !== 5}>
+            {loading ? <Loader2 className="spin" aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
+            {loading ? "Checking..." : "Log In"}
+          </button>
+        </form>
+      </main>
+    </>
   );
 }
 
@@ -109,12 +174,12 @@ function OwnerPhotoUploadDialog({
   vehicle,
   onClose,
   onUploaded,
-  publicToken,
+  token,
 }: {
   vehicle: OwnerVehicle;
   onClose: () => void;
   onUploaded: () => void;
-  publicToken: string;
+  token: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -143,7 +208,7 @@ function OwnerPhotoUploadDialog({
     setUploading(true);
     setError("");
     try {
-      await uploadOwnerPhoto(publicToken, file);
+      await uploadOwnerPhoto(vehicle.id, token, file);
       onUploaded();
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed");
@@ -198,9 +263,19 @@ function OwnerPhotoUploadDialog({
 }
 
 function OwnerPortal() {
-  const { publicToken } = useParams();
   const navigate = useNavigate();
+  const [session, setSession] = useState<StoredOwnerSession | null>(() => {
+    const raw = localStorage.getItem(OWNER_SESSION_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as StoredOwnerSession;
+    } catch {
+      localStorage.removeItem(OWNER_SESSION_KEY);
+      return null;
+    }
+  });
   const [vehicle, setVehicle] = useState<OwnerVehicle | null>(null);
+  const [vehicles, setVehicles] = useState<OwnerVehicleSummary[]>([]);
   const [buildStory, setBuildStory] = useState("");
   const [ownerFirstName, setOwnerFirstName] = useState("");
   const [ownerLastName, setOwnerLastName] = useState("");
@@ -221,32 +296,46 @@ function OwnerPortal() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  function hydrateVehicle(nextVehicle: OwnerVehicle) {
+    setVehicle(nextVehicle);
+    setBuildStory(nextVehicle.buildStory);
+    setOwnerFirstName(nextVehicle.owner.firstName);
+    setOwnerLastName(nextVehicle.owner.lastName);
+    setOwnerPhone(formatPhone(nextVehicle.owner.phone));
+    setOwnerEmail(nextVehicle.owner.email ?? "");
+    setOwnerPublicName(nextVehicle.owner.publicName ?? "");
+    setYear(nextVehicle.year);
+    setMake(nextVehicle.make);
+    setModel(nextVehicle.model);
+    setNickname(nextVehicle.nickname ?? "");
+    setPlateNumber(nextVehicle.plateNumber ?? "");
+    setExteriorColor(nextVehicle.exteriorColor ?? "");
+    setPublicNameOptIn(nextVehicle.owner.publicNameOptIn);
+    setSelectedPhotoId(nextVehicle.photos.find((photo) => photo.url)?.id ?? null);
+  }
+
   useEffect(() => {
     let ignore = false;
-    if (!publicToken) return;
+    if (!session) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
-    getOwnerVehicle(publicToken)
-      .then(({ vehicle: nextVehicle }) => {
+    getOwnerVehicle(session.vehicleId, session.token)
+      .then(({ vehicle: nextVehicle, vehicles: nextVehicles }) => {
         if (ignore) return;
-        setVehicle(nextVehicle);
-        setBuildStory(nextVehicle.buildStory);
-        setOwnerFirstName(nextVehicle.owner.firstName);
-        setOwnerLastName(nextVehicle.owner.lastName);
-        setOwnerPhone(formatPhone(nextVehicle.owner.phone));
-        setOwnerEmail(nextVehicle.owner.email ?? "");
-        setOwnerPublicName(nextVehicle.owner.publicName ?? "");
-        setYear(nextVehicle.year);
-        setMake(nextVehicle.make);
-        setModel(nextVehicle.model);
-        setNickname(nextVehicle.nickname ?? "");
-        setPlateNumber(nextVehicle.plateNumber ?? "");
-        setExteriorColor(nextVehicle.exteriorColor ?? "");
-        setPublicNameOptIn(nextVehicle.owner.publicNameOptIn);
-        setSelectedPhotoId(nextVehicle.photos.find((photo) => photo.url)?.id ?? null);
+        hydrateVehicle(nextVehicle);
+        setVehicles(nextVehicles);
       })
       .catch((err) => {
-        if (!ignore) setError(err instanceof Error ? err.message : "Load failed");
+        if (!ignore) {
+          localStorage.removeItem(OWNER_SESSION_KEY);
+          setSession(null);
+          setVehicle(null);
+          setVehicles([]);
+          setError(err instanceof Error ? err.message : "Load failed");
+        }
       })
       .finally(() => {
         if (!ignore) setLoading(false);
@@ -254,7 +343,7 @@ function OwnerPortal() {
     return () => {
       ignore = true;
     };
-  }, [publicToken]);
+  }, [session?.token, session?.vehicleId]);
 
   const selectedPhoto = useMemo(
     () => vehicle?.photos.find((photo) => photo.id === selectedPhotoId && photo.url) ?? vehicle?.photos.find((photo) => photo.url),
@@ -278,12 +367,12 @@ function OwnerPortal() {
       publicNameOptIn !== vehicle.owner.publicNameOptIn);
 
   async function handleSave() {
-    if (!publicToken) return;
+    if (!session || !vehicle) return;
     setSaving(true);
     setError(null);
     setMessage(null);
     try {
-      const result = await updateOwnerVehicle(publicToken, {
+      const result = await updateOwnerVehicle(vehicle.id, session.token, {
         owner: {
           firstName: ownerFirstName,
           lastName: ownerLastName,
@@ -302,20 +391,8 @@ function OwnerPortal() {
           exteriorColor: exteriorColor.trim() || null,
         },
       });
-      setVehicle(result.vehicle);
-      setBuildStory(result.vehicle.buildStory);
-      setOwnerFirstName(result.vehicle.owner.firstName);
-      setOwnerLastName(result.vehicle.owner.lastName);
-      setOwnerPhone(formatPhone(result.vehicle.owner.phone));
-      setOwnerEmail(result.vehicle.owner.email ?? "");
-      setOwnerPublicName(result.vehicle.owner.publicName ?? "");
-      setYear(result.vehicle.year);
-      setMake(result.vehicle.make);
-      setModel(result.vehicle.model);
-      setNickname(result.vehicle.nickname ?? "");
-      setPlateNumber(result.vehicle.plateNumber ?? "");
-      setExteriorColor(result.vehicle.exteriorColor ?? "");
-      setPublicNameOptIn(result.vehicle.owner.publicNameOptIn);
+      hydrateVehicle(result.vehicle);
+      setVehicles(result.vehicles);
       setMessage("Saved");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -324,16 +401,45 @@ function OwnerPortal() {
     }
   }
 
-  if (!publicToken) return <EmptyTokenView />;
+  function handleLogin(nextSession: StoredOwnerSession, nextVehicle: OwnerVehicle, nextVehicles: OwnerVehicleSummary[]) {
+    setSession(nextSession);
+    hydrateVehicle(nextVehicle);
+    setVehicles(nextVehicles);
+    setError(null);
+  }
+
+  function logout() {
+    localStorage.removeItem(OWNER_SESSION_KEY);
+    setSession(null);
+    setVehicle(null);
+    setVehicles([]);
+    setMessage(null);
+    setError(null);
+  }
+
+  async function switchVehicle(vehicleId: string) {
+    if (!session || vehicleId === vehicle?.id) return;
+    const nextSession = { ...session, vehicleId };
+    localStorage.setItem(OWNER_SESSION_KEY, JSON.stringify(nextSession));
+    setSession(nextSession);
+  }
+
+  if (!session) return <OwnerLoginView onLogin={handleLogin} />;
 
   return (
     <>
       <AppHeader />
       <main className="owner-page">
-        <button className="owner-back" type="button" onClick={() => navigate(-1)}>
-          <ArrowLeft aria-hidden="true" />
-          Back
-        </button>
+        <div className="owner-top-actions">
+          <button className="owner-back" type="button" onClick={() => navigate(-1)}>
+            <ArrowLeft aria-hidden="true" />
+            Back
+          </button>
+          <button className="owner-logout" type="button" onClick={logout}>
+            <LogOut aria-hidden="true" />
+            Log Out
+          </button>
+        </div>
 
         {loading ? (
           <section className="owner-card owner-loading">
@@ -352,6 +458,21 @@ function OwnerPortal() {
 
         {vehicle ? (
           <div className="owner-layout">
+            {vehicles.length > 1 ? (
+              <section className="owner-card owner-vehicle-switcher">
+                <label>
+                  Your vehicles
+                  <select value={vehicle.id} onChange={(event) => void switchVehicle(event.target.value)}>
+                    {vehicles.map((ownedVehicle) => (
+                      <option key={ownedVehicle.id} value={ownedVehicle.id}>
+                        #{ownedVehicle.entryNumber} {ownedVehicle.year} {ownedVehicle.make} {ownedVehicle.model}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </section>
+            ) : null}
+
             <section className="owner-profile-card">
               <div className="owner-hero-photo">
                 {selectedPhoto?.url ? (
@@ -493,12 +614,13 @@ function OwnerPortal() {
       {uploadOpen && vehicle ? (
         <OwnerPhotoUploadDialog
           vehicle={vehicle}
-          publicToken={publicToken}
+          token={session.token}
           onClose={() => setUploadOpen(false)}
           onUploaded={() => {
             setUploadOpen(false);
-            if (publicToken) void getOwnerVehicle(publicToken).then(({ vehicle: nextVehicle }) => {
-              setVehicle(nextVehicle);
+            void getOwnerVehicle(vehicle.id, session.token).then(({ vehicle: nextVehicle, vehicles: nextVehicles }) => {
+              hydrateVehicle(nextVehicle);
+              setVehicles(nextVehicles);
               setSelectedPhotoId(nextVehicle.photos.find((photo) => photo.url)?.id ?? null);
               setMessage("Photo uploaded for review");
             });
@@ -525,9 +647,7 @@ function OwnerPortal() {
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<EmptyTokenView />} />
-      <Route path="/:publicToken" element={<OwnerPortal />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<OwnerPortal />} />
     </Routes>
   );
 }

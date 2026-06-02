@@ -28,6 +28,7 @@ export function RegistrationRow({
       <Badge variant="status" modifier={registration.status.toLowerCase()}>
         {registration.status.replace("_", " ")}
       </Badge>
+      <Badge variant="qr-pill">Owner {registration.ownerAccessCode}</Badge>
       <Badge variant="qr-pill">{registration.qrCard?.visibleCode ?? "No QR"}</Badge>
     </button>
   );

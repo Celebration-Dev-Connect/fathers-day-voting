@@ -118,6 +118,11 @@ export function RegistrationEditor({
 
       {message ? <Alert variant="success">{message}</Alert> : null}
       {error ? <Alert variant="danger">{error}</Alert> : null}
+      {registration ? (
+        <Alert variant="info">
+          Owner app access code: <strong>{registration.ownerAccessCode}</strong>
+        </Alert>
+      ) : null}
 
       <div className="form-grid">
         <label>

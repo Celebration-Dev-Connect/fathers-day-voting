@@ -73,6 +73,8 @@ export type PhotoSource = "STAFF" | "VISITOR";
 export type PhotoReviewItem = {
   id: string;
   url?: string | null;
+  mediumUrl?: string | null;
+  thumbUrl?: string | null;
   contentType?: string | null;
   altText?: string | null;
   sortOrder: number;

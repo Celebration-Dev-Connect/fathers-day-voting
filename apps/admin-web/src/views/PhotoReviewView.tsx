@@ -1,4 +1,4 @@
-import { Check, ImageOff, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, Check, ImageOff, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { Alert, Button, PageHeader, formatDateTime } from "@carshow/carshow-components";
 import type { PhotoModerationStatus, PhotoReviewItem } from "@carshow/carshow-components";
 import { useEffect, useMemo, useState } from "react";
@@ -51,27 +51,46 @@ function labelSummary(labels: unknown) {
 }
 
 function PhotoPreview({ photo, large = false }: { photo: PhotoReviewItem; large?: boolean }) {
-  const [blobUrl, setBlobUrl] = useState("");
+  const directUrl = large ? photo.mediumUrl ?? photo.url : photo.thumbUrl ?? photo.mediumUrl ?? photo.url;
+  const [previewUrl, setPreviewUrl] = useState("");
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let ignore = false;
     let nextUrl = "";
     setFailed(false);
-    setBlobUrl("");
-    getPhotoReviewImageUrl(photo.id)
-      .then((url) => {
-        nextUrl = url;
-        if (!ignore) setBlobUrl(url);
-      })
-      .catch(() => {
-        if (!ignore) setFailed(true);
-      });
+    setPreviewUrl("");
+
+    if (directUrl) {
+      setPreviewUrl(directUrl);
+    } else {
+      getPhotoReviewImageUrl(photo.id)
+        .then((url) => {
+          nextUrl = url;
+          if (!ignore) setPreviewUrl(url);
+        })
+        .catch(() => {
+          if (!ignore) setFailed(true);
+        });
+    }
+
     return () => {
       ignore = true;
       if (nextUrl) URL.revokeObjectURL(nextUrl);
     };
-  }, [photo.id]);
+  }, [directUrl, photo.id]);
+
+  async function handleImageError() {
+    if (!directUrl || previewUrl.startsWith("blob:")) {
+      setFailed(true);
+      return;
+    }
+    try {
+      setPreviewUrl(await getPhotoReviewImageUrl(photo.id));
+    } catch {
+      setFailed(true);
+    }
+  }
 
   if (failed) {
     return (
@@ -82,13 +101,13 @@ function PhotoPreview({ photo, large = false }: { photo: PhotoReviewItem; large?
     );
   }
 
-  if (!blobUrl) {
+  if (!previewUrl) {
     return <div className={`photo-review-preview ${large ? "large" : ""} is-loading`}>Loading photo...</div>;
   }
 
   return (
     <div className={`photo-review-preview ${large ? "large" : ""}`}>
-      <img src={blobUrl} alt={photo.altText ?? vehicleTitle(photo)} />
+      <img src={previewUrl} alt={photo.altText ?? vehicleTitle(photo)} onError={handleImageError} />
     </div>
   );
 }
@@ -149,14 +168,27 @@ function PhotoReviewDrawer({
   return (
     <div className="photo-review-drawer-backdrop" role="presentation" onClick={onClose}>
       <aside className="photo-review-drawer" aria-label="Photo review detail" onClick={(event) => event.stopPropagation()}>
-        <div className="photo-review-drawer-header">
+        <div className="photo-review-top-banner">
           <div>
-            <p className="eyebrow">Photo Review</p>
-            <h2>Entry #{photo.vehicleEntry.entryNumber}</h2>
+            <p>Celebration Church</p>
+            <strong>Father's Day Car Show</strong>
           </div>
+          <span>Review</span>
+        </div>
+
+        <div className="photo-review-toolbar">
+          <button className="back-link" type="button" onClick={onClose}>
+            <ArrowLeft size={18} />
+            Back
+          </button>
           <Button variant="icon" onClick={onClose} aria-label="Close photo detail">
             <X size={20} />
           </Button>
+        </div>
+
+        <div className="photo-review-entry-heading">
+          <p className="eyebrow">Photo Review</p>
+          <h2>Entry #{photo.vehicleEntry.entryNumber}</h2>
         </div>
 
         <PhotoPreview photo={photo} large />
@@ -171,6 +203,10 @@ function PhotoReviewDrawer({
         </section>
 
         <dl className="photo-review-facts">
+          <div className="wide">
+            <dt>Photo ID</dt>
+            <dd>{photo.id}</dd>
+          </div>
           <div>
             <dt>Owner</dt>
             <dd>{ownerName(photo)}</dd>

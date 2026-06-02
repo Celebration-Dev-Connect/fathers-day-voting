@@ -122,6 +122,8 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
       photos: photos.map((photo) => ({
         id: photo.id,
         url: photo.url,
+        mediumUrl: photo.mediumUrl,
+        thumbUrl: photo.thumbUrl,
         contentType: photo.contentType,
         altText: photo.altText,
         sortOrder: photo.sortOrder,

@@ -12,13 +12,14 @@ terraform {
     }
   }
 
-  # Uncomment before multi-operator use. Create the bucket manually first — it
-  # cannot be managed by the same Terraform state it stores.
-  # backend "s3" {
-  #   bucket = "carshow-tf-state"
-  #   key    = "carshow/terraform.tfstate"
-  #   region = "ca-central-1"
-  # }
+  backend "s3" {
+    bucket               = "carshow-tf-state"
+    key                  = "terraform.tfstate"
+    region               = "ca-central-1"
+    workspace_key_prefix = "workspace"
+    dynamodb_table       = "carshow-tf-lock"
+    encrypt              = true
+  }
 }
 
 provider "aws" {

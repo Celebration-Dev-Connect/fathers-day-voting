@@ -47,12 +47,18 @@ export class RekognitionModerator implements ImageModerator {
         : { Bytes: input.bytes };
 
     // Step 1: check for unsafe content.
-    const modRes = await this.client.send(
-      new DetectModerationLabelsCommand({
-        Image: image,
-        MinConfidence: MODERATION_LABEL_MIN_CONFIDENCE,
-      }),
-    );
+    let modRes;
+    try {
+      modRes = await this.client.send(
+        new DetectModerationLabelsCommand({
+          Image: image,
+          MinConfidence: MODERATION_LABEL_MIN_CONFIDENCE,
+        }),
+      );
+    } catch (err) {
+      console.error("[rekognition-error]", JSON.stringify(err, Object.getOwnPropertyNames(err ?? {})));
+      throw err;
+    }
     const moderationLabels = modRes.ModerationLabels ?? [];
 
     if (moderationLabels.length > 0) {

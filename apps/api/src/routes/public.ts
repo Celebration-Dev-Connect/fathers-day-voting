@@ -83,7 +83,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
           include: {
             owner: true,
             category: true,
-            photos: { orderBy: { sortOrder: "asc" } },
+            photos: { where: { moderationStatus: "APPROVED" }, orderBy: { sortOrder: "asc" } },
           },
         },
       },
@@ -162,7 +162,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     const params = z.object({ entryNumber: z.coerce.number().int().positive() }).parse(request.params);
     const vehicle = await prisma.vehicleEntry.findFirst({
       where: { eventId, entryNumber: params.entryNumber, status: VehicleStatus.CHECKED_IN },
-      include: { owner: true, category: true, photos: { orderBy: { sortOrder: "asc" } } },
+      include: { owner: true, category: true, photos: { where: { moderationStatus: "APPROVED" }, orderBy: { sortOrder: "asc" } } },
     });
     if (!vehicle) throw app.httpErrors.notFound("Entry not found");
     return { vehicle: toPublicVehicle(vehicle) };
@@ -215,7 +215,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
       prisma.vehicleEntry.count({ where }),
       prisma.vehicleEntry.findMany({
         where,
-        include: { owner: true, category: true, photos: { orderBy: { sortOrder: "asc" }, take: 1 } },
+        include: { owner: true, category: true, photos: { where: { moderationStatus: "APPROVED" }, orderBy: { sortOrder: "asc" }, take: 1 } },
         orderBy: { entryNumber: "asc" },
         skip: (query.page - 1) * PAGE_SIZE,
         take: PAGE_SIZE,

@@ -34,6 +34,10 @@ export class S3PhotoStorage implements PhotoStorage {
     return Buffer.from(await res.Body.transformToByteArray());
   }
 
+  s3Location(storageKey: string) {
+    return { bucket: this.bucket, key: storageKey };
+  }
+
   async moveToPublic(id: string) {
     const from = pendingKey(id);
     const storageKey = publicKey(id);

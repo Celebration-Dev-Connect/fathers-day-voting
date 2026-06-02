@@ -144,8 +144,16 @@ model VehicleEntry {
 
 enum PhotoModerationStatus {
   PENDING
+  PROCESSING
+  HUMAN_REVIEW
   APPROVED
+  REJECTED
   FAILED
+}
+
+enum PhotoSource {
+  STAFF
+  VISITOR
 }
 
 model VehiclePhoto {
@@ -159,6 +167,7 @@ model VehiclePhoto {
   moderationStatus    PhotoModerationStatus @default(PENDING)
   moderationLabels    Json?
   uploadedBy          String?
+  source              PhotoSource           @default(STAFF)
   processingStartedAt DateTime?
   processedAt         DateTime?
   createdAt           DateTime              @default(now())
@@ -167,6 +176,7 @@ model VehiclePhoto {
   @@unique([vehicleEntryId, sortOrder])
   @@index([vehicleEntryId])
   @@index([moderationStatus])
+  @@index([source])
 }
 
 model PeopleChoiceVote {

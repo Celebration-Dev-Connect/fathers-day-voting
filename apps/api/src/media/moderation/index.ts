@@ -6,7 +6,7 @@ import type { ImageModerator } from "./types.js";
 /** Pick the moderation backend from config (MODERATION_DRIVER). */
 export function createModerator(): ImageModerator {
   if (config.moderation.driver === "rekognition") {
-    return new RekognitionModerator(config.aws.region!, config.moderation.minConfidence);
+    return new RekognitionModerator(config.aws.region!);
   }
   return new MockModerator();
 }

@@ -79,7 +79,7 @@ data "aws_iam_policy_document" "ecs_task" {
 
   statement {
     sid       = "Rekognition"
-    actions   = ["rekognition:DetectModerationLabels"]
+    actions   = ["rekognition:DetectModerationLabels", "rekognition:DetectLabels"]
     resources = ["*"]
   }
 }

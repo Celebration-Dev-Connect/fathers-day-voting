@@ -3,15 +3,17 @@ import type { FastifyBaseLogger } from "fastify";
 import type { ImageModerator } from "./moderation/index.js";
 import type { PhotoStorage } from "./storage/index.js";
 
-const STALE_CLAIM_MS = 2 * 60 * 1000; // reclaim a photo if a scan has been "in progress" longer than this
+const STALE_PROCESSING_MS = 2 * 60 * 1000;
 const SWEEP_INTERVAL_MS = 30_000;
 const SWEEP_BATCH = 10;
 
 /**
- * Drives async moderation of uploaded photos. The PENDING rows in VehiclePhoto
- * are the queue: `enqueue` scans immediately (off the HTTP response) and the
- * sweeper re-picks anything a restart left behind. Storage + moderator are
- * injected, so the pipeline is backend-agnostic.
+ * Drives async moderation of uploaded photos following the state machine:
+ *
+ *   PENDING → PROCESSING → APPROVED   (no moderation labels + vehicle label >20%)
+ *                        → HUMAN_REVIEW (no moderation labels + no vehicle labels)
+ *                        → REJECTED   (moderation label >50%)
+ *                        → FAILED     (system error — retried by sweeper)
  */
 export class PhotoModerationWorker {
   private sweeper?: NodeJS.Timeout;
@@ -23,10 +25,11 @@ export class PhotoModerationWorker {
     private readonly log: FastifyBaseLogger,
   ) {}
 
-  /** Fire-and-forget scan after the response is sent. */
   enqueue(photoId: string) {
     setImmediate(() => {
-      void this.processPhoto(photoId).catch((err) => this.log.error({ err, photoId }, "photo moderation failed"));
+      void this.processPhoto(photoId).catch((err) =>
+        this.log.error({ err, photoId }, "photo moderation failed"),
+      );
     });
   }
 
@@ -34,30 +37,46 @@ export class PhotoModerationWorker {
     if (this.inFlight.has(photoId)) return;
     this.inFlight.add(photoId);
     try {
+      // Atomically claim: only picks up PENDING or stale PROCESSING rows.
       if (!(await this.claim(photoId))) return;
 
       const photo = await prisma.vehiclePhoto.findUnique({ where: { id: photoId } });
       if (!photo || !photo.storageKey) return;
 
-      let bytes: Buffer;
-      try {
-        bytes = await this.storage.getBytes(photo.storageKey);
-      } catch (err) {
-        this.log.error({ err, photoId }, "could not read pending photo bytes");
-        await this.markFailed(photoId, { error: "storage_read_failed" });
-        return;
+      // Build scan input. When the storage backend is S3 we pass the bucket +
+      // key directly so Rekognition fetches the object itself — no bytes travel
+      // through this server. For the local driver we fall back to reading bytes.
+      const contentType = photo.contentType ?? "application/octet-stream";
+      const loc = this.storage.s3Location(photo.storageKey);
+      let scanInput: Parameters<typeof this.moderator.scan>[0];
+
+      if (loc) {
+        scanInput = { kind: "s3", bucket: loc.bucket, key: loc.key, contentType };
+      } else {
+        let bytes: Buffer;
+        try {
+          bytes = await this.storage.getBytes(photo.storageKey);
+        } catch (err) {
+          this.log.error({ err, photoId }, "could not read pending photo bytes");
+          await this.markFailed(photoId, { error: "storage_read_failed" });
+          return;
+        }
+        scanInput = { kind: "bytes", bytes, contentType };
       }
 
-      let result: { safe: boolean; labels: unknown };
+      // Run moderation scan.
+      let result: Awaited<ReturnType<typeof this.moderator.scan>>;
       try {
-        result = await this.moderator.scan({ bytes, contentType: photo.contentType ?? "application/octet-stream" });
+        result = await this.moderator.scan(scanInput);
       } catch (err) {
         this.log.error({ err, photoId }, "moderation scan errored");
         await this.markFailed(photoId, { error: "scan_failed" });
         return;
       }
 
-      if (result.safe) {
+      const labels = toJson({ moderation: result.moderationLabels, vehicle: result.vehicleLabels });
+
+      if (result.decision === "APPROVED") {
         const { storageKey } = await this.storage.moveToPublic(photoId);
         await prisma.vehiclePhoto.update({
           where: { id: photoId },
@@ -65,17 +84,41 @@ export class PhotoModerationWorker {
             moderationStatus: "APPROVED",
             storageKey,
             url: this.storage.publicUrl(storageKey),
-            moderationLabels: toJson(result.labels),
+            moderationLabels: labels,
             processedAt: new Date(),
             processingStartedAt: null,
           },
         });
         this.log.info({ photoId }, "photo approved");
+
+      } else if (result.decision === "REJECTED") {
+        // Delete the bytes — rejected content must not be retrievable.
+        await this.storage.deletePending(photoId).catch((err) =>
+          this.log.warn({ err, photoId }, "could not delete rejected photo bytes"),
+        );
+        await prisma.vehiclePhoto.update({
+          where: { id: photoId },
+          data: {
+            moderationStatus: "REJECTED",
+            moderationLabels: labels,
+            processedAt: new Date(),
+            processingStartedAt: null,
+          },
+        });
+        this.log.warn({ photoId, labels: result.moderationLabels }, "photo rejected");
+
       } else {
-        // Unsafe: purge bytes and the row immediately — it must never be recoverable.
-        await this.storage.deletePending(photoId);
-        await prisma.vehiclePhoto.delete({ where: { id: photoId } });
-        this.log.warn({ photoId, labels: result.labels }, "photo rejected and deleted");
+        // HUMAN_REVIEW — keep bytes in pending storage until a human decides.
+        await prisma.vehiclePhoto.update({
+          where: { id: photoId },
+          data: {
+            moderationStatus: "HUMAN_REVIEW",
+            moderationLabels: labels,
+            processedAt: new Date(),
+            processingStartedAt: null,
+          },
+        });
+        this.log.info({ photoId }, "photo queued for human review");
       }
     } finally {
       this.inFlight.delete(photoId);
@@ -83,7 +126,7 @@ export class PhotoModerationWorker {
   }
 
   start() {
-    void this.sweep(); // catch anything left PENDING by a previous run
+    void this.sweep();
     this.sweeper = setInterval(() => void this.sweep(), SWEEP_INTERVAL_MS);
     this.sweeper.unref?.();
     this.log.info("photo moderation sweeper started");
@@ -108,28 +151,36 @@ export class PhotoModerationWorker {
     }
   }
 
-  /** Atomically take ownership of a photo; returns false if already claimed/resolved. */
   private async claim(photoId: string) {
-    const claim = await prisma.vehiclePhoto.updateMany({
+    const claimed = await prisma.vehiclePhoto.updateMany({
       where: { id: photoId, ...this.claimableWhere() },
-      data: { processingStartedAt: new Date() },
+      data: { moderationStatus: "PROCESSING", processingStartedAt: new Date() },
     });
-    return claim.count > 0;
+    return claimed.count > 0;
   }
 
   private claimableWhere(): Prisma.VehiclePhotoWhereInput {
-    const staleBefore = new Date(Date.now() - STALE_CLAIM_MS);
+    const staleBefore = new Date(Date.now() - STALE_PROCESSING_MS);
     return {
-      moderationStatus: { in: ["PENDING", "FAILED"] },
-      OR: [{ processingStartedAt: null }, { processingStartedAt: { lt: staleBefore } }],
+      OR: [
+        // Fresh PENDING photos ready to process.
+        { moderationStatus: "PENDING", processingStartedAt: null },
+        // PROCESSING rows whose worker crashed — reclaim after stale window.
+        { moderationStatus: "PROCESSING", processingStartedAt: { lt: staleBefore } },
+        // FAILED system errors — allow retry.
+        { moderationStatus: "FAILED", processingStartedAt: { lt: staleBefore } },
+      ],
     };
   }
 
   private async markFailed(photoId: string, detail: Record<string, unknown>) {
-    // Keep processingStartedAt set so the stale window throttles retries.
     await prisma.vehiclePhoto.update({
       where: { id: photoId },
-      data: { moderationStatus: "FAILED", moderationLabels: toJson(detail), processedAt: new Date() },
+      data: {
+        moderationStatus: "FAILED",
+        moderationLabels: toJson(detail),
+        processedAt: new Date(),
+      },
     });
   }
 }

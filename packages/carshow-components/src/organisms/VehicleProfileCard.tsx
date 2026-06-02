@@ -12,8 +12,7 @@ type Props = {
   onVote?: () => void;
   voting?: boolean;
   showVoting?: boolean;
-  onAddPhoto?: () => void;
-  addPhotoLabel?: string;
+  onUploadPhoto?: () => void;
 };
 
 export function VehicleProfileCard({
@@ -24,14 +23,14 @@ export function VehicleProfileCard({
   onVote,
   voting = false,
   showVoting = true,
-  onAddPhoto,
-  addPhotoLabel = "Add photo",
+  onUploadPhoto,
 }: Props) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
   const photos = vehicle.photos;
   const currentPhoto = photos[photoIndex];
   const currentLoaded = loadedIds.has(currentPhoto?.id ?? "");
+  const showThumbStrip = photos.length > 1 || onUploadPhoto !== undefined;
 
   useEffect(() => {
     if (photos.length <= 1) return;
@@ -46,8 +45,6 @@ export function VehicleProfileCard({
   const title = vehicle.nickname
     ? `${vehicle.year} ${vehicle.make} ${vehicle.model} — "${vehicle.nickname}"`
     : `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
-
-  const showPhotoActions = photos.length > 1 || Boolean(onAddPhoto);
 
   return (
     <article className="vehicle-profile">
@@ -67,7 +64,7 @@ export function VehicleProfileCard({
         ) : (
           <div className="vehicle-profile-no-photo" />
         )}
-        {showPhotoActions ? (
+        {showThumbStrip && (
           <div className="vehicle-profile-thumbs">
             {photos.map((p, i) => (
               <button
@@ -85,18 +82,18 @@ export function VehicleProfileCard({
                 />
               </button>
             ))}
-            {onAddPhoto ? (
+            {onUploadPhoto && (
               <button
-                className="vehicle-profile-thumb vehicle-profile-add-photo"
-                onClick={onAddPhoto}
-                aria-label={addPhotoLabel}
+                className="vehicle-profile-thumb vehicle-profile-upload-btn"
+                onClick={onUploadPhoto}
+                aria-label="Add your photo"
                 type="button"
               >
-                <Camera size={26} />
+                <Camera size={22} />
               </button>
-            ) : null}
+            )}
           </div>
-        ) : null}
+        )}
       </div>
 
       <div className="vehicle-profile-body">

@@ -321,13 +321,16 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
 
   if (config.storage.driver === "local") {
     app.get("/media/public/:id", async (request, reply) => {
-      const params = z.object({ id: z.string().regex(/^[a-z0-9]+$/i) }).parse(request.params);
+      const params = z.object({ id: z.string().regex(/^[a-z0-9]+(?:-(medium|thumb))?$/i) }).parse(request.params);
+      // Variants share the base photo's approval status — strip suffix to look up.
+      const baseId = params.id.replace(/-(medium|thumb)$/, "");
       const photo = await prisma.vehiclePhoto.findFirst({
-        where: { storageKey: `public/${params.id}`, moderationStatus: "APPROVED" },
+        where: { storageKey: `public/${baseId}`, moderationStatus: "APPROVED" },
         select: { contentType: true },
       });
       if (!photo) throw app.httpErrors.notFound("Image not found");
-      reply.header("Content-Type", photo.contentType ?? "application/octet-stream");
+      const isVariant = params.id !== baseId;
+      reply.header("Content-Type", isVariant ? "image/webp" : (photo.contentType ?? "application/octet-stream"));
       reply.header("Cache-Control", "public, max-age=300");
       return reply.send(createReadStream(join(config.storage.localDir, "public", params.id)));
     });

@@ -161,6 +161,8 @@ model VehiclePhoto {
   id                  String                @id @default(cuid())
   vehicleEntryId      String
   url                 String?
+  mediumUrl           String?
+  thumbUrl            String?
   storageKey          String?
   contentType         String?
   altText             String?

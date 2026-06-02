@@ -65,23 +65,25 @@ export function VehicleProfileCard({
           <div className="vehicle-profile-no-photo" />
         )}
         {showThumbStrip && (
-          <div className="vehicle-profile-thumbs">
-            {photos.map((p, i) => (
-              <button
-                key={p.id}
-                className={`vehicle-profile-thumb${i === photoIndex ? " active" : ""}`}
-                onClick={() => setPhotoIndex(i)}
-                aria-label={`Photo ${i + 1}`}
-              >
-                {!loadedIds.has(p.id) && <div className="img-shimmer" aria-hidden="true" />}
-                <img
-                  src={p.url}
-                  alt=""
-                  style={{ opacity: loadedIds.has(p.id) ? 1 : 0, transition: "opacity 0.25s ease" }}
-                  onLoad={() => markLoaded(p.id)}
-                />
-              </button>
-            ))}
+          <div className="vehicle-profile-thumb-row">
+            <div className="vehicle-profile-thumbs">
+              {photos.map((p, i) => (
+                <button
+                  key={p.id}
+                  className={`vehicle-profile-thumb${i === photoIndex ? " active" : ""}`}
+                  onClick={() => setPhotoIndex(i)}
+                  aria-label={`Photo ${i + 1}`}
+                >
+                  {!loadedIds.has(p.id) && <div className="img-shimmer" aria-hidden="true" />}
+                  <img
+                    src={p.thumbUrl ?? p.url}
+                    alt=""
+                    style={{ opacity: loadedIds.has(p.id) ? 1 : 0, transition: "opacity 0.25s ease" }}
+                    onLoad={() => markLoaded(p.id)}
+                  />
+                </button>
+              ))}
+            </div>
             {onUploadPhoto && (
               <button
                 className="vehicle-profile-thumb vehicle-profile-upload-btn"

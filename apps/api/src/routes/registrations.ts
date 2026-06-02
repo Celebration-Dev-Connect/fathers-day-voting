@@ -20,7 +20,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
   app.get("/registrations/metrics", async (request) => {
     await requireStaff(app, request);
 
-    const [total, checkedIn, assignedQr, categories] = await Promise.all([
+    const [total, checkedIn, assignedQr, categories, photosApproved, photosRejected] = await Promise.all([
       prisma.vehicleEntry.count({ where: { eventId } }),
       prisma.vehicleEntry.count({ where: { eventId, status: VehicleStatus.CHECKED_IN } }),
       prisma.qrCard.count({
@@ -31,9 +31,11 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
         },
       }),
       prisma.category.count({ where: { eventId, active: true } }),
+      prisma.vehiclePhoto.count({ where: { vehicle: { eventId }, moderationStatus: "APPROVED" } }),
+      prisma.vehiclePhoto.count({ where: { vehicle: { eventId }, moderationStatus: "REJECTED" } }),
     ]);
 
-    return { metrics: { total, checkedIn, assignedQr, categories } };
+    return { metrics: { total, checkedIn, assignedQr, categories, photosApproved, photosRejected } };
   });
 
   app.get("/registrations", async (request) => {

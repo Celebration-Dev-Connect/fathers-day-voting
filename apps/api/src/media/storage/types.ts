@@ -9,6 +9,16 @@ export interface PhotoStorage {
    * Returns null for non-S3 drivers (local dev).
    */
   s3Location(storageKey: string): { bucket: string; key: string } | null;
+  /**
+   * Store a pre-processed variant (medium/thumb) directly in the public prefix.
+   * Key produced: public/{id}-{suffix}
+   */
+  putPublicVariant(
+    id: string,
+    suffix: "medium" | "thumb",
+    bytes: Buffer,
+    contentType: string,
+  ): Promise<{ storageKey: string }>;
   /** Promote pending/<id> → public/<id>. */
   moveToPublic(id: string): Promise<{ storageKey: string }>;
   deletePending(id: string): Promise<void>;

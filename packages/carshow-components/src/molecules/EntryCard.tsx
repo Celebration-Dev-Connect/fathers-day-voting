@@ -15,7 +15,7 @@ export function EntryCard({ entry }: { entry: PublicEntry }) {
           <>
             {!loaded && <div className="img-shimmer" aria-hidden="true" />}
             <img
-              src={photo.url}
+              src={photo.mediumUrl ?? photo.url}
               alt={photo.altText ?? label}
               loading="lazy"
               style={{ opacity: loaded ? 1 : 0 }}

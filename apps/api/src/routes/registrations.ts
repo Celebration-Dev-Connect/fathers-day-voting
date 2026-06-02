@@ -31,8 +31,8 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
         },
       }),
       prisma.category.count({ where: { eventId, active: true } }),
-      prisma.vehiclePhoto.count({ where: { vehicle: { eventId }, moderationStatus: "APPROVED" } }),
-      prisma.vehiclePhoto.count({ where: { vehicle: { eventId }, moderationStatus: "REJECTED" } }),
+      prisma.vehiclePhoto.count({ where: { vehicleEntry: { eventId }, moderationStatus: "APPROVED" } }),
+      prisma.vehiclePhoto.count({ where: { vehicleEntry: { eventId }, moderationStatus: "REJECTED" } }),
     ]);
 
     return { metrics: { total, checkedIn, assignedQr, categories, photosApproved, photosRejected } };

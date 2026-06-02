@@ -196,13 +196,13 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
 
     const photo = await prisma.vehiclePhoto.findFirst({
       where: { id: params.id, vehicleEntry: { eventId } },
-      select: { id: true, storageKey: true, moderationStatus: true },
+      select: { id: true, storageKey: true, url: true, mediumUrl: true, thumbUrl: true, moderationStatus: true },
     });
     if (!photo) throw app.httpErrors.notFound("Photo not found");
 
     if (body.status === "APPROVED") {
       let storageKey = photo.storageKey;
-      let url: string | null = null;
+      let url = photo.url;
       if (storageKey && !storageKey.startsWith("public/")) {
         const moved = await deps.storage.moveToPublic(photo.id);
         storageKey = moved.storageKey;
@@ -215,6 +215,8 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
           moderationStatus: "APPROVED",
           storageKey,
           url,
+          mediumUrl: photo.mediumUrl,
+          thumbUrl: photo.thumbUrl,
           processedAt: new Date(),
           processingStartedAt: null,
         },

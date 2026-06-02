@@ -7,10 +7,18 @@ import {
 import type { ImageModerator, ModerationResult, ScanInput } from "./types.js";
 
 const VEHICLE_LABELS = new Set([
-  "Car", "Automobile", "Vehicle", "Motor Vehicle", "Transportation",
-  "Sports Car", "Coupe", "Sedan", "Convertible", "Race Car", "Classic Car",
-  "SUV", "Truck", "Pickup Truck", "Van", "Minivan", "Bus", "Motorcycle",
-  "Bike", "Motorbike", "Wheel", "Alloy Wheel", "Tire",
+  // Vehicle types
+  "Car", "Automobile", "Vehicle",
+  "Sports Car", "Coupe", "Sedan", "Convertible", "Classic Car",
+  "SUV", "Truck", "Pickup Truck", "Van", "Minivan", "Bus",
+  "Motorcycle", "Bike", "Motorbike",
+  // Car show specific
+  "Car Show", "Hot Rod", "Antique Car", "Race Car", "Formula One",
+  // Specific models Rekognition can identify
+  "Mustang", "Model T", "Jaguar Car",
+  // Detail / close-up shots
+  "Alloy Wheel", "Tire", "Grille", "Headlight", "Hubcap",
+  "Engine", "Steering Wheel",
 ]);
 
 const VEHICLE_LABEL_MIN_CONFIDENCE = 20;

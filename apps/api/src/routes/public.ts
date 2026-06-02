@@ -26,7 +26,14 @@ function toPublicVehicle(
     ownerName: vehicle.owner.publicNameOptIn
       ? vehicle.owner.publicName || `${vehicle.owner.firstName} ${vehicle.owner.lastName}`
       : null,
-    photos: vehicle.photos.map((p) => ({ id: p.id, url: p.url, altText: p.altText ?? null, sortOrder: p.sortOrder })),
+    photos: vehicle.photos.map((p) => ({
+      id: p.id,
+      url: p.url,
+      mediumUrl: p.mediumUrl ?? null,
+      thumbUrl: p.thumbUrl ?? null,
+      altText: p.altText ?? null,
+      sortOrder: p.sortOrder,
+    })),
   };
 }
 

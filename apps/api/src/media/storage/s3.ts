@@ -38,6 +38,14 @@ export class S3PhotoStorage implements PhotoStorage {
     return { bucket: this.bucket, key: storageKey };
   }
 
+  async putPublicVariant(id: string, suffix: "medium" | "thumb", bytes: Buffer, contentType: string) {
+    const storageKey = `public/${id}-${suffix}`;
+    await this.client.send(
+      new PutObjectCommand({ Bucket: this.bucket, Key: storageKey, Body: bytes, ContentType: contentType }),
+    );
+    return { storageKey };
+  }
+
   async moveToPublic(id: string) {
     const from = pendingKey(id);
     const storageKey = publicKey(id);

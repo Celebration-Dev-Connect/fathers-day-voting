@@ -531,6 +531,8 @@ function toPublicEntry(registration: Registration): PublicEntry {
     photos: (registration.photos ?? []).map((photo) => ({
       id: photo.id,
       url: photo.url,
+      mediumUrl: null,
+      thumbUrl: null,
       altText: photo.altText ?? null,
       sortOrder: photo.sortOrder,
     })),

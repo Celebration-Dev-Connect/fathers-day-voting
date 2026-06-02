@@ -1,5 +1,6 @@
 import { Prisma, prisma } from "@carshow/db";
 import type { FastifyBaseLogger } from "fastify";
+import sharp from "sharp";
 import type { ImageModerator } from "./moderation/index.js";
 import type { PhotoStorage } from "./storage/index.js";
 
@@ -43,31 +44,25 @@ export class PhotoModerationWorker {
       const photo = await prisma.vehiclePhoto.findUnique({ where: { id: photoId } });
       if (!photo || !photo.storageKey) return;
 
-      // Build scan input. When the storage backend is S3 we pass the bucket +
-      // key directly so Rekognition fetches the object itself — no bytes travel
-      // through this server. For the local driver we fall back to reading bytes.
+      // Download bytes once — used for both the Rekognition scan and
+      // the sharp resize on approval. Rekognition's S3Object reference
+      // requires the Rekognition service principal to have a bucket policy
+      // grant which we don't control, so inline bytes are simpler and safe
+      // given the 5 MB upload cap.
       const contentType = photo.contentType ?? "application/octet-stream";
-      const loc = this.storage.s3Location(photo.storageKey);
-      let scanInput: Parameters<typeof this.moderator.scan>[0];
-
-      if (loc) {
-        scanInput = { kind: "s3", bucket: loc.bucket, key: loc.key, contentType };
-      } else {
-        let bytes: Buffer;
-        try {
-          bytes = await this.storage.getBytes(photo.storageKey);
-        } catch (err) {
-          this.log.error({ err, photoId }, "could not read pending photo bytes");
-          await this.markFailed(photoId, { error: "storage_read_failed" });
-          return;
-        }
-        scanInput = { kind: "bytes", bytes, contentType };
+      let originalBytes: Buffer;
+      try {
+        originalBytes = await this.storage.getBytes(photo.storageKey);
+      } catch (err) {
+        this.log.error({ err, photoId }, "could not read pending photo bytes");
+        await this.markFailed(photoId, { error: "storage_read_failed" });
+        return;
       }
 
-      // Run moderation scan.
+      // Run moderation scan with inline bytes.
       let result: Awaited<ReturnType<typeof this.moderator.scan>>;
       try {
-        result = await this.moderator.scan(scanInput);
+        result = await this.moderator.scan({ kind: "bytes", bytes: originalBytes, contentType });
       } catch (err) {
         this.log.error({ err, photoId }, "moderation scan errored");
         await this.markFailed(photoId, { error: "scan_failed" });
@@ -77,13 +72,26 @@ export class PhotoModerationWorker {
       const labels = toJson({ moderation: result.moderationLabels, vehicle: result.vehicleLabels });
 
       if (result.decision === "APPROVED") {
-        const { storageKey } = await this.storage.moveToPublic(photoId);
+
+        const [mediumBytes, thumbBytes] = await Promise.all([
+          sharp(originalBytes).resize(384, 288, { fit: "cover" }).webp({ quality: 82 }).toBuffer(),
+          sharp(originalBytes).resize(128, 128, { fit: "cover" }).webp({ quality: 80 }).toBuffer(),
+        ]);
+
+        const [{ storageKey: mediumKey }, { storageKey: thumbKey }, { storageKey }] = await Promise.all([
+          this.storage.putPublicVariant(photoId, "medium", mediumBytes, "image/webp"),
+          this.storage.putPublicVariant(photoId, "thumb", thumbBytes, "image/webp"),
+          this.storage.moveToPublic(photoId),
+        ]);
+
         await prisma.vehiclePhoto.update({
           where: { id: photoId },
           data: {
             moderationStatus: "APPROVED",
             storageKey,
             url: this.storage.publicUrl(storageKey),
+            mediumUrl: this.storage.publicUrl(mediumKey),
+            thumbUrl: this.storage.publicUrl(thumbKey),
             moderationLabels: labels,
             processedAt: new Date(),
             processingStartedAt: null,

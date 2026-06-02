@@ -101,6 +101,43 @@ Dev login is blocked when `NODE_ENV=production` unless `ENABLE_DEV_LOGIN=true`.
 
 Two environments — `test` and `prod` — each in its own Terraform workspace with isolated state.
 
+When helping with AWS deploys, prefer the repository script over hand-running
+Terraform/app deploy steps. Do not expose or commit AWS keys, secrets, tfvars,
+state files, or `.env` values. If credentials are needed locally, use the AWS
+profile named `carshow`.
+
+**Local AWS setup checklist:**
+
+```sh
+# Tools required on PATH
+aws --version
+terraform version
+
+# Configure credentials from private local values only; never paste them into git.
+aws configure --profile carshow
+# Default region: ca-central-1
+# Default output format: json
+
+# Validate identity before any Terraform or deploy action.
+aws sts get-caller-identity --profile carshow
+```
+
+Before deploying AWS changes, make sure the relevant PR/state-sync branch has
+been merged and `main` is current locally. Pull/fetch latest before initializing
+or applying infrastructure so local code and Terraform state do not diverge.
+
+**Terraform state sanity check:**
+
+```sh
+cd infra/terraform
+terraform init
+terraform workspace select test
+terraform state list
+```
+
+`terraform state list` should show existing resources for the selected
+workspace. If it is empty or surprising, stop and ask before applying.
+
 **Prerequisites:**
 1. Copy `infra/terraform/test.tfvars.example` → `infra/terraform/test.tfvars` (or `prod.tfvars`) and fill in values.
 2. AWS credentials available via env vars, `--profile`, or SSO.
@@ -113,17 +150,20 @@ Two environments — `test` and `prod` — each in its own Terraform workspace w
 ./infra/deploy.sh --env test --profile carshow
 
 # Preview what would change
-./infra/deploy.sh --env test --plan
+./infra/deploy.sh --env test --profile carshow --plan
+
+# Apply reviewed changes to AWS test
+./infra/deploy.sh --env test --profile carshow
 
 # Re-deploy only SPAs (after a frontend change, no image rebuild)
-./infra/deploy.sh --env test --skip-infra --skip-image
+./infra/deploy.sh --env test --profile carshow --skip-infra --skip-image
 
 # Tear down the test stack
-./infra/deploy.sh --env test --destroy
+./infra/deploy.sh --env test --profile carshow --destroy
 
 # Stop compute between sessions (saves ~$35/mo; keeps CloudFront/ACM/Route53)
-./infra/deploy.sh --env test --suspend
-./infra/deploy.sh --env test --resume
+./infra/deploy.sh --env test --profile carshow --suspend
+./infra/deploy.sh --env test --profile carshow --resume
 ```
 
 **Deploy flow (full deploy):**

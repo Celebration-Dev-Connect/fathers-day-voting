@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Edit Vehicle Information - Father's Day Car Show</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#930010",
+                        "muted-grey": "#7D7D7D",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "light-grey": "#F4F4F4",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "on-surface": "#191c21",
+                        "tertiary-fixed-dim": "#ffb3ac",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#e2e2e2",
+                        "on-primary-fixed": "#410007",
+                        "primary-container": "#dd2d3e",
+                        "on-secondary": "#ffffff",
+                        "outline": "#906f6e",
+                        "surface-container-lowest": "#ffffff",
+                        "border-grey": "#D7D7D7",
+                        "surface-container-highest": "#e1e2ea",
+                        "surface-container": "#ecedf6",
+                        "surface-variant": "#e1e2ea",
+                        "secondary": "#5e5e5e",
+                        "tertiary": "#b8111c",
+                        "on-secondary-fixed-variant": "#474747",
+                        "surface-bright": "#f9f9ff",
+                        "background": "#f9f9ff",
+                        "on-secondary-container": "#646464",
+                        "inverse-primary": "#ffb3b1",
+                        "tertiary-container": "#dc3031",
+                        "pure-white": "#FFFFFF",
+                        "primary-fixed": "#ffdad8",
+                        "inverse-surface": "#2d3037",
+                        "primary": "#b90a29",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e6e8f0",
+                        "inverse-on-surface": "#eff0f9",
+                        "deep-red": "#CB1836",
+                        "on-primary-container": "#fffbff",
+                        "surface": "#f9f9ff",
+                        "surface-dim": "#d8dae2",
+                        "secondary-container": "#e2e2e2",
+                        "on-tertiary-fixed": "#410003",
+                        "on-error": "#ffffff",
+                        "outline-variant": "#e4bdbc",
+                        "surface-container-low": "#f2f3fb",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c21",
+                        "surface-tint": "#bc0f2b",
+                        "primary-fixed-dim": "#ffb3b1",
+                        "on-primary-fixed-variant": "#92001d",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-surface-variant": "#5b403f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "touch-target-min": "48px",
+                        "stack-lg": "32px",
+                        "margin-desktop": "40px",
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Montserrat"],
+                        "body-lg": ["Montserrat"],
+                        "headline-xl": ["Montserrat"],
+                        "headline-md": ["Montserrat"],
+                        "label-caps": ["Montserrat"],
+                        "label-sm": ["Montserrat"],
+                        "body-sm": ["Montserrat"],
+                        "body-md": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "letterSpacing": "0.03em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "0.05em", "fontWeight": "800" }],
+                        "headline-md": ["20px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "1", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "1.4", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .soft-shadow {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-light-grey text-on-surface antialiased min-h-screen flex flex-col pb-[100px]">
+<!-- TopAppBar -->
+<header class="bg-pure-white text-primary border-b border-border-grey sticky top-0 z-40 flex justify-between items-center w-full h-16 px-margin-mobile">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-start text-on-surface hover:text-primary transition-colors duration-200">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-black text-on-surface uppercase tracking-wider text-center flex-1">
+            FATHER'S DAY CAR SHOW
+        </h1>
+<div class="h-touch-target-min w-touch-target-min flex items-center justify-end">
+<!-- Empty placeholder for balance -->
+</div>
+</header>
+<!-- Progress Indicator -->
+<div class="bg-pure-white border-b border-border-grey px-margin-mobile py-stack-md sticky top-16 z-30 shadow-sm">
+<div class="flex justify-between items-center relative">
+<div class="absolute left-0 top-1/2 w-full h-[2px] bg-border-grey -z-10 -translate-y-1/2"></div>
+<div class="absolute left-0 top-1/2 w-[25%] h-[2px] bg-primary -z-10 -translate-y-1/2"></div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary text-pure-white flex items-center justify-center font-label-caps text-label-caps z-10 border-2 border-pure-white">
+                    1
+                </div>
+<span class="font-label-caps text-label-caps text-primary">Basics</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-surface-container text-muted-grey flex items-center justify-center font-label-caps text-label-caps z-10 border-2 border-pure-white">
+                    2
+                </div>
+<span class="font-label-caps text-label-caps text-muted-grey">Story</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-surface-container text-muted-grey flex items-center justify-center font-label-caps text-label-caps z-10 border-2 border-pure-white">
+                    3
+                </div>
+<span class="font-label-caps text-label-caps text-muted-grey">Photos</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-surface-container text-muted-grey flex items-center justify-center font-label-caps text-label-caps z-10 border-2 border-pure-white">
+                    4
+                </div>
+<span class="font-label-caps text-label-caps text-muted-grey">Preview</span>
+</div>
+</div>
+</div>
+<!-- Main Content -->
+<main class="flex-1 px-margin-mobile py-margin-desktop flex flex-col gap-stack-lg max-w-2xl mx-auto w-full">
+<div class="flex flex-col gap-stack-sm">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Edit Vehicle Info</h2>
+<p class="font-body-md text-body-md text-muted-grey">Update your car's details for the digital showcase.</p>
+</div>
+<!-- Privacy Card -->
+<div class="bg-surface-bright rounded-xl p-stack-md border-l-4 border-primary soft-shadow">
+<div class="flex items-start gap-gutter">
+<span class="material-symbols-outlined text-primary" data-icon="lock">lock</span>
+<div>
+<h3 class="font-label-caps text-label-caps text-on-surface mb-2">Privacy Notice</h3>
+<p class="font-body-sm text-body-sm text-on-secondary-container">Your contact information remains internal. Your name will only be displayed publicly on your car's digital placard if you explicitly opt-in.</p>
+</div>
+</div>
+</div>
+<!-- Basics Section -->
+<section class="bg-pure-white rounded-xl soft-shadow overflow-hidden">
+<div class="bg-on-surface px-stack-md py-stack-sm">
+<h3 class="font-headline-md text-headline-md text-pure-white">Vehicle Basics</h3>
+</div>
+<div class="p-stack-md flex flex-col gap-stack-md">
+<div class="grid grid-cols-2 gap-gutter">
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Year</label>
+<input class="h-touch-target-min w-full border-2 border-border-grey rounded-lg px-4 font-body-lg text-body-lg text-on-surface focus:border-primary focus:ring-0 transition-colors" type="text" value="1969"/>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Make</label>
+<input class="h-touch-target-min w-full border-2 border-border-grey rounded-lg px-4 font-body-lg text-body-lg text-on-surface focus:border-primary focus:ring-0 transition-colors" type="text" value="Ford"/>
+</div>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Model</label>
+<input class="h-touch-target-min w-full border-2 border-border-grey rounded-lg px-4 font-body-lg text-body-lg text-on-surface focus:border-primary focus:ring-0 transition-colors" type="text" value="Mustang Boss 429"/>
+</div>
+<div class="grid grid-cols-2 gap-gutter">
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Color</label>
+<input class="h-touch-target-min w-full border-2 border-border-grey rounded-lg px-4 font-body-lg text-body-lg text-on-surface focus:border-primary focus:ring-0 transition-colors" type="text" value="Raven Black"/>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Nickname</label>
+<input class="h-touch-target-min w-full border-2 border-border-grey rounded-lg px-4 font-body-lg text-body-lg text-on-surface focus:border-primary focus:ring-0 transition-colors" type="text" value="The Boss"/>
+</div>
+</div>
+<div class="flex flex-col gap-stack-sm mt-stack-sm">
+<label class="flex items-center gap-gutter cursor-pointer">
+<input checked="" class="w-6 h-6 text-primary border-2 border-border-grey rounded focus:ring-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface">Display my name publicly as the owner</span>
+</label>
+</div>
+</div>
+</section>
+<!-- Story Section -->
+<section class="bg-pure-white rounded-xl soft-shadow overflow-hidden">
+<div class="bg-on-surface px-stack-md py-stack-sm">
+<h3 class="font-headline-md text-headline-md text-pure-white">Vehicle Story</h3>
+</div>
+<div class="p-stack-md flex flex-col gap-stack-md">
+<p class="font-body-sm text-body-sm text-muted-grey">Tell the judges and attendees what makes this car special. Share restoration details, history, or personal connections.</p>
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-caps text-label-caps text-on-surface-variant sr-only">Vehicle History</label>
+<textarea class="w-full border-2 border-border-grey rounded-lg p-4 font-body-md text-body-md text-on-surface focus:border-primary focus:ring-0 transition-colors resize-none" rows="6">Purchased in 1985 from the original owner. This Boss 429 underwent a complete frame-off restoration in 2015, ensuring every bolt and factory marking matches the original assembly line specifications. It retains its original matching numbers engine and transmission.</textarea>
+<div class="flex justify-end">
+<span class="font-label-caps text-label-caps text-muted-grey">245 / 1000</span>
+</div>
+</div>
+</div>
+</section>
+<div class="h-20"></div> <!-- Spacer for sticky button -->
+</main>
+<!-- Floating Save Button -->
+<div class="fixed bottom-24 left-0 w-full px-margin-mobile z-40 max-w-2xl mx-auto right-0">
+<button class="w-full h-[56px] bg-primary text-pure-white font-headline-md text-headline-md uppercase rounded-lg shadow-lg flex items-center justify-center gap-gutter hover:bg-deep-red transition-colors active:scale-[0.98]">
+            Save &amp; Continue
+            <span class="material-symbols-outlined fill" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- BottomNavBar -->
+<nav class="bg-inverse-surface text-pure-white shadow-2xl fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-2 pb-safe md:hidden">
+<button class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity w-16 h-16">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm uppercase">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity w-16 h-16">
+<span class="material-symbols-outlined mb-1" data-icon="qr_code_scanner">qr_code_scanner</span>
+<span class="font-label-sm text-label-sm uppercase">Vote</span>
+</button>
+<button class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity w-16 h-16">
+<span class="material-symbols-outlined mb-1" data-icon="directions_car">directions_car</span>
+<span class="font-label-sm text-label-sm uppercase">Gallery</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary scale-110 active:scale-90 duration-150 w-16 h-16">
+<span class="material-symbols-outlined mb-1 fill" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm uppercase font-bold">Profile</span>
+</button>
+</nav>
+</body></html>

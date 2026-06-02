@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Staff Registrations - Celebration Church</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#fffbff",
+                        "on-tertiary-fixed": "#410003",
+                        "surface": "#f9f9ff",
+                        "tertiary": "#b8111c",
+                        "surface-variant": "#e1e2ea",
+                        "on-surface": "#191c21",
+                        "on-primary-fixed": "#410007",
+                        "primary-fixed-dim": "#ffb3b1",
+                        "inverse-on-surface": "#eff0f9",
+                        "on-background": "#191c21",
+                        "deep-red": "#CB1836",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e6e8f0",
+                        "background": "#f9f9ff",
+                        "primary-container": "#dd2d3e",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#ffb3b1",
+                        "outline-variant": "#e4bdbc",
+                        "surface-container-low": "#f2f3fb",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#fffbff",
+                        "inverse-surface": "#2d3037",
+                        "border-grey": "#D7D7D7",
+                        "surface-dim": "#d8dae2",
+                        "surface-container": "#ecedf6",
+                        "secondary-container": "#e2e2e2",
+                        "primary": "#b90a29",
+                        "outline": "#906f6e",
+                        "tertiary-container": "#dc3031",
+                        "on-secondary-container": "#646464",
+                        "surface-bright": "#f9f9ff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "pure-white": "#FFFFFF",
+                        "on-tertiary-fixed-variant": "#930010",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#ffdad6",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "tertiary-fixed-dim": "#ffb3ac",
+                        "on-primary-fixed-variant": "#92001d",
+                        "primary-fixed": "#ffdad8",
+                        "surface-container-highest": "#e1e2ea",
+                        "on-secondary-fixed-variant": "#474747",
+                        "on-surface-variant": "#5b403f",
+                        "muted-grey": "#7D7D7D",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "light-grey": "#F4F4F4",
+                        "surface-tint": "#bc0f2b",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#e2e2e2",
+                        "secondary": "#5e5e5e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-lg": "32px",
+                        "margin-desktop": "40px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px",
+                        "margin-mobile": "20px",
+                        "base": "8px",
+                        "stack-md": "16px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Montserrat"],
+                        "headline-md": ["Montserrat"],
+                        "headline-xl": ["Montserrat"],
+                        "body-lg": ["Montserrat"],
+                        "headline-lg": ["Montserrat"],
+                        "body-sm": ["Montserrat"],
+                        "label-sm": ["Montserrat"],
+                        "label-caps": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "headline-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "0.05em", "fontWeight": "800" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "letterSpacing": "0.03em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "1.4", "fontWeight": "500" }],
+                        "label-sm": ["12px", { "lineHeight": "1", "fontWeight": "500" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Montserrat', sans-serif; }
+        .ambient-shadow { box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05); }
+        .active-card { border: 2px solid #b90a29; box-shadow: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-light-grey text-on-surface h-screen flex flex-col overflow-hidden">
+<!-- TopAppBar -->
+<header class="bg-pure-white flex justify-between items-center w-full h-16 px-margin-mobile border-b border-border-grey shrink-0 z-10">
+<div class="flex items-center gap-4">
+<button class="text-primary hover:text-primary transition-colors duration-200">
+<span class="material-symbols-outlined text-3xl">menu</span>
+</button>
+<h1 class="font-headline-lg text-headline-lg font-black text-on-surface uppercase tracking-wider">FATHER'S DAY CAR SHOW</h1>
+</div>
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md text-primary hidden md:block">Staff Registrations</h2>
+<button class="text-on-surface-variant hover:text-primary transition-colors duration-200">
+<span class="material-symbols-outlined text-3xl">search</span>
+</button>
+</div>
+</header>
+<!-- Main Content Area (Split Pane) -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Left Pane: Filters & Search (Hidden on very small screens, visible on tablet/iPad) -->
+<aside class="w-80 bg-pure-white border-r border-border-grey flex-col hidden md:flex h-full overflow-y-auto z-0">
+<div class="p-gutter flex flex-col gap-stack-md border-b border-border-grey">
+<h3 class="font-headline-md text-headline-md">Filters</h3>
+<!-- Search -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-grey">search</span>
+<input class="w-full pl-10 pr-4 h-touch-target-min border-2 border-border-grey rounded focus:border-primary focus:ring-0 font-body-sm text-body-sm bg-surface-container-lowest" placeholder="Search Entry #, Name, Vehicle" type="text"/>
+</div>
+</div>
+<div class="p-gutter flex flex-col gap-stack-md flex-1">
+<h4 class="font-label-caps text-label-caps text-muted-grey uppercase">Categories</h4>
+<div class="flex flex-col gap-stack-sm">
+<label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container rounded transition-colors">
+<input checked="" class="w-6 h-6 border-2 border-border-grey rounded text-primary focus:ring-primary bg-pure-white" type="checkbox"/>
+<span class="font-body-md text-body-md">Classic (Pre-1990)</span>
+<span class="ml-auto font-label-sm text-label-sm bg-light-grey px-2 py-1 rounded">42</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container rounded transition-colors">
+<input checked="" class="w-6 h-6 border-2 border-border-grey rounded text-primary focus:ring-primary bg-pure-white" type="checkbox"/>
+<span class="font-body-md text-body-md">Modern Muscle</span>
+<span class="ml-auto font-label-sm text-label-sm bg-light-grey px-2 py-1 rounded">18</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container rounded transition-colors">
+<input class="w-6 h-6 border-2 border-border-grey rounded text-primary focus:ring-primary bg-pure-white" type="checkbox"/>
+<span class="font-body-md text-body-md">Truck / Off-Road</span>
+<span class="ml-auto font-label-sm text-label-sm bg-light-grey px-2 py-1 rounded">27</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container rounded transition-colors">
+<input class="w-6 h-6 border-2 border-border-grey rounded text-primary focus:ring-primary bg-pure-white" type="checkbox"/>
+<span class="font-body-md text-body-md">Exotic / Import</span>
+<span class="ml-auto font-label-sm text-label-sm bg-light-grey px-2 py-1 rounded">12</span>
+</label>
+</div>
+<div class="w-full h-px bg-border-grey my-stack-sm"></div>
+<h4 class="font-label-caps text-label-caps text-muted-grey uppercase">Status</h4>
+<div class="flex flex-col gap-stack-sm">
+<label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container rounded transition-colors">
+<input checked="" class="w-6 h-6 border-2 border-border-grey text-primary focus:ring-primary bg-pure-white" name="status" type="radio"/>
+<span class="font-body-md text-body-md">All Entries</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container rounded transition-colors">
+<input class="w-6 h-6 border-2 border-border-grey text-primary focus:ring-primary bg-pure-white" name="status" type="radio"/>
+<span class="font-body-md text-body-md text-primary font-bold">Pending Check-in</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container rounded transition-colors">
+<input class="w-6 h-6 border-2 border-border-grey text-primary focus:ring-primary bg-pure-white" name="status" type="radio"/>
+<span class="font-body-md text-body-md text-secondary">Checked-In</span>
+</label>
+</div>
+</div>
+<div class="p-gutter border-t border-border-grey">
+<button class="w-full h-touch-target-min bg-on-surface text-pure-white font-label-caps text-label-caps uppercase rounded hover:bg-primary transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+                    NEW REGISTRATION
+                </button>
+</div>
+</aside>
+<!-- Right Pane: Data Grid -->
+<section class="flex-1 p-gutter md:p-margin-desktop overflow-y-auto bg-light-grey">
+<!-- Mobile header controls -->
+<div class="flex md:hidden flex-col gap-stack-md mb-stack-lg">
+<h2 class="font-headline-md text-headline-md text-primary">Staff Registrations</h2>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-grey">search</span>
+<input class="w-full pl-10 pr-4 h-touch-target-min border-2 border-border-grey rounded focus:border-primary focus:ring-0 font-body-sm text-body-sm bg-pure-white" placeholder="Search Entries..." type="text"/>
+</div>
+<div class="flex gap-2 overflow-x-auto pb-2">
+<button class="shrink-0 h-10 px-4 rounded-full border-2 border-on-surface bg-on-surface text-pure-white font-label-caps text-label-caps">ALL</button>
+<button class="shrink-0 h-10 px-4 rounded-full border-2 border-border-grey bg-pure-white text-on-surface font-label-caps text-label-caps">PENDING</button>
+<button class="shrink-0 h-10 px-4 rounded-full border-2 border-border-grey bg-pure-white text-on-surface font-label-caps text-label-caps">CLASSIC</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-gutter">
+<!-- Registration Card: Checked In -->
+<article class="bg-pure-white rounded-lg ambient-shadow overflow-hidden flex flex-col transition-all cursor-pointer hover:border-border-grey border-2 border-transparent">
+<div class="p-4 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="bg-light-grey px-3 py-1 rounded font-label-caps text-label-caps">ENTRY #042</div>
+<span class="text-secondary font-label-caps text-label-caps flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                CHECKED IN
+                            </span>
+</div>
+<div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">1969 Ford Mustang Boss 429</h3>
+<p class="font-body-sm text-body-sm text-muted-grey mt-1">Johnathan Davis</p>
+</div>
+<div class="flex gap-2 flex-wrap">
+<span class="bg-light-grey px-2 py-1 rounded font-label-caps text-label-caps">CLASSIC</span>
+<span class="bg-light-grey px-2 py-1 rounded font-label-caps text-label-caps">V8</span>
+</div>
+<div class="mt-auto pt-4 border-t border-border-grey flex justify-between items-center">
+<button class="font-label-caps text-label-caps text-primary hover:underline">EDIT DETAILS</button>
+<span class="material-symbols-outlined text-muted-grey">more_vert</span>
+</div>
+</div>
+</article>
+<!-- Registration Card: Pending (Active State Demo) -->
+<article class="bg-pure-white rounded-lg active-card overflow-hidden flex flex-col relative">
+<div class="absolute top-0 left-0 w-2 h-full bg-primary"></div>
+<div class="p-4 pl-6 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="bg-light-grey px-3 py-1 rounded font-label-caps text-label-caps">ENTRY #088</div>
+<span class="text-primary font-label-caps text-label-caps flex items-center gap-1 animate-pulse">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                PENDING
+                            </span>
+</div>
+<div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">2023 Chevrolet Corvette Z06</h3>
+<p class="font-body-sm text-body-sm text-muted-grey mt-1">Sarah Jenkins</p>
+</div>
+<div class="flex gap-2 flex-wrap">
+<span class="bg-light-grey px-2 py-1 rounded font-label-caps text-label-caps">MODERN</span>
+<span class="bg-light-grey px-2 py-1 rounded font-label-caps text-label-caps">VIP PARKING</span>
+</div>
+<div class="mt-auto pt-4 border-t border-border-grey flex gap-2">
+<button class="flex-1 h-10 bg-primary text-pure-white font-label-caps text-label-caps uppercase rounded">CHECK IN</button>
+<button class="w-10 h-10 border-2 border-border-grey rounded flex items-center justify-center text-muted-grey hover:border-on-surface hover:text-on-surface">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Registration Card: Pending -->
+<article class="bg-pure-white rounded-lg ambient-shadow overflow-hidden flex flex-col border-2 border-transparent">
+<div class="p-4 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="bg-light-grey px-3 py-1 rounded font-label-caps text-label-caps">ENTRY #112</div>
+<span class="text-primary font-label-caps text-label-caps flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                PENDING
+                            </span>
+</div>
+<div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">1974 Ford F-150 Ranger XLT</h3>
+<p class="font-body-sm text-body-sm text-muted-grey mt-1">Michael Chang</p>
+</div>
+<div class="flex gap-2 flex-wrap">
+<span class="bg-light-grey px-2 py-1 rounded font-label-caps text-label-caps">TRUCK</span>
+</div>
+<div class="mt-auto pt-4 border-t border-border-grey flex gap-2">
+<button class="flex-1 h-10 bg-on-surface text-pure-white font-label-caps text-label-caps uppercase rounded hover:bg-primary transition-colors">CHECK IN</button>
+<button class="w-10 h-10 border-2 border-border-grey rounded flex items-center justify-center text-muted-grey hover:border-on-surface hover:text-on-surface">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Registration Card: Checked In -->
+<article class="bg-pure-white rounded-lg ambient-shadow overflow-hidden flex flex-col border-2 border-transparent">
+<div class="p-4 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="bg-light-grey px-3 py-1 rounded font-label-caps text-label-caps">ENTRY #015</div>
+<span class="text-secondary font-label-caps text-label-caps flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                CHECKED IN
+                            </span>
+</div>
+<div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">1957 Chevrolet Bel Air</h3>
+<p class="font-body-sm text-body-sm text-muted-grey mt-1">Robert Williams</p>
+</div>
+<div class="flex gap-2 flex-wrap">
+<span class="bg-light-grey px-2 py-1 rounded font-label-caps text-label-caps">CLASSIC</span>
+</div>
+<div class="mt-auto pt-4 border-t border-border-grey flex justify-between items-center">
+<button class="font-label-caps text-label-caps text-primary hover:underline">EDIT DETAILS</button>
+<span class="material-symbols-outlined text-muted-grey">more_vert</span>
+</div>
+</div>
+</article>
+</div>
+<!-- Mobile FAB -->
+<button class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-primary text-pure-white rounded-full shadow-2xl flex items-center justify-center z-50">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</section>
+</main>
+</body></html>

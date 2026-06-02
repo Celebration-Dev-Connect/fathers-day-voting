@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Father's Day Car Show - Celebration Church</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2d3037",
+                        "surface-variant": "#e1e2ea",
+                        "light-grey": "#F4F4F4",
+                        "on-primary-fixed": "#410007",
+                        "outline-variant": "#e4bdbc",
+                        "on-primary-fixed-variant": "#92001d",
+                        "on-surface": "#191c21",
+                        "on-surface-variant": "#5b403f",
+                        "on-background": "#191c21",
+                        "surface-container-high": "#e6e8f0",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#b8111c",
+                        "on-secondary": "#ffffff",
+                        "background": "#f9f9ff",
+                        "surface-container": "#ecedf6",
+                        "pure-white": "#FFFFFF",
+                        "on-tertiary-fixed": "#410003",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#e2e2e2",
+                        "deep-red": "#CB1836",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-secondary-fixed-variant": "#474747",
+                        "on-tertiary-fixed-variant": "#930010",
+                        "primary": "#b90a29",
+                        "outline": "#906f6e",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "border-grey": "#D7D7D7",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e1e2ea",
+                        "surface": "#f9f9ff",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#ffb3b1",
+                        "primary-fixed-dim": "#ffb3b1",
+                        "primary-container": "#dd2d3e",
+                        "inverse-on-surface": "#eff0f9",
+                        "on-error": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary-container": "#dc3031",
+                        "surface-dim": "#d8dae2",
+                        "on-primary-container": "#fffbff",
+                        "muted-grey": "#7D7D7D",
+                        "on-secondary-container": "#646464",
+                        "secondary-fixed": "#e2e2e2",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "secondary": "#5e5e5e",
+                        "surface-tint": "#bc0f2b",
+                        "surface-container-low": "#f2f3fb",
+                        "primary-fixed": "#ffdad8",
+                        "tertiary-fixed-dim": "#ffb3ac"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "base": "8px",
+                        "gutter": "16px",
+                        "margin-mobile": "20px",
+                        "stack-lg": "32px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Montserrat"],
+                        "label-caps": ["Montserrat"],
+                        "body-lg": ["Montserrat"],
+                        "headline-md": ["Montserrat"],
+                        "headline-lg": ["Montserrat"],
+                        "body-sm": ["Montserrat"],
+                        "label-sm": ["Montserrat"],
+                        "headline-xl": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "letterSpacing": "0.03em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "1.4", "fontWeight": "500" }],
+                        "label-sm": ["12px", { "lineHeight": "1", "fontWeight": "500" }],
+                        "headline-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "0.05em", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full h-16 px-margin-mobile bg-pure-white dark:bg-inverse-surface border-b border-border-grey dark:border-outline-variant docked full-width top-0 z-50 sticky">
+<button class="text-primary dark:text-inverse-primary hover:text-primary transition-colors duration-200 active:opacity-80 active:scale-95 flex items-center justify-center min-h-[48px] min-w-[48px]">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<div class="font-headline-md text-headline-md font-black text-on-surface dark:text-inverse-on-surface uppercase tracking-wider text-center flex-grow">
+            FATHER'S DAY CAR SHOW
+        </div>
+<button class="text-primary dark:text-inverse-primary hover:text-primary transition-colors duration-200 active:opacity-80 active:scale-95 flex items-center justify-center min-h-[48px] min-w-[48px]">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col w-full pb-24">
+<!-- 1. Public Landing Page -->
+<section class="flex flex-col w-full" id="landing-page">
+<!-- Hero -->
+<div class="relative w-full h-[60vh] min-h-[400px] flex flex-col items-center justify-center bg-inverse-surface overflow-hidden">
+<div class="absolute inset-0 bg-black/60 z-10 pointer-events-none"></div>
+<img alt="Hero Background" class="absolute inset-0 w-full h-full object-cover z-0" data-alt="A wide angle shot of a massive outdoor car show on a sunny summer day. Classic and modern cars are lined up perfectly on fresh green grass. The lighting is bright and high-contrast, casting sharp shadows. The mood is energetic and celebratory, with a vibrant color palette dominating the scene." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHwD0TvbcoAHqyftU3tCp2XHdWPWM8WaplS4UpoYk88pfZosPnBgVuU0QBmAi7ePmu82hLHu8JmcAdd0Ca0sYU3pVB3Tti8gqxXy6gFc-VM71FnuWox9Cyn9RVJjCW0u-lIEZJAqf-4LHbsAPGUkTMT9JtzzJ_t1upDrqcgZjNvPGHEFf38oieKodZn7Awc_PqT35lMZheau0PQGvsSpQPGvjcLOQI8OhUOGS3y0zNdOL5sSiKmJUODgP1o6XZkryzW8uaYsghm4Cx"/>
+<div class="z-20 flex flex-col items-center p-gutter text-center space-y-stack-md">
+<img alt="Father's Day Car Show Logo" class="w-64 md:w-96 max-w-full drop-shadow-2xl" src="https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg"/>
+<p class="font-headline-md text-headline-md text-pure-white uppercase tracking-widest drop-shadow-lg">June 21, 2026</p>
+</div>
+</div>
+<!-- Black Announcement Band -->
+<div class="w-full bg-on-surface py-stack-md px-margin-mobile text-center">
+<h1 class="font-headline-xl text-headline-xl text-pure-white uppercase">Join Us This Sunday</h1>
+</div>
+<!-- Red CTA Strip -->
+<div class="w-full bg-primary py-stack-sm px-margin-mobile text-center flex items-center justify-center gap-base cursor-pointer hover:bg-primary-container transition-colors">
+<span class="font-body-md text-body-md text-pure-white font-bold uppercase tracking-wider">Scan a vehicle QR code to vote.</span>
+<span class="material-symbols-outlined text-pure-white" data-icon="arrow_forward">arrow_forward</span>
+</div>
+<!-- How Voting Works -->
+<div class="w-full px-margin-mobile md:px-margin-desktop py-stack-lg max-w-7xl mx-auto space-y-stack-md">
+<h2 class="font-headline-lg text-headline-lg text-on-surface uppercase border-b-2 border-primary pb-base inline-block">How Voting Works</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mt-stack-md">
+<!-- Step 1 -->
+<div class="bg-pure-white p-gutter rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant flex flex-col items-center text-center gap-stack-sm">
+<div class="w-16 h-16 rounded-full bg-light-grey flex items-center justify-center text-primary mb-base">
+<span class="material-symbols-outlined fill text-3xl" data-icon="qr_code_scanner" data-weight="fill">qr_code_scanner</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface uppercase">Scan</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Find the QR code on any vehicle's display board and scan it with your phone's camera.</p>
+</div>
+<!-- Step 2 -->
+<div class="bg-pure-white p-gutter rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant flex flex-col items-center text-center gap-stack-sm">
+<div class="w-16 h-16 rounded-full bg-light-grey flex items-center justify-center text-primary mb-base">
+<span class="material-symbols-outlined fill text-3xl" data-icon="how_to_vote" data-weight="fill">how_to_vote</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface uppercase">Vote</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Review the vehicle details and cast your vote for your favorites in each category.</p>
+</div>
+<!-- Step 3 -->
+<div class="bg-pure-white p-gutter rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant flex flex-col items-center text-center gap-stack-sm">
+<div class="w-16 h-16 rounded-full bg-light-grey flex items-center justify-center text-primary mb-base">
+<span class="material-symbols-outlined fill text-3xl" data-icon="add_a_photo" data-weight="fill">add_a_photo</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface uppercase">Upload Photos</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Snap a great shot? Upload it directly to the vehicle's public gallery to share.</p>
+</div>
+</div>
+</div>
+<!-- Browse Categories -->
+<div class="w-full bg-surface-container-low px-margin-mobile md:px-margin-desktop py-stack-lg flex flex-col items-center">
+<div class="max-w-7xl w-full space-y-stack-md">
+<h2 class="font-headline-lg text-headline-lg text-on-surface uppercase border-b-2 border-primary pb-base inline-block">Browse Categories</h2>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-gutter mt-stack-md">
+<!-- Category Card 1 -->
+<div class="bg-pure-white rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] overflow-hidden cursor-pointer group">
+<div class="h-32 bg-on-surface relative overflow-hidden">
+<img alt="Classic Car Category" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A close up shot of a cherry red classic 1960s muscle car parked outdoors. The paint is highly reflective, showing deep gloss. The lighting is sunny and bright. The style is bold, high-contrast, and editorial, fitting a modern car show aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6b_gMdpDGtnm_pkiJQlrT6jpVNgz3Vz3v0XP-CTJ_rCTsSDj-SR_hU7fm3MKzZmwV8z1eqmMRL6vRY_s5PxGk_lS9Qdo0nomwhyHrcIsaZ9iJt4nhLHhGP1x7dm-xL1l7ry0HlXXicwgQk2R3Hh9WjkE8F0aml6CwLpS5SAScF-Z9uYUK1wrvHxx_dfKuup03YjPGzKAjN558AUHRtkx7c-uY4E5K0d4_8izUZln4LI70-O-cBOmevyDqWx7NefAwY_rpZKgDtDXf"/>
+<div class="absolute inset-0 bg-black/30"></div>
+<span class="absolute bottom-2 left-2 font-headline-md text-headline-md text-pure-white drop-shadow-md uppercase">Classic</span>
+</div>
+</div>
+<!-- Category Card 2 -->
+<div class="bg-pure-white rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] overflow-hidden cursor-pointer group">
+<div class="h-32 bg-on-surface relative overflow-hidden">
+<img alt="Modern Car Category" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A sleek, low-slung modern sports car in metallic silver parked on an asphalt track. The lighting is dramatic and edgy, highlighting the aerodynamic curves. The color palette features cool grays and sharp white reflections against a dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmxnbFLZZ-F7c8LyCJLpY22Dvee1AbtL9ToGqebyLPb9GZxQ-NAlI9xzCphNDBTiTJ3QLid0UwUkgZwY_zmIymFtUCPnf1Zt4-97xUM8m3XJUH31X3BAFhRF3W6TRbFAmrvnuI3RGMxt3QxEPQtjAZwRENEveZ41vd7Y0as1WFobCgFS-jtVWt-Lksl1IqlayGGnTr6Z4VsTU7079rl4jznRKO3xZlyE666Bg14I5Hys9dqipVEJAdBYc5bwZa13Ik-XQe3d-yb_9i"/>
+<div class="absolute inset-0 bg-black/30"></div>
+<span class="absolute bottom-2 left-2 font-headline-md text-headline-md text-pure-white drop-shadow-md uppercase">Modern</span>
+</div>
+</div>
+<!-- Category Card 3 -->
+<div class="bg-pure-white rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] overflow-hidden cursor-pointer group">
+<div class="h-32 bg-on-surface relative overflow-hidden">
+<img alt="Truck Category" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A rugged, lifted vintage pickup truck painted in deep forest green. The truck is parked on a dirt path with bright sunlight hitting the chrome bumper. The style is bold and muscular, fitting a high-octane automotive event." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2d7uPwhzl7fg3cazS4AyoouYoMc6JriqjAvqHiz9Ly6BPzuLfgFfE9CdxHnBr6a_0tgcJDmvRZFqJE9Y6cLv_mjJa3-SSLZZ1m_TrpCdU9vw8f371mJdBRPY7RhwtViWftNTJ_Sg2TuTzv_-MlfM20i7J1-bQkazRkvShZSAcHvpzwhl1Xm7BC3E4TiEvatZq1P2xKxyDvtlj8SSgM9yPmgE51cF7MRyLFy1DRtjh0pAsFLP5d5PP-RXYZxZmZzIglUeHjoQjdlA3"/>
+<div class="absolute inset-0 bg-black/30"></div>
+<span class="absolute bottom-2 left-2 font-headline-md text-headline-md text-pure-white drop-shadow-md uppercase">Trucks</span>
+</div>
+</div>
+<!-- Category Card 4 -->
+<div class="bg-pure-white rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] overflow-hidden cursor-pointer group">
+<div class="h-32 bg-on-surface relative overflow-hidden">
+<img alt="Motorcycle Category" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A custom chopper motorcycle with black matte finish and chrome detailing. The bike is parked on a paved lot. The image is high contrast with deep blacks and bright metallic highlights. The mood is rebellious and fast-paced." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1nfLnBPYdTurRkW_YZ78brVMROSjrglAnaCwqpW8aXBtfdkj2TIp82ampj7BKI4nO_6fYe4hZYKnY-wTrYgmBdEcb5mHZuLwkcVXR0TmlG9UGUQG929Yf-DaQKBPuK8AqPgL5QTLw7fCKm4cm5xGOYpJLqaX-k2jColC3uPdJJfvwVGcKCKC4lxG2X4ITh_EH5uMoMtQZYkA38pe6j8geFTs7OD0lTAa30W2dakH7F489GNAasfZS4tUfzDLp1FgV0utAN59mXU8P"/>
+<div class="absolute inset-0 bg-black/30"></div>
+<span class="absolute bottom-2 left-2 font-headline-md text-headline-md text-pure-white drop-shadow-md uppercase">Bikes</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Hidden on Web) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-2 pb-safe bg-inverse-surface dark:bg-on-surface shadow-2xl md:hidden">
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed scale-110 active:scale-90 duration-150 min-h-[48px] min-w-[48px]" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm uppercase mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 min-h-[48px] min-w-[48px]" href="#">
+<span class="material-symbols-outlined" data-icon="qr_code_scanner">qr_code_scanner</span>
+<span class="font-label-sm text-label-sm uppercase mt-1">Vote</span>
+</a>
+<a class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 min-h-[48px] min-w-[48px]" href="#">
+<span class="material-symbols-outlined" data-icon="directions_car">directions_car</span>
+<span class="font-label-sm text-label-sm uppercase mt-1">Gallery</span>
+</a>
+<a class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 min-h-[48px] min-w-[48px]" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm uppercase mt-1">Profile</span>
+</a>
+</nav>
+<!-- Footer -->
+<footer class="flex flex-col items-center justify-center w-full py-12 px-margin-mobile gap-stack-lg bg-primary dark:bg-primary-container border-t-8 border-inverse-surface full-width mb-20 md:mb-0">
+<div class="font-headline-lg text-headline-lg text-pure-white text-center">
+            CELEBRATION CHURCH
+        </div>
+<div class="flex flex-wrap justify-center gap-gutter">
+<a class="font-label-caps text-label-caps text-pure-white opacity-90 hover:opacity-100 uppercase transition-opacity" href="#">Privacy Policy</a>
+<a class="font-label-caps text-label-caps text-pure-white opacity-90 hover:opacity-100 uppercase transition-opacity" href="#">Terms of Service</a>
+<a class="font-label-caps text-label-caps text-pure-white opacity-90 hover:opacity-100 uppercase transition-opacity" href="#">Volunteer</a>
+<a class="font-label-caps text-label-caps text-pure-white opacity-90 hover:opacity-100 uppercase transition-opacity" href="#">Donate</a>
+</div>
+<div class="font-body-sm text-body-sm text-pure-white opacity-80 text-center">
+            © 2024 Celebration Church. All rights reserved.
+        </div>
+</footer>
+</body></html>

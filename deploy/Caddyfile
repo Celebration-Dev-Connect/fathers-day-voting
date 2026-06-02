@@ -20,6 +20,10 @@ carshow.internal {
     reverse_proxy 127.0.0.1:3001
   }
 
+  handle_path /carshow/owner/* {
+    reverse_proxy 127.0.0.1:3003
+  }
+
   handle_path /carshow/* {
     reverse_proxy 127.0.0.1:3000
   }
@@ -52,6 +56,10 @@ automationsolutions.ddns.net {
 
   handle_path /carshow/judge/* {
     reverse_proxy 127.0.0.1:3001
+  }
+
+  handle_path /carshow/owner/* {
+    reverse_proxy 127.0.0.1:3003
   }
 
   handle_path /carshow/* {

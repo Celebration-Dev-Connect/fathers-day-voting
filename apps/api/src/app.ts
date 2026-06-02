@@ -11,6 +11,7 @@ import { PhotoModerationWorker } from "./media/worker.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerCategoryRoutes } from "./routes/categories.js";
 import { registerJudgingRoutes } from "./routes/judging.js";
+import { registerOwnerRoutes } from "./routes/owner.js";
 import { registerPhotosRoutes } from "./routes/photos.js";
 import { registerPublicRoutes } from "./routes/public.js";
 import { registerQrCardRoutes } from "./routes/qrCards.js";
@@ -41,6 +42,7 @@ export async function buildApp({ storage, moderator }: AppDeps) {
   await registerJudgingRoutes(app);
   await registerRegistrationRoutes(app);
   await registerQrCardRoutes(app);
+  await registerOwnerRoutes(app);
   await registerPhotosRoutes(app, { storage, worker });
   await registerPublicRoutes(app);
 

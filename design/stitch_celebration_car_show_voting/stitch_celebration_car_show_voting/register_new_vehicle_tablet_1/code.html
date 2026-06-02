@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>New Vehicle Registration - Father's Day Car Show</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-container": "#fffbff",
+                      "on-tertiary-fixed": "#410003",
+                      "surface": "#f9f9ff",
+                      "tertiary": "#b8111c",
+                      "surface-variant": "#e1e2ea",
+                      "on-surface": "#191c21",
+                      "on-primary-fixed": "#410007",
+                      "primary-fixed-dim": "#ffb3b1",
+                      "inverse-on-surface": "#eff0f9",
+                      "on-background": "#191c21",
+                      "deep-red": "#CB1836",
+                      "on-secondary": "#ffffff",
+                      "error-container": "#ffdad6",
+                      "surface-container-high": "#e6e8f0",
+                      "background": "#f9f9ff",
+                      "primary-container": "#dd2d3e",
+                      "on-error": "#ffffff",
+                      "inverse-primary": "#ffb3b1",
+                      "outline-variant": "#e4bdbc",
+                      "surface-container-low": "#f2f3fb",
+                      "on-primary": "#ffffff",
+                      "on-primary-container": "#fffbff",
+                      "inverse-surface": "#2d3037",
+                      "border-grey": "#D7D7D7",
+                      "surface-dim": "#d8dae2",
+                      "surface-container": "#ecedf6",
+                      "secondary-container": "#e2e2e2",
+                      "primary": "#b90a29",
+                      "outline": "#906f6e",
+                      "tertiary-container": "#dc3031",
+                      "on-secondary-container": "#646464",
+                      "surface-bright": "#f9f9ff",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "pure-white": "#FFFFFF",
+                      "on-tertiary-fixed-variant": "#930010",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed": "#ffdad6",
+                      "secondary-fixed-dim": "#c6c6c6",
+                      "tertiary-fixed-dim": "#ffb3ac",
+                      "on-primary-fixed-variant": "#92001d",
+                      "primary-fixed": "#ffdad8",
+                      "surface-container-highest": "#e1e2ea",
+                      "on-secondary-fixed-variant": "#474747",
+                      "on-surface-variant": "#5b403f",
+                      "muted-grey": "#7D7D7D",
+                      "on-secondary-fixed": "#1b1b1b",
+                      "light-grey": "#F4F4F4",
+                      "surface-tint": "#bc0f2b",
+                      "on-error-container": "#93000a",
+                      "secondary-fixed": "#e2e2e2",
+                      "secondary": "#5e5e5e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-lg": "32px",
+                      "margin-desktop": "40px",
+                      "touch-target-min": "48px",
+                      "stack-sm": "8px",
+                      "margin-mobile": "20px",
+                      "base": "8px",
+                      "stack-md": "16px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Montserrat"
+                      ],
+                      "headline-md": [
+                              "Montserrat"
+                      ],
+                      "headline-xl": [
+                              "Montserrat"
+                      ],
+                      "body-lg": [
+                              "Montserrat"
+                      ],
+                      "headline-lg": [
+                              "Montserrat"
+                      ],
+                      "body-sm": [
+                              "Montserrat"
+                      ],
+                      "label-sm": [
+                              "Montserrat"
+                      ],
+                      "label-caps": [
+                              "Montserrat"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-xl": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.03em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "1",
+                                      "letterSpacing": "0.1em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom Input Styles */
+        input[type="text"], input[type="email"], input[type="tel"], select {
+            @apply h-[48px] px-4 w-full border-2 border-border-grey bg-pure-white text-on-surface font-body-md rounded-DEFAULT transition-colors duration-200 focus:outline-none focus:border-primary focus:ring-0;
+        }
+        
+        label {
+            @apply block font-label-caps text-label-caps text-on-surface-variant mb-2 tracking-widest uppercase;
+        }
+
+        /* Radio Buttons for Category */
+        .category-radio:checked + label {
+            @apply bg-primary text-pure-white border-primary shadow-lg scale-[1.02];
+        }
+        
+        /* Soft Ambient Shadow */
+        .card-shadow {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-light-grey text-on-surface min-h-screen flex flex-col font-body-md selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TopAppBar (Transactional - Nav hidden, Back button added) -->
+<header class="bg-pure-white dark:bg-inverse-surface border-b border-border-grey dark:border-outline-variant docked full-width top-0 z-50">
+<div class="flex justify-between items-center w-full h-16 px-margin-mobile max-w-7xl mx-auto">
+<button aria-label="Back to registrations list" class="flex items-center text-primary font-bold hover:opacity-80 transition-opacity gap-2 group h-[48px] px-2 -ml-2 rounded-lg">
+<span class="material-symbols-outlined group-hover:-translate-x-1 transition-transform" data-icon="arrow_back">arrow_back</span>
+<span class="font-label-caps text-label-caps hidden sm:inline-block">REGISTRATIONS</span>
+</button>
+<div class="text-center flex-1 pr-10 sm:pr-0">
+<h1 class="font-headline-md text-headline-md font-black text-on-surface dark:text-inverse-on-surface uppercase tracking-wider">NEW REGISTRATION</h1>
+</div>
+<!-- Empty div for flex balance if needed, or trailing action -->
+<div class="w-10"></div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-7xl mx-auto px-margin-mobile py-stack-lg md:py-margin-desktop">
+<form class="flex flex-col gap-stack-lg">
+<!-- Two Column Layout for iPad/Tablet -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-lg lg:gap-margin-desktop">
+<!-- Column 1: Owner Information -->
+<section class="bg-pure-white rounded-lg card-shadow border border-border-grey/50 overflow-hidden flex flex-col">
+<div class="bg-surface-container-lowest border-b border-border-grey p-stack-md flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-light-grey flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="person" data-weight="fill">person</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface uppercase">Owner Information</h2>
+</div>
+<div class="p-stack-md flex flex-col gap-stack-sm md:gap-stack-md flex-1">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-stack-sm md:gap-stack-md">
+<div>
+<label for="firstName">First Name *</label>
+<input id="firstName" name="firstName" placeholder="John" required="" type="text"/>
+</div>
+<div>
+<label for="lastName">Last Name *</label>
+<input id="lastName" name="lastName" placeholder="Doe" required="" type="text"/>
+</div>
+</div>
+<div>
+<label for="phone">Phone Number *</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-muted-grey" data-icon="phone">phone</span>
+<input class="pl-12" id="phone" name="phone" placeholder="(555) 123-4567" required="" type="tel"/>
+</div>
+</div>
+<div>
+<label for="email">Email Address</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-muted-grey" data-icon="mail">mail</span>
+<input class="pl-12" id="email" name="email" placeholder="john.doe@example.com" type="email"/>
+</div>
+</div>
+<div class="mt-auto pt-4">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative flex items-center justify-center">
+<input class="peer sr-only" type="checkbox"/>
+<div class="w-6 h-6 border-2 border-border-grey rounded-DEFAULT bg-pure-white peer-checked:bg-primary peer-checked:border-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-pure-white text-sm opacity-0 peer-checked:opacity-100 transition-opacity" data-icon="check">check</span>
+</div>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface transition-colors">Owner agreed to event liability waiver.</span>
+</label>
+</div>
+</div>
+</section>
+<!-- Column 2: Vehicle Information -->
+<section class="bg-pure-white rounded-lg card-shadow border border-border-grey/50 overflow-hidden flex flex-col">
+<div class="bg-surface-container-lowest border-b border-border-grey p-stack-md flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-light-grey flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="directions_car" data-weight="fill">directions_car</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface uppercase">Vehicle Details</h2>
+</div>
+<div class="p-stack-md flex flex-col gap-stack-sm md:gap-stack-md flex-1">
+<div class="grid grid-cols-2 gap-stack-sm md:gap-stack-md">
+<div>
+<label for="year">Year *</label>
+<input id="year" maxlength="4" name="year" placeholder="1969" required="" type="text"/>
+</div>
+<div>
+<label for="make">Make *</label>
+<input id="make" name="make" placeholder="Ford" required="" type="text"/>
+</div>
+</div>
+<div>
+<label for="model">Model *</label>
+<input id="model" name="model" placeholder="Mustang Mach 1" required="" type="text"/>
+</div>
+<div>
+<label for="plate">License Plate / Tag</label>
+<input class="uppercase" id="plate" name="plate" placeholder="OPTIONAL" type="text"/>
+</div>
+<div class="pt-2">
+<label>Show Category *</label>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+<!-- Category Radios styled as Chips -->
+<div class="relative">
+<input class="category-radio sr-only" id="cat-classic" name="category" required="" type="radio" value="classic"/>
+<label class="flex items-center justify-center h-[48px] border-2 border-border-grey bg-light-grey text-on-surface font-label-caps text-label-caps rounded-DEFAULT cursor-pointer transition-all hover:border-primary/50 text-center px-2 m-0" for="cat-classic">CLASSIC</label>
+</div>
+<div class="relative">
+<input class="category-radio sr-only" id="cat-muscle" name="category" type="radio" value="muscle"/>
+<label class="flex items-center justify-center h-[48px] border-2 border-border-grey bg-light-grey text-on-surface font-label-caps text-label-caps rounded-DEFAULT cursor-pointer transition-all hover:border-primary/50 text-center px-2 m-0" for="cat-muscle">MUSCLE</label>
+</div>
+<div class="relative">
+<input class="category-radio sr-only" id="cat-exotic" name="category" type="radio" value="exotic"/>
+<label class="flex items-center justify-center h-[48px] border-2 border-border-grey bg-light-grey text-on-surface font-label-caps text-label-caps rounded-DEFAULT cursor-pointer transition-all hover:border-primary/50 text-center px-2 m-0" for="cat-exotic">EXOTIC</label>
+</div>
+<div class="relative">
+<input class="category-radio sr-only" id="cat-truck" name="category" type="radio" value="truck"/>
+<label class="flex items-center justify-center h-[48px] border-2 border-border-grey bg-light-grey text-on-surface font-label-caps text-label-caps rounded-DEFAULT cursor-pointer transition-all hover:border-primary/50 text-center px-2 m-0" for="cat-truck">TRUCK</label>
+</div>
+<div class="relative">
+<input class="category-radio sr-only" id="cat-custom" name="category" type="radio" value="custom"/>
+<label class="flex items-center justify-center h-[48px] border-2 border-border-grey bg-light-grey text-on-surface font-label-caps text-label-caps rounded-DEFAULT cursor-pointer transition-all hover:border-primary/50 text-center px-2 m-0" for="cat-custom">CUSTOM</label>
+</div>
+<div class="relative">
+<input class="category-radio sr-only" id="cat-other" name="category" type="radio" value="other"/>
+<label class="flex items-center justify-center h-[48px] border-2 border-border-grey bg-light-grey text-on-surface font-label-caps text-label-caps rounded-DEFAULT cursor-pointer transition-all hover:border-primary/50 text-center px-2 m-0" for="cat-other">OTHER</label>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Bottom Section: QR Assignment & Action -->
+<section class="bg-on-surface text-pure-white rounded-lg shadow-2xl mt-4 md:mt-8 overflow-hidden flex flex-col md:flex-row border-t-4 border-primary">
+<!-- QR Scanner Placeholder -->
+<div class="md:w-1/3 bg-inverse-surface p-stack-md flex flex-col items-center justify-center gap-4 border-b md:border-b-0 md:border-r border-outline-variant/30 min-h-[250px]">
+<div class="text-center">
+<h3 class="font-headline-md text-headline-md mb-1 uppercase tracking-wider text-primary-fixed">Assign Entry Tag</h3>
+<p class="font-body-sm text-body-sm text-secondary-fixed-dim">Scan QR code to link vehicle.</p>
+</div>
+<!-- Viewfinder Mockup -->
+<div class="relative w-48 h-48 border-2 border-dashed border-primary-fixed rounded-lg flex items-center justify-center bg-black/50 group cursor-pointer overflow-hidden">
+<div class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center">
+<span class="font-label-caps text-label-caps tracking-widest text-pure-white">TAP TO SCAN</span>
+</div>
+<span class="material-symbols-outlined text-5xl text-border-grey group-hover:scale-110 transition-transform duration-300" data-icon="qr_code_scanner">qr_code_scanner</span>
+<!-- Viewfinder corners -->
+<div class="absolute top-2 left-2 w-4 h-4 border-t-4 border-l-4 border-primary"></div>
+<div class="absolute top-2 right-2 w-4 h-4 border-t-4 border-r-4 border-primary"></div>
+<div class="absolute bottom-2 left-2 w-4 h-4 border-b-4 border-l-4 border-primary"></div>
+<div class="absolute bottom-2 right-2 w-4 h-4 border-b-4 border-r-4 border-primary"></div>
+<!-- Scanline animation placeholder -->
+<div class="absolute top-0 left-0 w-full h-[2px] bg-primary shadow-[0_0_8px_rgba(185,10,41,1)] animate-[scan_2s_ease-in-out_infinite]"></div>
+</div>
+</div>
+<!-- Action Area -->
+<div class="md:w-2/3 p-stack-md flex flex-col justify-center">
+<div class="mb-6 hidden md:block">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary" data-icon="info">info</span>
+<h4 class="font-label-caps text-label-caps tracking-widest text-secondary-fixed">STAFF INSTRUCTIONS</h4>
+</div>
+<p class="font-body-sm text-body-sm text-secondary-fixed-dim leading-relaxed">
+                            Verify all owner and vehicle information before confirming. Hand the scanned tag to the owner to display on their dashboard for attendee voting.
+                        </p>
+</div>
+<div class="mt-auto">
+<button class="w-full h-[64px] bg-primary hover:bg-deep-red text-pure-white font-headline-md text-headline-md uppercase tracking-wider rounded-DEFAULT transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]" type="submit">
+<span class="material-symbols-outlined" data-icon="how_to_reg">how_to_reg</span>
+                            Confirm &amp; Check-in
+                        </button>
+</div>
+</div>
+</section>
+</form>
+</main>
+<style>
+        @keyframes scan {
+            0%, 100% { top: 10%; }
+            50% { top: 90%; }
+        }
+    </style>
+</body></html>

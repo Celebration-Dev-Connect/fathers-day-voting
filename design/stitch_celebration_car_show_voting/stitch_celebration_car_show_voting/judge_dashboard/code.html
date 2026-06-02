@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Judge Dashboard - Father's Day Car Show</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#930010",
+                        "border-grey": "#D7D7D7",
+                        "surface-container-high": "#e6e8f0",
+                        "secondary": "#5e5e5e",
+                        "surface-dim": "#d8dae2",
+                        "pure-white": "#FFFFFF",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#dc3031",
+                        "surface-container-highest": "#e1e2ea",
+                        "surface": "#f9f9ff",
+                        "background": "#f9f9ff",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#bc0f2b",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#ffb3b1",
+                        "on-primary-fixed-variant": "#92001d",
+                        "secondary-container": "#e2e2e2",
+                        "on-error": "#ffffff",
+                        "muted-grey": "#7D7D7D",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#410003",
+                        "on-secondary-container": "#646464",
+                        "outline-variant": "#e4bdbc",
+                        "primary-container": "#dd2d3e",
+                        "tertiary": "#b8111c",
+                        "surface-bright": "#f9f9ff",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "surface-container-lowest": "#ffffff",
+                        "primary": "#b90a29",
+                        "outline": "#906f6e",
+                        "surface-variant": "#e1e2ea",
+                        "on-background": "#191c21",
+                        "tertiary-fixed-dim": "#ffb3ac",
+                        "surface-container": "#ecedf6",
+                        "light-grey": "#F4F4F4",
+                        "surface-container-low": "#f2f3fb",
+                        "on-primary-container": "#fffbff",
+                        "deep-red": "#CB1836",
+                        "on-primary-fixed": "#410007",
+                        "primary-fixed": "#ffdad8",
+                        "on-surface-variant": "#5b403f",
+                        "secondary-fixed": "#e2e2e2",
+                        "inverse-surface": "#2d3037",
+                        "inverse-on-surface": "#eff0f9",
+                        "primary-fixed-dim": "#ffb3b1",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "on-tertiary-container": "#fffbff",
+                        "on-secondary-fixed-variant": "#474747",
+                        "on-surface": "#191c21",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "stack-lg": "32px",
+                        "margin-desktop": "40px",
+                        "gutter": "16px",
+                        "base": "8px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Montserrat"],
+                        "label-caps": ["Montserrat"],
+                        "headline-lg": ["Montserrat"],
+                        "body-md": ["Montserrat"],
+                        "headline-md": ["Montserrat"],
+                        "body-sm": ["Montserrat"],
+                        "body-lg": ["Montserrat"],
+                        "label-sm": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "0.05em", "fontWeight": "800" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "letterSpacing": "0.03em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "1.4", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1", "fontWeight": "500" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .shadow-ambient {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col font-sans">
+<!-- TopAppBar -->
+<header class="bg-pure-white dark:bg-inverse-surface text-primary dark:text-inverse-primary font-headline-lg text-headline-lg font-label-caps text-label-caps font-headline-md text-headline-md font-black text-on-surface dark:text-inverse-on-surface uppercase tracking-wider docked full-width top-0 border-b border-border-grey dark:border-outline-variant flat no shadows flex justify-between items-center w-full h-16 px-margin-mobile sticky z-40">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-on-surface-variant font-medium hover:text-primary transition-colors duration-200">
+<span class="material-symbols-outlined text-[24px]">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-black uppercase tracking-wider truncate mx-4">FATHER'S DAY CAR SHOW</h1>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-on-surface-variant font-medium hover:text-primary transition-colors duration-200">
+<span class="material-symbols-outlined text-[24px]">search</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col px-margin-mobile md:px-margin-desktop py-stack-lg max-w-7xl mx-auto w-full gap-stack-lg mb-[100px] md:mb-0">
+<!-- Judge Welcome Card -->
+<section class="bg-pure-white rounded-lg shadow-ambient p-[24px] border border-border-grey relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container opacity-10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-base mb-stack-sm">
+<span class="material-symbols-outlined text-primary text-[28px]" style="font-variation-settings: 'FILL' 1;">gavel</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Judge Dashboard</h2>
+</div>
+<p class="font-body-md text-body-md text-secondary max-w-2xl">
+                    Welcome back, Judge Carter. You have 3 categories assigned for today's event. Ensure all rankings are submitted before the 4:00 PM deadline.
+                </p>
+<div class="mt-stack-md flex gap-gutter flex-wrap">
+<div class="bg-surface-container-low px-[16px] py-[8px] rounded flex items-center gap-[8px] border border-border-grey">
+<span class="material-symbols-outlined text-muted-grey text-[18px]">schedule</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Deadline: 4:00 PM</span>
+</div>
+<div class="bg-surface-container-low px-[16px] py-[8px] rounded flex items-center gap-[8px] border border-border-grey">
+<span class="material-symbols-outlined text-muted-grey text-[18px]">assignment</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">3 Categories Pending</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Assigned Categories Header -->
+<div class="flex justify-between items-end mt-stack-md border-b border-border-grey pb-[8px]">
+<h3 class="font-headline-md text-headline-md text-on-surface">Assigned Categories</h3>
+<span class="font-label-caps text-label-caps text-muted-grey uppercase">Event Day 1</span>
+</div>
+<!-- Categories Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Category Card 1 (In Progress) -->
+<article class="bg-pure-white rounded-lg shadow-ambient border border-border-grey overflow-hidden flex flex-col transition-transform hover:-translate-y-1 hover:shadow-lg duration-200">
+<div class="h-[120px] bg-surface-container flex items-center justify-center relative border-b border-border-grey" data-alt="A close-up shot of a polished vintage classic car grille and headlight, capturing the essence of automotive history. The lighting is bright and clear, reflecting off the chrome details, consistent with a high-end car show environment. The image uses a high-contrast aesthetic with deep blacks and bright highlights, emphasizing the classic design lines." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCPNWCxkkYlMp2tEQbdCmD1YbwKecTiomQly86a6USwwoqcRY6aozvdVAqfJRsMdeIOyRxQEPt1Zz0F1m3d4P4C-pY5fnzs5pkXLDZXNGnXO2EHdkv7C0eTWHMoi5y_KqiEKWuUickjZwl6ORqD4AnZccRfd7wL57_JKn7KnHHogz8sa3mjuXAs5387-ROwSBAdrGFKTMg6FC7W0v7147cdDhkG1Mpzd82-dTzEquRMZpFh0v-5lYGXls_O1sDHOXZISXGsq3UZBsxG'); background-size: cover; background-position: center;">
+<div class="absolute inset-0 bg-black bg-opacity-40"></div>
+<span class="material-symbols-outlined text-pure-white text-[48px] relative z-10 opacity-80" style="font-variation-settings: 'FILL' 1;">directions_car</span>
+</div>
+<div class="p-[16px] flex flex-col flex-grow gap-stack-sm">
+<div class="flex justify-between items-start">
+<h4 class="font-headline-md text-headline-md text-on-surface uppercase truncate">Classic Car</h4>
+<span class="bg-light-grey text-on-surface-variant font-label-caps text-label-caps px-[8px] py-[4px] rounded border border-border-grey whitespace-nowrap">15 Entries</span>
+</div>
+<div class="flex items-center gap-[8px] mt-[4px]">
+<span class="w-[8px] h-[8px] rounded-full bg-primary-container"></span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-medium">Draft - 7/15 Ranked</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-[6px] bg-surface-container-high rounded-full mt-[8px] overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 46%;"></div>
+</div>
+<div class="mt-auto pt-stack-md">
+<button class="w-full h-touch-target-min bg-primary text-pure-white font-label-caps text-label-caps uppercase rounded flex items-center justify-center gap-[8px] hover:bg-tertiary transition-colors">
+<span>Continue Ranking</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Category Card 2 (Not Started) -->
+<article class="bg-pure-white rounded-lg shadow-ambient border border-border-grey overflow-hidden flex flex-col transition-transform hover:-translate-y-1 hover:shadow-lg duration-200">
+<div class="h-[120px] bg-surface-container flex items-center justify-center relative border-b border-border-grey" data-alt="An aggressive front-end shot of a heavy-duty custom truck at an outdoor exhibition. The lighting is stark and high-contrast, typical of a bright sunny day at a car show. The visual style is bold, focusing on the sheer size and mechanical detail of the vehicle, integrating deep shadows and pristine highlights." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBJ6keKyEb9i2PwMfu6flz9493-FNdz-Gz_R7-tAzPWUbE3ehlZDrZDqvP1rMSMobu42SdZRNOpBHOpHZqzkXbVXSraMu3qXgF0ZYmKpAsq6dbwlltRdV1ys1qdM9vqbRXGzrL71f2sULtK_ZIF4YF24hR-Vv91znzM-jQQB99wjJFVWFlOoaoihzL2ee46HhvHUgDSSB2oQQkQLXjVY27w3JCrUnnvkec2sHZlr3QUo2wC0UNxQeJB_407ilqeDx-P0j-MwdWNknzb'); background-size: cover; background-position: center;">
+<div class="absolute inset-0 bg-black bg-opacity-40"></div>
+<span class="material-symbols-outlined text-pure-white text-[48px] relative z-10 opacity-80" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+<div class="p-[16px] flex flex-col flex-grow gap-stack-sm">
+<div class="flex justify-between items-start">
+<h4 class="font-headline-md text-headline-md text-on-surface uppercase truncate">Truck</h4>
+<span class="bg-light-grey text-on-surface-variant font-label-caps text-label-caps px-[8px] py-[4px] rounded border border-border-grey whitespace-nowrap">8 Entries</span>
+</div>
+<div class="flex items-center gap-[8px] mt-[4px]">
+<span class="w-[8px] h-[8px] rounded-full bg-muted-grey"></span>
+<span class="font-body-sm text-body-sm text-secondary font-medium">Not Started</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-[6px] bg-surface-container-high rounded-full mt-[8px] overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 0%;"></div>
+</div>
+<div class="mt-auto pt-stack-md">
+<button class="w-full h-touch-target-min bg-on-surface text-pure-white font-label-caps text-label-caps uppercase rounded flex items-center justify-center gap-[8px] hover:bg-black transition-colors">
+<span>Start Ranking</span>
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Category Card 3 (Submitted) -->
+<article class="bg-surface-container-low rounded-lg shadow-ambient border border-border-grey overflow-hidden flex flex-col opacity-80">
+<div class="h-[120px] bg-surface-container flex items-center justify-center relative border-b border-border-grey" data-alt="A sleek custom motorcycle displayed against a minimalist backdrop, highlighting its intricate engineering and custom paint job. The image features a high-key, modern aesthetic with strong red accents in the background, reinforcing a high-performance racing livery vibe. The focus is sharp on the engine block and front wheel." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAsaHI23ngonW7D10ODILCPFuusUobgH9_SXCoJCE_je_ZN5Pl_D2NDq7LTTSldhyxp4INMqbvzcjNcFWxmfRFGaCwAWOsihR3LEDszD0-bWjoSy5xMfD0soEXOipEut2UaBJejq9UqHziq_zc9TMnXOa30zQLkZscHqmovvqjcdKYzTebFeeKdIgAGEnwxaTpecBATB2XuT0dSywgNqO7R6WWKq_IbPN0r2cGb_3QY1zJRKYJq5_E0kqEBWFeWeXd-9xjpF74BAu7X'); background-size: cover; background-position: center;">
+<div class="absolute inset-0 bg-black bg-opacity-60"></div>
+<span class="material-symbols-outlined text-pure-white text-[48px] relative z-10 opacity-80" style="font-variation-settings: 'FILL' 1;">two_wheeler</span>
+<div class="absolute inset-0 flex items-center justify-center z-20">
+<span class="bg-black bg-opacity-70 text-pure-white font-label-caps text-label-caps px-[12px] py-[6px] rounded border border-pure-white uppercase flex items-center gap-[4px]">
+<span class="material-symbols-outlined text-[16px]">check_circle</span> Submitted
+                         </span>
+</div>
+</div>
+<div class="p-[16px] flex flex-col flex-grow gap-stack-sm">
+<div class="flex justify-between items-start">
+<h4 class="font-headline-md text-headline-md text-on-surface uppercase truncate">Motorbike</h4>
+<span class="bg-light-grey text-on-surface-variant font-label-caps text-label-caps px-[8px] py-[4px] rounded border border-border-grey whitespace-nowrap">12 Entries</span>
+</div>
+<div class="flex items-center gap-[8px] mt-[4px]">
+<span class="w-[8px] h-[8px] rounded-full bg-secondary"></span>
+<span class="font-body-sm text-body-sm text-secondary font-medium">Completed - 12/12 Ranked</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-[6px] bg-secondary-container rounded-full mt-[8px] overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 100%;"></div>
+</div>
+<div class="mt-auto pt-stack-md">
+<button class="w-full h-touch-target-min bg-pure-white text-on-surface font-label-caps text-label-caps uppercase rounded flex items-center justify-center gap-[8px] border-2 border-border-grey hover:border-primary transition-colors">
+<span>Review Rankings</span>
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</div>
+</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden bg-inverse-surface dark:bg-on-surface text-pure-white font-label-sm text-label-sm uppercase font-headline-xl text-headline-xl text-primary docked full-width bottom-0 bg-inverse-surface shadow-lg shadow-2xl fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-2 pb-safe">
+<a class="h-full flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity w-1/4" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-sm text-label-sm uppercase">Home</span>
+</a>
+<a class="h-full flex flex-col items-center justify-center text-primary dark:text-primary-fixed scale-110 active:scale-90 duration-150 w-1/4 relative" href="#">
+<div class="absolute -top-3 w-12 h-1 bg-primary rounded-full"></div>
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">qr_code_scanner</span>
+<span class="font-label-sm text-label-sm uppercase font-bold">Vote</span>
+</a>
+<a class="h-full flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity w-1/4" href="#">
+<span class="material-symbols-outlined mb-1">directions_car</span>
+<span class="font-label-sm text-label-sm uppercase">Gallery</span>
+</a>
+<a class="h-full flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity w-1/4" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-sm text-label-sm uppercase">Profile</span>
+</a>
+</nav>
+</body></html>

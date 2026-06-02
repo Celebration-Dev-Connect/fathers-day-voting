@@ -35,6 +35,7 @@ function registration(id: string, entryNumber: number): VotingRegistration {
     plateNumber: null,
     exteriorColor: null,
     internalNotes: null,
+    buildStory: null,
     status: "REGISTERED",
     source: "ONSITE",
     checkedInAt: null,

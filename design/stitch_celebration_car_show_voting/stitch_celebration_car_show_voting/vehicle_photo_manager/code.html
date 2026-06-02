@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vehicle Photo Upload</title>
+<!-- Google Fonts: Montserrat -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#930010",
+                        "muted-grey": "#7D7D7D",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "light-grey": "#F4F4F4",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "on-surface": "#191c21",
+                        "tertiary-fixed-dim": "#ffb3ac",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#e2e2e2",
+                        "on-primary-fixed": "#410007",
+                        "primary-container": "#dd2d3e",
+                        "on-secondary": "#ffffff",
+                        "outline": "#906f6e",
+                        "surface-container-lowest": "#ffffff",
+                        "border-grey": "#D7D7D7",
+                        "surface-container-highest": "#e1e2ea",
+                        "surface-container": "#ecedf6",
+                        "surface-variant": "#e1e2ea",
+                        "secondary": "#5e5e5e",
+                        "tertiary": "#b8111c",
+                        "on-secondary-fixed-variant": "#474747",
+                        "surface-bright": "#f9f9ff",
+                        "background": "#f9f9ff",
+                        "on-secondary-container": "#646464",
+                        "inverse-primary": "#ffb3b1",
+                        "tertiary-container": "#dc3031",
+                        "pure-white": "#FFFFFF",
+                        "primary-fixed": "#ffdad8",
+                        "inverse-surface": "#2d3037",
+                        "primary": "#b90a29",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e6e8f0",
+                        "inverse-on-surface": "#eff0f9",
+                        "deep-red": "#CB1836",
+                        "on-primary-container": "#fffbff",
+                        "surface": "#f9f9ff",
+                        "surface-dim": "#d8dae2",
+                        "secondary-container": "#e2e2e2",
+                        "on-tertiary-fixed": "#410003",
+                        "on-error": "#ffffff",
+                        "outline-variant": "#e4bdbc",
+                        "surface-container-low": "#f2f3fb",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c21",
+                        "surface-tint": "#bc0f2b",
+                        "primary-fixed-dim": "#ffb3b1",
+                        "on-primary-fixed-variant": "#92001d",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-surface-variant": "#5b403f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "touch-target-min": "48px",
+                        "stack-lg": "32px",
+                        "margin-desktop": "40px",
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Montserrat"],
+                        "body-lg": ["Montserrat"],
+                        "headline-xl": ["Montserrat"],
+                        "headline-md": ["Montserrat"],
+                        "label-caps": ["Montserrat"],
+                        "label-sm": ["Montserrat"],
+                        "body-sm": ["Montserrat"],
+                        "body-md": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "letterSpacing": "0.03em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "0.05em", "fontWeight": "800" }],
+                        "headline-md": ["20px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "1", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "1.4", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .soft-ambient-shadow {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-light-grey text-on-surface antialiased pb-24">
+<!-- TopAppBar -->
+<header class="bg-pure-white border-b border-border-grey flex justify-between items-center w-full h-16 px-margin-mobile fixed top-0 z-40">
+<button aria-label="Go back" class="text-primary hover:text-primary transition-colors duration-200 flex items-center justify-center min-h-[48px] min-w-[48px]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-black text-on-surface uppercase tracking-wider text-center flex-1">
+            FATHER'S DAY CAR SHOW
+        </h1>
+<button aria-label="Search" class="text-primary hover:text-primary transition-colors duration-200 flex items-center justify-center min-h-[48px] min-w-[48px]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="pt-20 px-margin-mobile flex flex-col gap-stack-lg max-w-md mx-auto">
+<!-- Progress Indicator -->
+<section class="flex justify-between items-center px-4 pt-4">
+<div class="flex flex-col items-center gap-1 flex-1">
+<div class="w-8 h-8 rounded-full bg-inverse-surface text-pure-white flex items-center justify-center font-label-caps text-label-caps">1</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Details</span>
+</div>
+<div class="h-[2px] bg-border-grey flex-1 mx-2"></div>
+<div class="flex flex-col items-center gap-1 flex-1">
+<div class="w-8 h-8 rounded-full bg-primary text-pure-white flex items-center justify-center font-label-caps text-label-caps ring-4 ring-primary-fixed">2</div>
+<span class="font-label-sm text-label-sm text-primary font-bold uppercase">Photos</span>
+</div>
+<div class="h-[2px] bg-border-grey flex-1 mx-2"></div>
+<div class="flex flex-col items-center gap-1 flex-1 opacity-50">
+<div class="w-8 h-8 rounded-full bg-surface-dim text-on-surface-variant flex items-center justify-center font-label-caps text-label-caps">3</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Review</span>
+</div>
+</section>
+<!-- Primary Upload Area -->
+<section class="bg-pure-white rounded-lg soft-ambient-shadow border-2 border-dashed border-border-grey p-8 flex flex-col items-center justify-center gap-stack-md cursor-pointer hover:border-primary transition-colors group min-h-[200px]">
+<div class="w-16 h-16 rounded-full bg-light-grey flex items-center justify-center group-hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary transition-colors" style="font-variation-settings: 'FILL' 0;">add_a_photo</span>
+</div>
+<div class="text-center">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Tap to select photos</h2>
+<p class="font-body-sm text-body-sm text-muted-grey">Upload up to 10 high-quality images of your vehicle. First image will be the primary display.</p>
+</div>
+<button class="bg-inverse-surface text-pure-white font-label-caps text-label-caps uppercase px-6 min-h-[48px] rounded flex items-center justify-center hover:opacity-90 active:scale-95 transition-all w-full mt-4">
+                Browse Files
+            </button>
+</section>
+<!-- Photo Management Grid -->
+<section class="flex flex-col gap-stack-sm">
+<div class="flex justify-between items-center mb-2">
+<h3 class="font-headline-lg text-headline-lg text-on-surface">Uploaded (3/10)</h3>
+</div>
+<div class="grid grid-cols-2 gap-gutter">
+<!-- Photo Card 1 (Primary) -->
+<div class="bg-pure-white rounded-lg soft-ambient-shadow overflow-hidden relative group aspect-square">
+<img alt="Car front view" class="w-full h-full object-cover" data-alt="A pristine classic muscle car parked outdoors on a bright, sunny day. The vehicle features a striking, glossy red paint job that reflects the high-key natural lighting. The angle captures the aggressive front grille and sleek hood lines. The setting is a professional car exhibition environment, utilizing a high-contrast aesthetic with deep shadows and vibrant colors to emphasize the vehicle's prestige and power." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDftKOA3Ky0xA4Ig1rhzyCcP7TsnSLEEnnpwfDXwz8681WSzypTIRxCzfU_kqPajgeOXel7oTzAkdsSDF4vDdd7Z8LBMMqWA2tIvPw_xxTECCw7m_E5hjuKYU2sntthi79fvcdBK0wRiGhXI69TWG_O6HIWe6nQxrW600cizJe_fqbrHdBZvpExzeK_wI5rThNAY-Vbhx20dlvp4mcjZE5zslDKERABgEfeFhuysig8s-Q0SFe19hPL7Rbjb2K1vxb2dTSLZl6WCTH8"/>
+<div class="absolute top-2 left-2 bg-primary text-pure-white font-label-caps text-label-caps px-2 py-1 rounded">Primary</div>
+<button class="absolute top-2 right-2 w-8 h-8 rounded-full bg-inverse-surface/80 text-pure-white flex items-center justify-center hover:bg-primary transition-colors">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">delete</span>
+</button>
+</div>
+<!-- Photo Card 2 -->
+<div class="bg-pure-white rounded-lg soft-ambient-shadow overflow-hidden relative group aspect-square">
+<img alt="Car side view" class="w-full h-full object-cover" data-alt="A detailed side-profile shot of a high-performance sports car bathed in intense, direct sunlight. The sleek, aerodynamic curves are highlighted by sharp contrasts between bright highlights and deep, inky shadows. The car's alloy wheels and low stance are prominently featured. The background is slightly blurred to maintain focus on the vehicle, fitting perfectly within a bold, professional automotive gallery design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBw0umWPrCvLDEPbr91jyJnZTxHvtaOFJzMTCVezgqm5KdW4SHv1LNFyCRB1kqxtOF3w-MHn4v0pPq4afKpJvoMDWo0jmqrfSy70OmIG7TX9qz3sX8FykVac09Lc8cAJ5uI6EmYrK3DpEiPXJcOwrcIK_SSk_I-l80-t5VDH7ZMeFs-bLtqXmQJowLekY9hGYWIIx_szQJTdWkLr7ziPIV1dVTE9_qaDsTHlp8rwU0xh8XPqjWmdEmfpexruFLDCsf5ECsYjg8enjN7"/>
+<button class="absolute bottom-2 left-2 right-2 bg-inverse-surface/90 text-pure-white font-label-caps text-label-caps px-2 py-2 rounded text-center opacity-0 group-hover:opacity-100 transition-opacity">Set Primary</button>
+<button class="absolute top-2 right-2 w-8 h-8 rounded-full bg-inverse-surface/80 text-pure-white flex items-center justify-center hover:bg-primary transition-colors">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">delete</span>
+</button>
+</div>
+<!-- Photo Card 3 -->
+<div class="bg-pure-white rounded-lg soft-ambient-shadow overflow-hidden relative group aspect-square">
+<img alt="Car interior" class="w-full h-full object-cover" data-alt="A close-up view of a luxury car's interior dashboard and steering wheel, taken in bright daylight. The image showcases premium leather stitching, polished chrome accents, and modern digital displays. The lighting creates a high-contrast scene with deep blacks and stark whites, echoing a sophisticated, high-octane visual identity. The composition is clean, editorial, and perfectly suited for a high-end mobile application gallery." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0sERRvWvtQddzeqG4hR7A7KU47_ikLHjw9uNq6hOjjfpwEaAXLQyHipSKj-_JBz6sXdPyOO7AXc2o9hWaXF9Z1BgmerS2XWDKhKmV22c350VRH-ewXi5WcoAZQj6uzC7F4PKa7DybKIQIXBpScMEQbELB3vw2hUNyLmjbK2I_oXjSns3cWl23I8pNxfl-QiY2gCg_fQEqiagzAXFxIEVJigoC83n8McveCLPEYLay1faBOEtqOxPEdZjbePE8NGHIPdguY22WWmT2"/>
+<button class="absolute bottom-2 left-2 right-2 bg-inverse-surface/90 text-pure-white font-label-caps text-label-caps px-2 py-2 rounded text-center opacity-0 group-hover:opacity-100 transition-opacity">Set Primary</button>
+<button class="absolute top-2 right-2 w-8 h-8 rounded-full bg-inverse-surface/80 text-pure-white flex items-center justify-center hover:bg-primary transition-colors">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">delete</span>
+</button>
+</div>
+<!-- Add More Placeholder -->
+<div class="bg-surface-container rounded-lg border-2 border-dashed border-border-grey flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors aspect-square">
+<span class="material-symbols-outlined text-3xl text-muted-grey" style="font-variation-settings: 'FILL' 0;">add</span>
+</div>
+</div>
+</section>
+<!-- Disclaimer -->
+<section class="bg-inverse-surface rounded-lg p-gutter flex gap-gutter items-start soft-ambient-shadow">
+<span class="material-symbols-outlined text-primary mt-1" style="font-variation-settings: 'FILL' 1;">info</span>
+<div>
+<h4 class="font-headline-md text-headline-md text-pure-white mb-1">Public Display Notice</h4>
+<p class="font-body-sm text-body-sm text-secondary-fixed">Photos uploaded here will be visible to judges and may be featured on the public event gallery, voting app, and live slideshows during the award ceremony.</p>
+</div>
+</section>
+<!-- Action Area -->
+<section class="pt-4 pb-8 flex gap-4">
+<button class="flex-1 bg-pure-white border-2 border-inverse-surface text-inverse-surface font-label-caps text-label-caps uppercase min-h-[48px] rounded flex items-center justify-center hover:bg-light-grey transition-colors">
+                Save Draft
+            </button>
+<button class="flex-1 bg-primary text-pure-white font-label-caps text-label-caps uppercase min-h-[48px] rounded flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md">
+                Continue
+            </button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-2 pb-safe bg-inverse-surface shadow-2xl">
+<a class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity w-full h-full min-h-[48px]" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label-sm text-label-sm uppercase">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity w-full h-full min-h-[48px]" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">qr_code_scanner</span>
+<span class="font-label-sm text-label-sm uppercase">Vote</span>
+</a>
+<a class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity w-full h-full min-h-[48px]" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">directions_car</span>
+<span class="font-label-sm text-label-sm uppercase">Gallery</span>
+</a>
+<!-- Active State: Profile (Managing User Content) -->
+<a class="flex flex-col items-center justify-center text-primary scale-110 duration-150 w-full h-full min-h-[48px]" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm uppercase">Profile</span>
+</a>
+</nav>
+</body></html>

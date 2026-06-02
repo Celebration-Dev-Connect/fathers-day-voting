@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Father's Day Car Show - Staff Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2d3037",
+                        "surface-variant": "#e1e2ea",
+                        "light-grey": "#F4F4F4",
+                        "on-primary-fixed": "#410007",
+                        "outline-variant": "#e4bdbc",
+                        "on-primary-fixed-variant": "#92001d",
+                        "on-surface": "#191c21",
+                        "on-surface-variant": "#5b403f",
+                        "on-background": "#191c21",
+                        "surface-container-high": "#e6e8f0",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#b8111c",
+                        "on-secondary": "#ffffff",
+                        "background": "#f9f9ff",
+                        "surface-container": "#ecedf6",
+                        "pure-white": "#FFFFFF",
+                        "on-tertiary-fixed": "#410003",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#e2e2e2",
+                        "deep-red": "#CB1836",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-secondary-fixed-variant": "#474747",
+                        "on-tertiary-fixed-variant": "#930010",
+                        "primary": "#b90a29",
+                        "outline": "#906f6e",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "border-grey": "#D7D7D7",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e1e2ea",
+                        "surface": "#f9f9ff",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#ffb3b1",
+                        "primary-fixed-dim": "#ffb3b1",
+                        "primary-container": "#dd2d3e",
+                        "inverse-on-surface": "#eff0f9",
+                        "on-error": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary-container": "#dc3031",
+                        "surface-dim": "#d8dae2",
+                        "on-primary-container": "#fffbff",
+                        "muted-grey": "#7D7D7D",
+                        "on-secondary-container": "#646464",
+                        "secondary-fixed": "#e2e2e2",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "secondary": "#5e5e5e",
+                        "surface-tint": "#bc0f2b",
+                        "surface-container-low": "#f2f3fb",
+                        "primary-fixed": "#ffdad8",
+                        "tertiary-fixed-dim": "#ffb3ac"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "base": "8px",
+                        "gutter": "16px",
+                        "margin-mobile": "20px",
+                        "stack-lg": "32px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Montserrat"],
+                        "label-caps": ["Montserrat"],
+                        "body-lg": ["Montserrat"],
+                        "headline-md": ["Montserrat"],
+                        "headline-lg": ["Montserrat"],
+                        "body-sm": ["Montserrat"],
+                        "label-sm": ["Montserrat"],
+                        "headline-xl": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "headline-lg": ["24px", {"lineHeight": "1.2", "letterSpacing": "0.03em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "fontWeight": "500"}],
+                        "headline-xl": ["32px", {"lineHeight": "1.1", "letterSpacing": "0.05em", "fontWeight": "800"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .ambient-shadow { box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05); }
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="bg-light-grey text-on-surface font-body-md min-h-screen flex flex-col md:flex-row">
+<!-- Navigation Drawer (SideNav for Desktop) -->
+<nav class="hidden md:flex bg-pure-white dark:bg-inverse-surface h-full w-80 fixed left-0 top-0 shadow-xl bg-pure-white border-r border-border-grey flex flex-col h-full py-8 z-50">
+<div class="px-margin-desktop mb-stack-lg">
+<h1 class="font-headline-lg text-headline-lg font-extrabold text-on-surface">CELEBRATION CHURCH</h1>
+<p class="font-label-caps text-label-caps text-primary mt-base uppercase tracking-wider">Staff Dashboard</p>
+</div>
+<ul class="flex-1 flex flex-col mt-stack-md">
+<!-- Admin items added to base drawer -->
+<li>
+<a class="flex items-center px-margin-desktop py-4 bg-primary text-pure-white font-bold gap-stack-sm group" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-body-lg text-body-lg uppercase tracking-widest">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-margin-desktop py-4 text-on-surface hover:bg-light-grey transition-colors gap-stack-sm group" href="#">
+<span class="material-symbols-outlined">directions_car</span>
+<span class="font-body-lg text-body-lg uppercase tracking-widest">Registrations</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-margin-desktop py-4 text-on-surface hover:bg-light-grey transition-colors gap-stack-sm group" href="#">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+<span class="font-body-lg text-body-lg uppercase tracking-widest">Scan QR</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-margin-desktop py-4 text-on-surface hover:bg-light-grey transition-colors gap-stack-sm group" href="#">
+<span class="material-symbols-outlined">photo_library</span>
+<span class="font-body-lg text-body-lg uppercase tracking-widest">Moderate</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-margin-desktop py-4 text-on-surface hover:bg-light-grey transition-colors gap-stack-sm group" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-lg text-body-lg uppercase tracking-widest">Settings</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Top App Bar (Mobile Only) -->
+<header class="md:hidden bg-pure-white dark:bg-inverse-surface docked full-width top-0 border-b border-border-grey dark:border-outline-variant flat no shadows flex justify-between items-center w-full h-16 px-margin-mobile fixed z-50">
+<button class="text-primary dark:text-inverse-primary hover:text-primary transition-colors duration-200">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-black text-on-surface dark:text-inverse-on-surface uppercase tracking-wider text-primary dark:text-inverse-primary font-headline-lg text-headline-lg">FATHER'S DAY CAR SHOW</h1>
+<button class="text-primary dark:text-inverse-primary hover:text-primary transition-colors duration-200">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-80 pt-16 md:pt-0 p-margin-mobile md:p-margin-desktop">
+<!-- Header -->
+<div class="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-stack-md pt-stack-md md:pt-0">
+<div>
+<h2 class="font-headline-xl text-headline-xl text-on-surface uppercase">Event Overview</h2>
+<p class="font-body-lg text-body-lg text-muted-grey mt-base">Real-time metrics for current event.</p>
+</div>
+<div class="flex gap-base">
+<button class="bg-primary text-pure-white px-gutter h-touch-target-min flex items-center justify-center font-label-caps text-label-caps uppercase rounded hover:bg-deep-red transition-colors">
+<span class="material-symbols-outlined mr-base">add</span> Register Vehicle
+                </button>
+</div>
+</div>
+<!-- Metrics Bento Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-stack-lg">
+<div class="bg-pure-white rounded ambient-shadow p-gutter flex flex-col justify-between border-l-4 border-black">
+<div class="flex justify-between items-start mb-stack-md">
+<span class="font-label-caps text-label-caps text-muted-grey uppercase">Registered Vehicles</span>
+<span class="material-symbols-outlined text-primary">directions_car</span>
+</div>
+<div>
+<span class="font-headline-xl text-headline-xl text-on-surface block">342</span>
+<span class="font-body-sm text-body-sm text-muted-grey">+12 in last hour</span>
+</div>
+</div>
+<div class="bg-pure-white rounded ambient-shadow p-gutter flex flex-col justify-between border-l-4 border-primary">
+<div class="flex justify-between items-start mb-stack-md">
+<span class="font-label-caps text-label-caps text-muted-grey uppercase">Checked-In</span>
+<span class="material-symbols-outlined text-primary">check_circle</span>
+</div>
+<div>
+<span class="font-headline-xl text-headline-xl text-on-surface block">285</span>
+<span class="font-body-sm text-body-sm text-muted-grey">83% arrival rate</span>
+</div>
+</div>
+<div class="bg-pure-white rounded ambient-shadow p-gutter flex flex-col justify-between">
+<div class="flex justify-between items-start mb-stack-md">
+<span class="font-label-caps text-label-caps text-muted-grey uppercase">QR Cards Assigned</span>
+<span class="material-symbols-outlined text-black">qr_code</span>
+</div>
+<div class="flex items-end gap-base">
+<span class="font-headline-xl text-headline-xl text-on-surface">280</span>
+<span class="font-body-sm text-body-sm text-muted-grey mb-1">/ 500 total</span>
+</div>
+<div class="w-full bg-light-grey h-2 mt-base rounded-full overflow-hidden">
+<div class="bg-black h-full" style="width: 56%"></div>
+</div>
+</div>
+<div class="bg-pure-white rounded ambient-shadow p-gutter flex flex-col justify-between">
+<div class="flex justify-between items-start mb-stack-md">
+<span class="font-label-caps text-label-caps text-muted-grey uppercase">Visitor Votes</span>
+<span class="material-symbols-outlined text-primary">how_to_vote</span>
+</div>
+<div>
+<span class="font-headline-xl text-headline-xl text-on-surface block">1,894</span>
+<span class="font-body-sm text-body-sm text-primary font-bold flex items-center"><span class="material-symbols-outlined text-[16px] mr-1">trending_up</span> High activity</span>
+</div>
+</div>
+</section>
+<!-- Main Workspace Area -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Quick Actions Panel -->
+<div class="lg:col-span-1 flex flex-col gap-gutter">
+<div class="bg-pure-white rounded ambient-shadow p-gutter">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-stack-md uppercase">Primary Actions</h3>
+<button class="w-full bg-primary text-pure-white h-touch-target-min flex items-center justify-between px-gutter rounded mb-base hover:bg-deep-red transition-colors group">
+<span class="font-label-caps text-label-caps uppercase">Scan QR Check-In</span>
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">qr_code_scanner</span>
+</button>
+<button class="w-full bg-black text-pure-white h-touch-target-min flex items-center justify-between px-gutter rounded mb-base hover:bg-on-surface-variant transition-colors group">
+<span class="font-label-caps text-label-caps uppercase">Moderate Photos</span>
+<div class="flex items-center gap-2">
+<span class="bg-primary text-pure-white text-[10px] px-2 py-1 rounded-full font-bold">14</span>
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">photo_library</span>
+</div>
+</button>
+<button class="w-full bg-pure-white border-2 border-border-grey text-on-surface h-touch-target-min flex items-center justify-between px-gutter rounded hover:border-primary transition-colors group">
+<span class="font-label-caps text-label-caps uppercase">Reassign QR Card</span>
+<span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">swap_horiz</span>
+</button>
+</div>
+<!-- Recent Activity Feed -->
+<div class="bg-pure-white rounded ambient-shadow p-gutter flex-1">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-stack-md uppercase border-b border-border-grey pb-base">Recent Check-ins</h3>
+<ul class="flex flex-col gap-base">
+<li class="flex items-center justify-between py-2 border-b border-light-grey last:border-0">
+<div>
+<span class="font-body-sm text-body-sm text-on-surface block font-bold">1968 Ford Mustang</span>
+<span class="font-label-caps text-label-caps text-muted-grey">QR: C-214 • John S.</span>
+</div>
+<span class="font-label-caps text-label-caps text-primary">2m ago</span>
+</li>
+<li class="flex items-center justify-between py-2 border-b border-light-grey last:border-0">
+<div>
+<span class="font-body-sm text-body-sm text-on-surface block font-bold">2020 C8 Corvette</span>
+<span class="font-label-caps text-label-caps text-muted-grey">QR: C-215 • Mike D.</span>
+</div>
+<span class="font-label-caps text-label-caps text-primary">5m ago</span>
+</li>
+<li class="flex items-center justify-between py-2 border-b border-light-grey last:border-0">
+<div>
+<span class="font-body-sm text-body-sm text-on-surface block font-bold">1955 Chevy Bel Air</span>
+<span class="font-label-caps text-label-caps text-muted-grey">QR: B-102 • Sarah W.</span>
+</div>
+<span class="font-label-caps text-label-caps text-primary">12m ago</span>
+</li>
+</ul>
+</div>
+</div>
+<!-- Active Workspace (Registration/Check-in Simulator) -->
+<div class="lg:col-span-2 bg-pure-white rounded ambient-shadow overflow-hidden flex flex-col">
+<div class="bg-light-grey p-gutter border-b border-border-grey flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md text-on-surface uppercase">Registration / Check-In</h3>
+<span class="bg-primary text-pure-white font-label-caps text-label-caps px-2 py-1 rounded">Live</span>
+</div>
+<div class="p-gutter flex-1 flex flex-col">
+<!-- Search Bar -->
+<div class="relative mb-stack-md">
+<span class="material-symbols-outlined absolute left-base top-1/2 -translate-y-1/2 text-muted-grey">search</span>
+<input class="w-full h-touch-target-min pl-10 pr-4 border-2 border-border-grey rounded font-body-md text-body-md focus:border-primary focus:ring-0 transition-colors" placeholder="Search pre-registered (Name, Email, Make, Model)..." type="text"/>
+</div>
+<!-- Layout for Registration -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter mb-stack-lg">
+<!-- Manual Entry -->
+<div class="flex flex-col gap-base border-r border-border-grey pr-gutter">
+<h4 class="font-body-lg text-body-lg text-on-surface font-bold uppercase mb-base">Walk-up Entry</h4>
+<input class="w-full h-touch-target-min px-4 border-2 border-border-grey rounded font-body-md text-body-md focus:border-primary focus:ring-0" placeholder="Owner Name" type="text"/>
+<input class="w-full h-touch-target-min px-4 border-2 border-border-grey rounded font-body-md text-body-md focus:border-primary focus:ring-0" placeholder="Vehicle Year, Make, Model" type="text"/>
+<div class="flex gap-base">
+<input class="w-1/2 h-touch-target-min px-4 border-2 border-border-grey rounded font-body-md text-body-md focus:border-primary focus:ring-0" placeholder="Category" type="text"/>
+<input class="w-1/2 h-touch-target-min px-4 border-2 border-border-grey rounded font-body-md text-body-md focus:border-primary focus:ring-0" placeholder="Space #" type="text"/>
+</div>
+</div>
+<!-- QR Scanner Panel -->
+<div class="flex flex-col items-center justify-center bg-inverse-surface rounded relative overflow-hidden h-64 md:h-auto">
+<!-- Simulated Camera Feed -->
+<div class="absolute inset-0 bg-black opacity-80"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-48 h-48 border-2 border-primary border-dashed rounded relative animate-pulse">
+<div class="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-primary"></div>
+<div class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-primary"></div>
+<div class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-primary"></div>
+<div class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-primary"></div>
+</div>
+</div>
+<div class="relative z-10 flex flex-col items-center">
+<span class="material-symbols-outlined text-pure-white text-[48px] mb-base">qr_code_scanner</span>
+<span class="font-label-caps text-label-caps text-pure-white uppercase tracking-widest text-center">Position QR Code<br/>in frame to assign</span>
+</div>
+</div>
+</div>
+<!-- Assignment Confirmation Pane (Simulated State) -->
+<div class="mt-auto bg-light-grey p-gutter rounded border border-border-grey">
+<div class="flex items-start justify-between">
+<div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-1">Ready to Assign</h4>
+<p class="font-body-md text-body-md text-on-surface">Assign QR <span class="font-bold text-primary bg-primary-fixed px-1 rounded">C-214</span> to John Smith - 1968 Ford Mustang?</p>
+</div>
+<button class="bg-primary text-pure-white px-gutter h-touch-target-min flex items-center justify-center font-label-caps text-label-caps uppercase rounded hover:bg-deep-red transition-colors shadow-lg">
+                                Confirm Assignment
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Nav Bar (Mobile Only) - Hidden on desktop -->
+<nav class="md:hidden bg-inverse-surface dark:bg-on-surface docked full-width bottom-0 shadow-2xl fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed scale-110 active:scale-90 duration-150 group" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-sm text-label-sm uppercase">Dash</span>
+</a>
+<a class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 group" href="#">
+<span class="material-symbols-outlined mb-1">directions_car</span>
+<span class="font-label-sm text-label-sm uppercase">Reg</span>
+</a>
+<a class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 group" href="#">
+<span class="material-symbols-outlined mb-1">qr_code_scanner</span>
+<span class="font-label-sm text-label-sm uppercase">Scan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-pure-white opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 group" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-sm text-label-sm uppercase">Profile</span>
+</a>
+</nav>
+</body></html>

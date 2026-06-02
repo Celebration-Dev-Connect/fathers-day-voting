@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Judge Ranking - Classic Cars</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#930010",
+                        "border-grey": "#D7D7D7",
+                        "surface-container-high": "#e6e8f0",
+                        "secondary": "#5e5e5e",
+                        "surface-dim": "#d8dae2",
+                        "pure-white": "#FFFFFF",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#dc3031",
+                        "surface-container-highest": "#e1e2ea",
+                        "surface": "#f9f9ff",
+                        "background": "#f9f9ff",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#bc0f2b",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#ffb3b1",
+                        "on-primary-fixed-variant": "#92001d",
+                        "secondary-container": "#e2e2e2",
+                        "on-error": "#ffffff",
+                        "muted-grey": "#7D7D7D",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#410003",
+                        "on-secondary-container": "#646464",
+                        "outline-variant": "#e4bdbc",
+                        "primary-container": "#dd2d3e",
+                        "tertiary": "#b8111c",
+                        "surface-bright": "#f9f9ff",
+                        "secondary-fixed-dim": "#c6c6c6",
+                        "surface-container-lowest": "#ffffff",
+                        "primary": "#b90a29",
+                        "outline": "#906f6e",
+                        "surface-variant": "#e1e2ea",
+                        "on-background": "#191c21",
+                        "tertiary-fixed-dim": "#ffb3ac",
+                        "surface-container": "#ecedf6",
+                        "light-grey": "#F4F4F4",
+                        "surface-container-low": "#f2f3fb",
+                        "on-primary-container": "#fffbff",
+                        "deep-red": "#CB1836",
+                        "on-primary-fixed": "#410007",
+                        "primary-fixed": "#ffdad8",
+                        "on-surface-variant": "#5b403f",
+                        "secondary-fixed": "#e2e2e2",
+                        "inverse-surface": "#2d3037",
+                        "inverse-on-surface": "#eff0f9",
+                        "primary-fixed-dim": "#ffb3b1",
+                        "on-secondary-fixed": "#1b1b1b",
+                        "on-tertiary-container": "#fffbff",
+                        "on-secondary-fixed-variant": "#474747",
+                        "on-surface": "#191c21",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "stack-lg": "32px",
+                        "margin-desktop": "40px",
+                        "gutter": "16px",
+                        "base": "8px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Montserrat"],
+                        "label-caps": ["Montserrat"],
+                        "headline-lg": ["Montserrat"],
+                        "body-md": ["Montserrat"],
+                        "headline-md": ["Montserrat"],
+                        "body-sm": ["Montserrat"],
+                        "body-lg": ["Montserrat"],
+                        "label-sm": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "0.05em", "fontWeight": "800" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "letterSpacing": "0.03em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "1.4", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Hide scrollbar for clean horizontal scrolling */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-light-grey text-on-background min-h-screen pb-24 md:pb-32 font-body-md antialiased">
+<!-- Top Navigation Area (Combines TopAppBar from JSON, adapted for sub-page) -->
+<!-- Suppressing global nav shell based on instruction: this is a task-focused screen (Judge Ranking) -->
+<header class="sticky top-0 z-40 bg-pure-white w-full border-b border-border-grey shadow-sm">
+<div class="flex justify-between items-center w-full h-16 px-margin-mobile">
+<button aria-label="Go Back" class="flex items-center justify-center w-12 h-12 text-on-surface-variant hover:text-primary transition-colors duration-200">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-black text-on-surface uppercase tracking-wider truncate mx-4">CLASSIC CARS</h1>
+<button aria-label="Search" class="flex items-center justify-center w-12 h-12 text-on-surface-variant hover:text-primary transition-colors duration-200">
+<span class="material-symbols-outlined text-2xl">search</span>
+</button>
+</div>
+<!-- Search & Filter Bar -->
+<div class="px-margin-mobile pb-stack-md bg-pure-white flex gap-gutter">
+<div class="relative flex-grow">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-grey">search</span>
+<input class="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border-2 border-border-grey rounded focus:border-primary focus:ring-0 font-body-sm text-body-sm transition-colors placeholder-muted-grey" placeholder="Search entry no, make, or model..." type="text"/>
+</div>
+<button class="flex-shrink-0 h-12 px-4 flex items-center justify-center border-2 border-border-grey rounded hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined mr-2">filter_list</span>
+<span class="font-label-caps text-label-caps uppercase hidden sm:inline">Filter</span>
+</button>
+</div>
+</header>
+<main class="w-full max-w-4xl mx-auto px-margin-mobile py-stack-lg">
+<!-- Quick Stats / Instructions -->
+<div class="mb-stack-lg flex justify-between items-end border-b-2 border-on-surface pb-2">
+<div>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface uppercase tracking-wide">Select Top 10</h2>
+<p class="font-body-sm text-body-sm text-secondary mt-1">Tap 'Rank' to add vehicles to your leaderboard.</p>
+</div>
+<div class="text-right">
+<span class="font-headline-lg text-headline-lg text-primary font-black block">7/10</span>
+<span class="font-label-caps text-label-caps text-muted-grey uppercase">Ranked</span>
+</div>
+</div>
+<!-- Vehicle List -->
+<div class="flex flex-col gap-stack-md">
+<!-- Card 1 (Already Ranked) -->
+<article class="bg-pure-white rounded-xl overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-l-4 border-primary relative">
+<!-- Ranked Badge Overlay -->
+<div class="absolute top-4 left-4 z-10 bg-primary text-pure-white px-3 py-1 rounded font-label-caps text-label-caps uppercase shadow-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] fill">star</span>
+                    Rank #1
+                </div>
+<div class="flex flex-col sm:flex-row">
+<div class="sm:w-2/5 h-64 sm:h-auto relative">
+<img alt="1969 Ford Mustang Boss 429" class="w-full h-full object-cover" data-alt="A pristine 1969 Ford Mustang Boss 429 in deep midnight black, parked on a sunlit concrete display area at an outdoor car show. The vehicle gleams under bright natural daylight, highlighting its aggressive hood scoop and classic muscle car lines. The setting is energetic and bright, consistent with a high-contrast, modern automotive event aesthetic. Strong shadows and sharp focus emphasize the car's premium restoration quality against a blurred background of event tents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBviUH63QjkVn6W1HQZq7AAo-FXw4LsO7bn-T0L3I8q77ZWwHXDxbJzXhDJUyusWtFHKmtU0AEWVPAlveOc8vP8LCCobEtS8LuH8z6dIJN2aP1UPJ1eXe_S5EmiFzA5Zsej9wRAA398MYUGJ6nHD8KE3mhM6sjZOCY9m4gybdp2QzWX-OCZKe1gxWF7LCLzji5FuUjxKcQfHexdKGQGkm0KiTdZAS7ETtw3zpt_4ngjZJhWyzgRIEJh7A3sCp7asXYl7YSy5B-KxHCj"/>
+</div>
+<div class="p-4 flex flex-col justify-between sm:w-3/5">
+<div>
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-caps text-label-caps bg-light-grey text-on-surface px-2 py-1 rounded">C-214</span>
+<button aria-label="View Details" class="text-muted-grey hover:text-primary transition-colors">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+<h3 class="font-headline-lg text-headline-lg font-bold text-on-surface uppercase mb-1">1969 Ford Mustang Boss 429</h3>
+<p class="font-body-md text-body-md text-secondary">Owner: Michael T.</p>
+<div class="mt-4 flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant font-label-caps text-label-caps rounded">Original Engine</span>
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant font-label-caps text-label-caps rounded">Flawless Paint</span>
+</div>
+</div>
+<div class="mt-6 flex gap-gutter">
+<button class="flex-1 h-touch-min bg-surface-container text-on-surface font-label-caps text-label-caps uppercase font-bold rounded border-2 border-border-grey hover:border-on-surface transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">edit</span>
+                                Edit Rank
+                            </button>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 2 (Unranked) -->
+<article class="bg-pure-white rounded-xl overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-border-grey">
+<div class="flex flex-col sm:flex-row">
+<div class="sm:w-2/5 h-64 sm:h-auto relative">
+<img alt="1957 Chevrolet Bel Air" class="w-full h-full object-cover" data-alt="A striking 1957 Chevrolet Bel Air in vibrant cherry red with stark white accents, showcased at a prestigious outdoor car exhibition. The iconic tailfins and heavy chrome bumpers catch the bright overhead sunlight, creating dramatic reflections. The scene uses a high-contrast lighting style, perfectly fitting a bold, modern automotive design system. The background features subtle, out-of-focus event structures, maintaining focus squarely on the classic vehicle's immaculate detailing." src="https://lh3.googleusercontent.com/aida-public/AB6AXuArLRNYGgthyEer8mW1uCYw3_vRFskuAgXe53P0_U7HDjNcgJY5bA1JvGO1_Vh5T1rDuBPucaT70BZEkOu8ttl1ZY7C2NPGW8dhJ5bRpT-BalOkEKVoQQXrg9ZRL6fiZpj_Yd7TtqNKX8P1bC38KRbZU8VjZBkFrC0FqJt0HTOIyDd_6SJc_TngXdr0u4-cf7qnxUy_W6SzL8G9bQa2towoeRy48lhAhtMlJrFnM6aQfoKnYRpZ9x1imOCDuUxQApPUVWXorzlpkgKr"/>
+</div>
+<div class="p-4 flex flex-col justify-between sm:w-3/5">
+<div>
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-caps text-label-caps bg-light-grey text-on-surface px-2 py-1 rounded">C-108</span>
+<button aria-label="View Details" class="text-muted-grey hover:text-primary transition-colors">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+<h3 class="font-headline-lg text-headline-lg font-bold text-on-surface uppercase mb-1">1957 Chevrolet Bel Air</h3>
+<p class="font-body-md text-body-md text-secondary">Owner: Sarah Jenkins</p>
+<div class="mt-4 flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant font-label-caps text-label-caps rounded">Restomod</span>
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant font-label-caps text-label-caps rounded">Custom Interior</span>
+</div>
+</div>
+<div class="mt-6 flex gap-gutter">
+<button class="flex-1 h-touch-min bg-pure-white text-on-surface font-label-caps text-label-caps uppercase font-bold rounded border-2 border-on-surface hover:bg-on-surface hover:text-pure-white transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                                Add to Top 10
+                            </button>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 3 (Unranked) -->
+<article class="bg-pure-white rounded-xl overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-border-grey">
+<div class="flex flex-col sm:flex-row">
+<div class="sm:w-2/5 h-64 sm:h-auto relative">
+<img alt="1963 Chevrolet Corvette Split Window" class="w-full h-full object-cover" data-alt="A sleek 1963 Chevrolet Corvette Split Window coupe in pristine silver, parked elegantly at a modern car show venue. The distinctive rear window design is highlighted by strong, directional lighting that creates sharp, high-contrast shadows on the ground. The aesthetic is clean, energetic, and premium, utilizing deep black shadows to contrast the bright silver bodywork. The image perfectly embodies a high-octane, visually striking automotive event atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXurzJTRzXfONV5Hb-utEYBeDc_0SDEtVIg90U4J_HA4NPNSuqZqvhM64JiHr20NP8uWn36pXEgk50WcD1n7PTdzac-oy8TJi2CYT4Tc5oROD4fUzzGYOC1Suy0yl5FrCeRL68Z-MA0diB9yJqCrhyVstO7ThQcSkBcVDgftcwbQEy9X4JP9SfMVE7Bh9ePEUB0xsYgiXSIbQIL91WpRYfFOMX1Po8dUa6Rw7PuOjHGtEZ-UsrgUspQAlYgS0MxPcktkYsQtgjm811"/>
+</div>
+<div class="p-4 flex flex-col justify-between sm:w-3/5">
+<div>
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-caps text-label-caps bg-light-grey text-on-surface px-2 py-1 rounded">C-305</span>
+<button aria-label="View Details" class="text-muted-grey hover:text-primary transition-colors">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+<h3 class="font-headline-lg text-headline-lg font-bold text-on-surface uppercase mb-1">1963 Corvette Split Window</h3>
+<p class="font-body-md text-body-md text-secondary">Owner: David R.</p>
+<div class="mt-4 flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant font-label-caps text-label-caps rounded">Survivor</span>
+</div>
+</div>
+<div class="mt-6 flex gap-gutter">
+<button class="flex-1 h-touch-min bg-pure-white text-on-surface font-label-caps text-label-caps uppercase font-bold rounded border-2 border-on-surface hover:bg-on-surface hover:text-pure-white transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                                Add to Top 10
+                            </button>
+</div>
+</div>
+</div>
+</article>
+</div>
+<!-- Load More -->
+<div class="mt-stack-lg text-center pb-24">
+<button class="inline-flex items-center justify-center px-6 h-12 border-2 border-border-grey rounded font-label-caps text-label-caps uppercase font-bold text-on-surface hover:border-primary hover:text-primary transition-colors">
+                Load More Entries
+            </button>
+</div>
+</main>
+<!-- Sticky Bottom Action Bar for Submit -->
+<div class="fixed bottom-0 left-0 w-full z-50 bg-inverse-surface shadow-[0_-4px_20px_rgba(0,0,0,0.15)] p-margin-mobile">
+<div class="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+<div class="flex items-center w-full sm:w-auto">
+<div class="w-full sm:w-48 bg-surface-container-highest h-2 rounded-full overflow-hidden mr-4">
+<div class="bg-primary h-full w-[70%]"></div>
+</div>
+<span class="font-label-caps text-label-caps text-pure-white uppercase whitespace-nowrap">7 / 10 Ranked</span>
+</div>
+<button class="w-full sm:w-auto h-touch-min px-8 bg-primary text-pure-white font-headline-sm text-headline-sm font-bold uppercase tracking-wider rounded hover:bg-deep-red transition-colors flex items-center justify-center gap-2">
+                Review &amp; Submit
+                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</body></html>

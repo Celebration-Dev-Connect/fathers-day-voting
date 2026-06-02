@@ -120,6 +120,7 @@ model VehicleEntry {
   plateNumber          String?
   exteriorColor        String?
   internalNotes        String?
+  buildStory           String?
   status               VehicleStatus          @default(REGISTERED)
   source               RegistrationSource     @default(ONSITE)
   checkedInAt          DateTime?

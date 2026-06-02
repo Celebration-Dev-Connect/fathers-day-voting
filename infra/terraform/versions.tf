@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
@@ -17,7 +17,7 @@ terraform {
     key                  = "terraform.tfstate"
     region               = "ca-central-1"
     workspace_key_prefix = "workspace"
-    dynamodb_table       = "carshow-tf-lock"
+    use_lockfile         = true
     encrypt              = true
   }
 }

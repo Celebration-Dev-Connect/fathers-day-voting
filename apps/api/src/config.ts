@@ -31,6 +31,7 @@ const envSchema = z
 
     // S3 / Rekognition drivers
     awsRegion: z.string().optional(),
+      rekognitionRegion: z.string().optional(),
     s3Bucket: z.string().optional(),
     cdnBaseUrl: z.string().optional(),
     moderationMinConfidence: z.coerce.number().min(0).max(100).default(60),
@@ -66,6 +67,7 @@ const parsed = envSchema.safeParse({
   localStorageDir: process.env.LOCAL_STORAGE_DIR,
   mediaPublicBaseUrl: process.env.MEDIA_PUBLIC_BASE_URL,
   awsRegion: process.env.AWS_REGION,
+  rekognitionRegion: process.env.REKOGNITION_REGION,
   s3Bucket: process.env.S3_BUCKET,
   cdnBaseUrl: process.env.CDN_BASE_URL,
   moderationMinConfidence: process.env.MODERATION_MIN_CONFIDENCE,
@@ -101,6 +103,7 @@ export const config = {
   },
   aws: {
     region: env.awsRegion,
+    rekognitionRegion: env.rekognitionRegion ?? env.awsRegion,
     s3Bucket: env.s3Bucket,
     cdnBaseUrl: env.cdnBaseUrl?.replace(/\/$/, ""),
   },

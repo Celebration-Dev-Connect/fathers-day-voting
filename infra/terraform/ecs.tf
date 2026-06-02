@@ -51,6 +51,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "API_HOST", value = "0.0.0.0" },
       { name = "NODE_ENV", value = "production" },
       { name = "AWS_REGION", value = var.region },
+      { name = "REKOGNITION_REGION", value = "us-east-1" },
       { name = "S3_BUCKET", value = aws_s3_bucket.photos.bucket },
       { name = "CDN_BASE_URL", value = "https://${var.domain}/photos" },
       { name = "STORAGE_DRIVER", value = "s3" },

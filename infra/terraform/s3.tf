@@ -58,6 +58,19 @@ data "aws_iam_policy_document" "photos_bucket" {
       values   = [aws_cloudfront_distribution.main.arn]
     }
   }
+
+  statement {
+    sid     = "AllowRekognitionRead"
+    actions = ["s3:GetObject"]
+    resources = [
+      "${aws_s3_bucket.photos.arn}/pending/*",
+      "${aws_s3_bucket.photos.arn}/public/*",
+    ]
+    principals {
+      type        = "Service"
+      identifiers = ["rekognition.amazonaws.com"]
+    }
+  }
 }
 
 resource "aws_s3_bucket_policy" "photos" {

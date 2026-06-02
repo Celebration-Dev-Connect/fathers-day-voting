@@ -17,15 +17,7 @@ const VEHICLE_LABELS = new Set([
   "Engine", "Steering Wheel",
 ]);
 
-// Car-show-specific labels require higher confidence to avoid false positives
-// on generic scenes (e.g. a street photo that scores "Car Show" at 43%).
-const CAR_SHOW_LABELS = new Set([
-  "Car Show", "Hot Rod", "Antique Car", "Race Car", "Formula One",
-  "Mustang", "Model T", "Jaguar Car",
-]);
-
-const VEHICLE_LABEL_MIN_CONFIDENCE = 20;
-const CAR_SHOW_LABEL_MIN_CONFIDENCE = 80;
+const VEHICLE_LABEL_MIN_CONFIDENCE = 80;
 const MODERATION_LABEL_MIN_CONFIDENCE = 50;
 
 export class RekognitionModerator implements ImageModerator {
@@ -84,12 +76,9 @@ export class RekognitionModerator implements ImageModerator {
         MinConfidence: VEHICLE_LABEL_MIN_CONFIDENCE,
       }),
     );
-    const vehicleLabels = (labelRes.Labels ?? []).filter((l) => {
-      const name = l.Name ?? "";
-      const confidence = l.Confidence ?? 0;
-      if (CAR_SHOW_LABELS.has(name)) return confidence >= CAR_SHOW_LABEL_MIN_CONFIDENCE;
-      return VEHICLE_LABELS.has(name);
-    });
+    const vehicleLabels = (labelRes.Labels ?? []).filter((l) =>
+      VEHICLE_LABELS.has(l.Name ?? ""),
+    );
 
     if (vehicleLabels.length > 0) {
       return { decision: "APPROVED", moderationLabels: [], vehicleLabels };

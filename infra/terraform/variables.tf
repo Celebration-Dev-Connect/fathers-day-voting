@@ -116,6 +116,44 @@ variable "teardown_friendly" {
   default     = false
 }
 
+variable "pco_client_id" {
+  description = "Planning Center OAuth app client ID."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "pco_client_secret" {
+  description = "Planning Center OAuth app client secret."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "pco_callback_url" {
+  description = "Full public callback URL registered in the PCO OAuth app (e.g. https://example.com/api/auth/planning-center/callback)."
+  type        = string
+  default     = ""
+}
+
+variable "pco_team_name" {
+  description = "PCO Services team name used for access control. Defaults to 'carshow'."
+  type        = string
+  default     = "carshow"
+}
+
+variable "admin_web_url" {
+  description = "Public URL of the admin SPA, used to redirect after PCO OAuth (e.g. https://example.com/admin)."
+  type        = string
+  default     = ""
+}
+
+variable "judge_web_url" {
+  description = "Public URL of the judge SPA, used to redirect after PCO OAuth (e.g. https://example.com/judge)."
+  type        = string
+  default     = ""
+}
+
 variable "image_tag" {
   description = <<-EOT
     ECR image tag for the ECS task definition.

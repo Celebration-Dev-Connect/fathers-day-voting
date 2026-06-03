@@ -59,6 +59,35 @@ button:disabled {
   border-top: 4px solid var(--primary);
 }
 
+.pco-signin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 24px;
+  background: #4b6cf7;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 8px rgb(75 108 247 / 30%);
+}
+
+.pco-signin-btn:hover {
+  background: #3a5ae8;
+  box-shadow: 0 4px 14px rgb(75 108 247 / 40%);
+}
+
+.pco-signin-btn:active {
+  background: #2e4dd4;
+}
+
 .brand-mark {
   font-weight: 900;
   font-size: 22px;
@@ -2629,6 +2658,10 @@ textarea:focus {
 }
 
 .hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 24px;
 }
 
@@ -2656,8 +2689,38 @@ textarea:focus {
   color: #ffffff;
 }
 
+.hero-scan-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 28px;
+  background: transparent;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  border-radius: 4px;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.hero-scan-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #ffffff;
+}
+
 .hero-search {
-  width: min(420px, 100%);
+  position: absolute;
+  bottom: calc(54px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  width: min(420px, calc(100% - 48px));
 }
 
 .hero-search .entry-search-field input {
@@ -3127,4 +3190,88 @@ html.landing .public-app {
 
 .entry-card-link .entry-card {
   height: 100%;
+}
+
+/* ── QR Scanner overlay ───────────────────────────────────────────────────── */
+
+.qr-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-scanner-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: min(420px, 100vw);
+  padding: 20px;
+}
+
+.qr-scanner-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.qr-scanner-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.qr-scanner-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.qr-scanner-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
+.qr-scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.qr-scanner-reticle {
+  position: absolute;
+  inset: 15%;
+  border: 2px solid rgba(255, 255, 255, 0.65);
+  border-radius: 4px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+}
+
+.qr-scanner-error {
+  color: #ffb3b3;
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+  max-width: 300px;
+  line-height: 1.5;
 }

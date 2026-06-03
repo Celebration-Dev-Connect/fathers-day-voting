@@ -31,3 +31,33 @@ resource "aws_secretsmanager_secret_version" "jwt_secret" {
   secret_id     = aws_secretsmanager_secret.jwt_secret.id
   secret_string = random_password.jwt_secret.result
 }
+
+resource "aws_secretsmanager_secret" "pco_client_id" {
+  name                    = "${var.project}/${var.environment}/pco-client-id"
+  recovery_window_in_days = 0
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "pco_client_id" {
+  secret_id     = aws_secretsmanager_secret.pco_client_id.id
+  secret_string = var.pco_client_id
+}
+
+resource "aws_secretsmanager_secret" "pco_client_secret" {
+  name                    = "${var.project}/${var.environment}/pco-client-secret"
+  recovery_window_in_days = 0
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "pco_client_secret" {
+  secret_id     = aws_secretsmanager_secret.pco_client_secret.id
+  secret_string = var.pco_client_secret
+}

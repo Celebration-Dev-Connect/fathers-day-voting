@@ -34,7 +34,7 @@ export function QrScanner({
     let done = false;
 
     reader
-      .decodeFromVideoDevice(undefined, videoRef.current!, (result, err, controls) => {
+      .decodeFromVideoDevice(undefined, videoRef.current!, (result, _err, controls) => {
         if (done) return;
         if (result) {
           const token = extractToken(result.getText());
@@ -43,8 +43,6 @@ export function QrScanner({
             controls.stop();
             onScanRef.current(token);
           }
-        } else if (err && err.name !== "NotFoundException") {
-          setError("Camera unavailable — check permissions and try again.");
         }
       })
       .then((controls) => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { QrScanner } from "@carshow/carshow-components";
 import { getHeroPhotos, type HeroPhoto } from "../api";
 import { EntrySearch } from "../components/EntrySearch";
 
@@ -7,6 +8,7 @@ export function LandingView() {
   const [photos, setPhotos] = useState<HeroPhoto[]>([]);
   const [current, setCurrent] = useState(0);
   const [loadedUrls, setLoadedUrls] = useState<Set<string>>(new Set());
+  const [scanning, setScanning] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,11 +58,22 @@ export function LandingView() {
           <button className="hero-browse-btn" onClick={() => navigate("/browse")}>
             Browse Entries
           </button>
-        </div>
-        <div className="hero-search">
-          <EntrySearch onSearch={(num) => navigate(`/browse/entry/${num}`)} />
+          <button className="hero-scan-btn" onClick={() => setScanning(true)}>
+            Scan QR Code
+          </button>
         </div>
       </div>
+
+      <div className="hero-search">
+        <EntrySearch onSearch={(num) => navigate(`/browse/entry/${num}`)} />
+      </div>
+
+      {scanning && (
+        <QrScanner
+          onScan={(token) => { setScanning(false); navigate(`/v/${token}`); }}
+          onClose={() => setScanning(false)}
+        />
+      )}
 
       {photos.length > 1 ? (
         <div className="hero-dots">

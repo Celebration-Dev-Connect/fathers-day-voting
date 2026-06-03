@@ -1,6 +1,8 @@
+import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
+import oauth2 from "@fastify/oauth2";
 import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import Fastify from "fastify";
@@ -28,9 +30,30 @@ export async function buildApp({ storage, moderator }: AppDeps) {
 
   await app.register(cors, { origin: true, credentials: true });
   await app.register(sensible);
+  await app.register(cookie);
   await app.register(jwt, { secret: config.jwtSecret });
   await app.register(multipart, { limits: { files: 1, fileSize: config.photos.maxBytes } });
   await app.register(rateLimit, { global: false });
+
+  if (config.planningCenter.clientId && config.planningCenter.clientSecret && config.planningCenter.callbackUrl) {
+    await app.register(oauth2, {
+      name: "planningCenter",
+      credentials: {
+        client: {
+          id: config.planningCenter.clientId,
+          secret: config.planningCenter.clientSecret,
+        },
+        auth: {
+          authorizeHost: "https://api.planningcenteronline.com",
+          authorizePath: "/oauth/authorize",
+          tokenHost: "https://api.planningcenteronline.com",
+          tokenPath: "/oauth/token",
+        },
+      },
+      callbackUri: config.planningCenter.callbackUrl,
+      scope: ["people", "services"],
+    });
+  }
 
   const worker = new PhotoModerationWorker(storage, moderator, app.log);
 

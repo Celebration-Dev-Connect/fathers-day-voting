@@ -39,6 +39,14 @@ const envSchema = z
     // Common upload limits
     photoMaxBytes: z.coerce.number().int().positive().default(5 * 1024 * 1024),
     photoPerVehicleCap: z.coerce.number().int().positive().default(10),
+
+    // Planning Center Online OAuth (production staff login)
+    planningCenterClientId: z.string().optional(),
+    planningCenterClientSecret: z.string().optional(),
+    planningCenterCallbackUrl: z.string().url().optional(),
+    planningCenterTeamName: z.string().default("carshow"),
+    adminWebUrl: z.string().url().optional(),
+    judgeWebUrl: z.string().url().optional(),
   })
   .superRefine((value, ctx) => {
     if (isProduction && !value.jwtSecret) {
@@ -73,6 +81,12 @@ const parsed = envSchema.safeParse({
   moderationMinConfidence: process.env.MODERATION_MIN_CONFIDENCE,
   photoMaxBytes: process.env.PHOTO_MAX_BYTES,
   photoPerVehicleCap: process.env.PHOTO_PER_VEHICLE_CAP,
+  planningCenterClientId: process.env.PLANNING_CENTER_CLIENT_ID,
+  planningCenterClientSecret: process.env.PLANNING_CENTER_CLIENT_SECRET,
+  planningCenterCallbackUrl: process.env.PLANNING_CENTER_CALLBACK_URL,
+  planningCenterTeamName: process.env.PCO_TEAM_NAME,
+  adminWebUrl: process.env.ADMIN_WEB_URL,
+  judgeWebUrl: process.env.JUDGE_WEB_URL,
 });
 
 if (!parsed.success) {
@@ -111,6 +125,14 @@ export const config = {
     maxBytes: env.photoMaxBytes,
     perVehicleCap: env.photoPerVehicleCap,
   },
+  planningCenter: {
+    clientId: env.planningCenterClientId,
+    clientSecret: env.planningCenterClientSecret,
+    callbackUrl: env.planningCenterCallbackUrl,
+    teamName: env.planningCenterTeamName,
+  },
+  adminWebUrl: env.adminWebUrl,
+  judgeWebUrl: env.judgeWebUrl,
 } as const;
 
 export type AppConfig = typeof config;

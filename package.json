@@ -27,5 +27,8 @@
   "devDependencies": {
     "concurrently": "^10.0.0",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-code": "^2.1.160"
   }
 }

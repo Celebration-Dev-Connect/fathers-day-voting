@@ -51,7 +51,9 @@ function labelSummary(labels: unknown) {
 }
 
 function PhotoPreview({ photo, large = false }: { photo: PhotoReviewItem; large?: boolean }) {
-  const directUrl = large ? photo.mediumUrl ?? photo.url : photo.thumbUrl ?? photo.mediumUrl ?? photo.url;
+  // Prefer the original public URL when it exists. Generated variants are
+  // smaller, but older variants may not have EXIF orientation baked in.
+  const directUrl = photo.url ?? (large ? photo.mediumUrl : photo.thumbUrl ?? photo.mediumUrl);
   const [previewUrl, setPreviewUrl] = useState("");
   const [failed, setFailed] = useState(false);
 

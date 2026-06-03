@@ -1,4 +1,4 @@
-import { ArrowLeft, Camera, CheckCircle2, CircleAlert, CloudUpload, ImagePlus, Loader2, LogOut, Save } from "lucide-react";
+import { Camera, CheckCircle2, CircleAlert, CloudUpload, Loader2, LogOut, Save } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { formatPhone } from "@carshow/carshow-components";
@@ -124,10 +124,6 @@ function PhotoManager({
           <p>Photos</p>
           <h2>{photos.length} / 10</h2>
         </div>
-        <button className="owner-icon-action" type="button" onClick={onAddPhoto} disabled={uploading}>
-          {uploading ? <Loader2 className="spin" aria-hidden="true" /> : <ImagePlus aria-hidden="true" />}
-          <span>{uploading ? "Uploading" : "Add"}</span>
-        </button>
       </div>
 
       <div className="owner-photo-grid">
@@ -431,10 +427,6 @@ function OwnerPortal() {
       <AppHeader />
       <main className="owner-page">
         <div className="owner-top-actions">
-          <button className="owner-back" type="button" onClick={() => navigate(-1)}>
-            <ArrowLeft aria-hidden="true" />
-            Back
-          </button>
           <button className="owner-logout" type="button" onClick={logout}>
             <LogOut aria-hidden="true" />
             Log Out

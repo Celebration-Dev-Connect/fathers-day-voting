@@ -72,14 +72,12 @@ textarea {
 .owner-top-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   margin: 0 0 28px;
 }
 
-.owner-back,
 .owner-logout,
-.owner-icon-action,
 .owner-action-bar button,
 .owner-login button {
   min-height: 48px;
@@ -89,17 +87,6 @@ textarea {
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.owner-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  background: transparent;
-  color: #b90a29;
-  padding: 0;
-  font-size: 18px;
 }
 
 .owner-logout,
@@ -243,16 +230,6 @@ textarea {
   line-height: 1.2;
 }
 
-.owner-icon-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 16px;
-  background: #c9002b;
-  color: #ffffff;
-}
-
-.owner-icon-action:disabled,
 .owner-action-bar button:disabled {
   cursor: not-allowed;
   opacity: 0.55;

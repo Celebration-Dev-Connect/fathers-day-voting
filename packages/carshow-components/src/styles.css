@@ -1182,6 +1182,7 @@ textarea:focus {
 
 .photo-review-card {
   display: grid;
+  grid-template-rows: 1fr auto;
   gap: 12px;
   overflow: hidden;
   border: 1px solid var(--border-grey);
@@ -1195,6 +1196,8 @@ textarea:focus {
 }
 
 .photo-review-open {
+  display: grid;
+  grid-template-rows: auto 1fr;
   min-height: 0;
   border: 0;
   padding: 0;
@@ -1235,6 +1238,7 @@ textarea:focus {
 
 .photo-review-card-body {
   display: grid;
+  align-content: start;
   gap: 7px;
   padding: 16px;
 }
@@ -1297,6 +1301,14 @@ textarea:focus {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 0 16px 16px;
+}
+
+.photo-review-actions .primary-button,
+.photo-review-actions .secondary-button {
+  width: 100%;
+  min-height: 52px;
+  padding-right: 10px;
+  padding-left: 10px;
 }
 
 .photo-review-drawer-backdrop {

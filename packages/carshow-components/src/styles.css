@@ -2415,7 +2415,7 @@ textarea:focus {
 }
 
 .vehicle-profile-body {
-  padding: 20px 20px 0;
+  padding: 20px 20px 24px;
 }
 
 .vehicle-profile-meta {

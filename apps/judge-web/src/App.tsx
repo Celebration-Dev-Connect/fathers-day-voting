@@ -44,6 +44,7 @@ import {
   setToken,
   uploadRegistrationPhoto,
 } from "./api";
+import { API_URL } from "./config";
 
 const DEV_LOGIN_OPTIONS = [
   { label: "Admin User", email: "admin@carshow.local" },
@@ -58,6 +59,18 @@ export function App() {
   const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const fragmentToken = hash.get("token");
+    const fragmentError = hash.get("error");
+    window.history.replaceState(null, "", window.location.pathname);
+
+    if (fragmentError) {
+      setLoginError("Planning Center login failed. Make sure your account has been granted access.");
+      setLoadingSession(false);
+      return;
+    }
+    if (fragmentToken) setToken(fragmentToken);
+
     me()
       .then(({ staff }) => setStaff(staff))
       .catch(() => clearToken())
@@ -76,6 +89,7 @@ export function App() {
         title="Father's Day Car Show"
         loginOptions={DEV_LOGIN_OPTIONS}
         error={loginError}
+        planningCenterUrl={`${API_URL}/auth/planning-center/start?app=judge`}
         onLogin={async (email) => {
           setLoginError("");
           try {

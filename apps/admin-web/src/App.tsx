@@ -2,6 +2,7 @@ import { AdminShell as AdminShellTemplate, Alert, LoginCard } from "@carshow/car
 import type { Category, DashboardMetrics, Registration, StaffUser } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
 import { clearToken, devLogin, getDashboardMetrics, listCategories, listRegistrations, me, setToken } from "./api";
+import { API_URL } from "./config";
 import { Sidebar } from "./organisms/Sidebar";
 import { CategoriesView } from "./views/CategoriesView";
 import { DashboardView } from "./views/DashboardView";
@@ -24,6 +25,18 @@ export function App() {
   const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const fragmentToken = hash.get("token");
+    const fragmentError = hash.get("error");
+    window.history.replaceState(null, "", window.location.pathname);
+
+    if (fragmentError) {
+      setLoginError("Planning Center login failed. Make sure your account has been granted access.");
+      setLoadingSession(false);
+      return;
+    }
+    if (fragmentToken) setToken(fragmentToken);
+
     me()
       .then(({ staff }) => setStaff(staff))
       .catch(() => clearToken())
@@ -42,6 +55,7 @@ export function App() {
         title="Father's Day Car Show"
         loginOptions={DEV_LOGIN_OPTIONS}
         error={loginError}
+        planningCenterUrl={`${API_URL}/auth/planning-center/start?app=admin`}
         onLogin={async (email) => {
           setLoginError("");
           try {

@@ -105,7 +105,34 @@ export function VehicleProfileCard({
         </div>
         <h1 className="vehicle-profile-title">{title}</h1>
         {vehicle.ownerName ? <p className="muted-copy">{vehicle.ownerName}</p> : null}
-        {vehicle.exteriorColor ? <p className="muted-copy">{vehicle.exteriorColor}</p> : null}
+
+        <div className="vehicle-profile-specs">
+          <div className="vehicle-profile-spec">
+            <span className="vehicle-profile-spec-label">Year</span>
+            <span className="vehicle-profile-spec-value">{vehicle.year}</span>
+          </div>
+          <div className="vehicle-profile-spec">
+            <span className="vehicle-profile-spec-label">Make</span>
+            <span className="vehicle-profile-spec-value">{vehicle.make}</span>
+          </div>
+          <div className="vehicle-profile-spec">
+            <span className="vehicle-profile-spec-label">Model</span>
+            <span className="vehicle-profile-spec-value">{vehicle.model}</span>
+          </div>
+          {vehicle.exteriorColor ? (
+            <div className="vehicle-profile-spec">
+              <span className="vehicle-profile-spec-label">Color</span>
+              <span className="vehicle-profile-spec-value">{vehicle.exteriorColor}</span>
+            </div>
+          ) : null}
+        </div>
+
+        {vehicle.buildStory ? (
+          <section className="vehicle-profile-story">
+            <p className="vehicle-profile-story-heading">About This Car</p>
+            <p className="vehicle-profile-story-text">{vehicle.buildStory}</p>
+          </section>
+        ) : null}
       </div>
 
       {showVoting ? (

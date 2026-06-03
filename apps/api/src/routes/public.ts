@@ -18,6 +18,7 @@ function toPublicVehicle(
     model: vehicle.model,
     nickname: vehicle.nickname ?? null,
     exteriorColor: vehicle.exteriorColor ?? null,
+    buildStory: vehicle.buildStory ?? null,
     category: {
       id: vehicle.category.id,
       name: vehicle.category.name,

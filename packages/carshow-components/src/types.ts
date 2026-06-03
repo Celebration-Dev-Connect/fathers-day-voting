@@ -234,6 +234,7 @@ export type PublicVehicle = {
   model: string;
   nickname: string | null;
   exteriorColor: string | null;
+  buildStory: string | null;
   category: PublicCategory;
   ownerName: string | null;
   photos: PublicPhoto[];

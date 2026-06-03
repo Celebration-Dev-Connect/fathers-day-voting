@@ -58,11 +58,17 @@ resource "aws_ecs_task_definition" "api" {
       { name = "MODERATION_DRIVER", value = "rekognition" },
       { name = "ENABLE_DEV_LOGIN", value = var.enable_dev_login ? "true" : "false" },
       { name = "RUN_SEED", value = var.run_seed ? "true" : "false" },
+      { name = "PLANNING_CENTER_CALLBACK_URL", value = var.pco_callback_url },
+      { name = "PCO_TEAM_NAME", value = var.pco_team_name },
+      { name = "ADMIN_WEB_URL", value = var.admin_web_url },
+      { name = "JUDGE_WEB_URL", value = var.judge_web_url },
     ]
 
     secrets = [
       { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.db_url.arn },
       { name = "JWT_SECRET", valueFrom = aws_secretsmanager_secret.jwt_secret.arn },
+      { name = "PLANNING_CENTER_CLIENT_ID", valueFrom = aws_secretsmanager_secret.pco_client_id.arn },
+      { name = "PLANNING_CENTER_CLIENT_SECRET", valueFrom = aws_secretsmanager_secret.pco_client_secret.arn },
     ]
 
     logConfiguration = {

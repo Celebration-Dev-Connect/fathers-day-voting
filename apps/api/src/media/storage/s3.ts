@@ -64,6 +64,10 @@ export class S3PhotoStorage implements PhotoStorage {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: publicKey(id) }));
   }
 
+  async deleteStorageKey(storageKey: string) {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }));
+  }
+
   publicUrl(storageKey: string) {
     // CloudFront origin path is /public, so the public object id is the key without that prefix.
     const name = storageKey.replace(/^public\//, "");

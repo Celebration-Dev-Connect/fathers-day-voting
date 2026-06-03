@@ -40,18 +40,18 @@ enum QrAuditAction {
 }
 
 model Event {
-  id                 String         @id @default(cuid())
+  id                 String                   @id @default(cuid())
   name               String
   eventDate          DateTime
   venueName          String
   venueAddress       String
-  registrationOpen   Boolean        @default(true)
-  votingOpen         Boolean        @default(false)
+  registrationOpen   Boolean                  @default(true)
+  votingOpen         Boolean                  @default(false)
   peopleChoiceCutoff DateTime?
-  judgingOpen        Boolean        @default(false)
-  resultsPublished   Boolean        @default(false)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  judgingOpen        Boolean                  @default(false)
+  resultsPublished   Boolean                  @default(false)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
   categories         Category[]
   vehicleEntries     VehicleEntry[]
   qrCards            QrCard[]
@@ -61,31 +61,31 @@ model Event {
 }
 
 model StaffUser {
-  id            String                 @id @default(cuid())
-  email         String                 @unique
-  displayName   String
-  role          StaffRole
-  planningCenterId String?             @unique
-  devLogin      Boolean                @default(false)
-  active        Boolean                @default(true)
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
-  registrations VehicleEntry[]         @relation("RegisteredBy")
-  auditLogs     QrAssignmentAuditLog[] @relation("QrAuditStaff")
-  winnerOverrides CategoryWinnerOverride[]
+  id               String                   @id @default(cuid())
+  email            String                   @unique
+  displayName      String
+  role             StaffRole
+  planningCenterId String?                  @unique
+  devLogin         Boolean                  @default(false)
+  active           Boolean                  @default(true)
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  registrations    VehicleEntry[]           @relation("RegisteredBy")
+  auditLogs        QrAssignmentAuditLog[]   @relation("QrAuditStaff")
+  winnerOverrides  CategoryWinnerOverride[]
 }
 
 model Category {
-  id             String         @id @default(cuid())
-  eventId        String
-  name           String
-  slug           String
-  active         Boolean        @default(true)
-  sortOrder      Int            @default(0)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  event          Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  vehicleEntries VehicleEntry[]
+  id                 String                   @id @default(cuid())
+  eventId            String
+  name               String
+  slug               String
+  active             Boolean                  @default(true)
+  sortOrder          Int                      @default(0)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  event              Event                    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vehicleEntries     VehicleEntry[]
   judgeCategoryPicks JudgeCategoryPick[]
   winnerOverrides    CategoryWinnerOverride[]
   peopleChoiceVotes  PeopleChoiceVote[]
@@ -108,36 +108,38 @@ model Owner {
 }
 
 model VehicleEntry {
-  id                   String                 @id @default(cuid())
-  eventId              String
-  ownerId              String
-  categoryId           String
-  entryNumber          Int
-  year                 Int
-  make                 String
-  model                String
-  nickname             String?
-  plateNumber          String?
-  exteriorColor        String?
-  internalNotes        String?
-  buildStory           String?
-  ownerAccessCode      String
-  status               VehicleStatus          @default(REGISTERED)
-  source               RegistrationSource     @default(ONSITE)
-  checkedInAt          DateTime?
-  registeredByStaffId  String?
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  event                Event                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  owner                Owner                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  category             Category               @relation(fields: [categoryId], references: [id])
-  registeredByStaff    StaffUser?             @relation("RegisteredBy", fields: [registeredByStaffId], references: [id])
-  qrCard               QrCard?
-  qrAuditLogs          QrAssignmentAuditLog[] @relation("VehicleQrAudit")
-  peopleChoiceVotes    PeopleChoiceVote[]
-  judgeCategoryPicks   JudgeCategoryPick[]
-  winnerOverrides       CategoryWinnerOverride[]
-  photos               VehiclePhoto[]
+  id                  String                   @id @default(cuid())
+  eventId             String
+  ownerId             String
+  categoryId          String
+  primaryPhotoId      String?                  @unique
+  entryNumber         Int
+  year                Int
+  make                String
+  model               String
+  nickname            String?
+  plateNumber         String?
+  exteriorColor       String?
+  internalNotes       String?
+  buildStory          String?
+  ownerAccessCode     String
+  status              VehicleStatus            @default(REGISTERED)
+  source              RegistrationSource       @default(ONSITE)
+  checkedInAt         DateTime?
+  registeredByStaffId String?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  event               Event                    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  owner               Owner                    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category            Category                 @relation(fields: [categoryId], references: [id])
+  primaryPhoto        VehiclePhoto?            @relation("VehiclePrimaryPhoto", fields: [primaryPhotoId], references: [id], onDelete: SetNull)
+  registeredByStaff   StaffUser?               @relation("RegisteredBy", fields: [registeredByStaffId], references: [id])
+  qrCard              QrCard?
+  qrAuditLogs         QrAssignmentAuditLog[]   @relation("VehicleQrAudit")
+  peopleChoiceVotes   PeopleChoiceVote[]
+  judgeCategoryPicks  JudgeCategoryPick[]
+  winnerOverrides     CategoryWinnerOverride[]
+  photos              VehiclePhoto[]           @relation("VehiclePhotos")
 
   @@unique([eventId, entryNumber])
   @@unique([eventId, ownerAccessCode])
@@ -177,7 +179,8 @@ model VehiclePhoto {
   processingStartedAt DateTime?
   processedAt         DateTime?
   createdAt           DateTime              @default(now())
-  vehicleEntry        VehicleEntry          @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  vehicleEntry        VehicleEntry          @relation("VehiclePhotos", fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  primaryFor          VehicleEntry?         @relation("VehiclePrimaryPhoto")
 
   @@unique([vehicleEntryId, sortOrder])
   @@index([vehicleEntryId])
@@ -186,59 +189,59 @@ model VehiclePhoto {
 }
 
 model PeopleChoiceVote {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   eventId        String
   vehicleEntryId String
   categoryId     String
   voterKey       String?
-  createdAt      DateTime      @default(now())
-  event          Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  vehicleEntry   VehicleEntry  @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
-  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  event          Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
+  @@unique([eventId, categoryId, voterKey])
   @@index([eventId, vehicleEntryId])
   @@index([eventId, createdAt])
-  @@unique([eventId, categoryId, voterKey])
 }
 
 model JudgeCategoryPick {
-  id             String        @id @default(cuid())
-  eventId        String
-  categoryId     String
-  vehicleEntryId String
-  judgeKey       String        @default("panel")
-  rank           Int
-  judgeName      String?
-  notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  event          Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  vehicleEntry   VehicleEntry  @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
-
-  @@index([eventId, categoryId])
-  @@index([eventId, vehicleEntryId])
-  @@unique([eventId, categoryId, judgeKey, rank])
-  @@unique([eventId, categoryId, judgeKey, vehicleEntryId])
-}
-
-model CategoryWinnerOverride {
   id             String       @id @default(cuid())
   eventId        String
   categoryId     String
   vehicleEntryId String
+  judgeKey       String       @default("panel")
   rank           Int
-  reason         String?
-  adminStaffUserId String?
+  judgeName      String?
+  notes          String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   event          Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
   category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
-  adminStaffUser StaffUser?   @relation(fields: [adminStaffUserId], references: [id], onDelete: SetNull)
 
+  @@unique([eventId, categoryId, judgeKey, rank])
+  @@unique([eventId, categoryId, judgeKey, vehicleEntryId])
   @@index([eventId, categoryId])
+  @@index([eventId, vehicleEntryId])
+}
+
+model CategoryWinnerOverride {
+  id               String       @id @default(cuid())
+  eventId          String
+  categoryId       String
+  vehicleEntryId   String
+  rank             Int
+  reason           String?
+  adminStaffUserId String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  event            Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category         Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vehicleEntry     VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  adminStaffUser   StaffUser?   @relation(fields: [adminStaffUserId], references: [id], onDelete: SetNull)
+
   @@unique([eventId, categoryId, rank])
+  @@index([eventId, categoryId])
 }
 
 model QrCard {
@@ -261,18 +264,18 @@ model QrCard {
 }
 
 model QrAssignmentAuditLog {
-  id             String        @id @default(cuid())
-  eventId        String
-  qrCardId       String
-  vehicleEntryId String?
-  staffUserId    String
-  action         QrAuditAction
-  reason         String?
+  id                     String        @id @default(cuid())
+  eventId                String
+  qrCardId               String
+  vehicleEntryId         String?
+  staffUserId            String
+  action                 QrAuditAction
+  reason                 String?
   previousVehicleEntryId String?
-  createdAt      DateTime      @default(now())
-  qrCard         QrCard        @relation("QrCardAudit", fields: [qrCardId], references: [id], onDelete: Cascade)
-  vehicleEntry   VehicleEntry? @relation("VehicleQrAudit", fields: [vehicleEntryId], references: [id])
-  staffUser      StaffUser     @relation("QrAuditStaff", fields: [staffUserId], references: [id])
+  createdAt              DateTime      @default(now())
+  qrCard                 QrCard        @relation("QrCardAudit", fields: [qrCardId], references: [id], onDelete: Cascade)
+  vehicleEntry           VehicleEntry? @relation("VehicleQrAudit", fields: [vehicleEntryId], references: [id])
+  staffUser              StaffUser     @relation("QrAuditStaff", fields: [staffUserId], references: [id])
 
   @@index([eventId, qrCardId])
   @@index([eventId, vehicleEntryId])

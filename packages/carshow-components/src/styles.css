@@ -489,6 +489,144 @@ textarea:focus {
   gap: 12px;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.owner-assist-panel {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--border-grey);
+  border-radius: 8px;
+  background: var(--light-grey);
+}
+
+.owner-assist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.owner-assist-header h3 {
+  margin: 2px 0 0;
+  font-size: 20px;
+  text-transform: uppercase;
+}
+
+.owner-assist-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.owner-assist-photo,
+.photo-empty {
+  border: 1px solid var(--border-grey);
+  border-radius: 6px;
+  background: var(--pure-white);
+  overflow: hidden;
+}
+
+.owner-assist-photo.primary {
+  border-color: var(--primary);
+}
+
+.owner-assist-photo-preview {
+  position: relative;
+  display: grid;
+  min-height: 140px;
+  background: #eeeeee;
+}
+
+.owner-assist-photo-preview img {
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  object-fit: cover;
+}
+
+.owner-assist-photo-preview div {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  color: var(--muted-grey);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.owner-assist-photo-preview strong {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: var(--primary);
+  color: var(--pure-white);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.owner-assist-photo-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+}
+
+.owner-assist-photo-actions button,
+.owner-assist-photo-actions span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.owner-assist-photo-actions button {
+  border: 1px solid var(--border-grey);
+  background: var(--pure-white);
+  color: var(--on-surface);
+}
+
+.owner-assist-photo-actions button.danger {
+  width: 36px;
+  color: var(--primary);
+}
+
+.owner-assist-photo-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.owner-assist-photo-actions span {
+  color: var(--muted-grey);
+}
+
 .qr-panel {
   padding: 16px;
   border-top: 4px solid var(--primary);

@@ -83,6 +83,19 @@ async function createPendingPhoto(
   return { id: photo.id, status: "PENDING" as const };
 }
 
+async function deletePhotoObjects(app: FastifyInstance, deps: PhotosDeps, photoId: string, storageKey: string | null) {
+  const keys = [storageKey, `public/${photoId}`, `public/${photoId}-medium`, `public/${photoId}-thumb`].filter(
+    (key): key is string => Boolean(key),
+  );
+  await Promise.all(
+    [...new Set(keys)].map((key) =>
+      deps.storage.deleteStorageKey(key).catch((err) =>
+        app.log.warn({ err, photoId, storageKey: key }, "could not delete photo storage object"),
+      ),
+    ),
+  );
+}
+
 export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDeps) {
   app.get("/photos/review", async (request) => {
     await requireAdmin(app, request);
@@ -270,6 +283,49 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
     },
   );
 
+  app.delete("/owner/vehicles/:id/photos/:photoId", async (request) => {
+    const params = z
+      .object({
+        id: z.string().trim().min(1),
+        photoId: z.string().trim().min(1),
+      })
+      .parse(request.params);
+    const { vehicle } = await requireOwnerVehicle(app, request, params.id);
+    const photo = await prisma.vehiclePhoto.findFirst({
+      where: {
+        id: params.photoId,
+        vehicleEntryId: vehicle.id,
+        uploadedBy: `owner:${vehicle.ownerId}`,
+      },
+      select: { id: true, storageKey: true },
+    });
+    if (!photo) throw app.httpErrors.notFound("Owner-uploaded photo not found");
+
+    await prisma.$transaction(async (tx) => {
+      if (vehicle.primaryPhotoId === photo.id) {
+        const replacement = await tx.vehiclePhoto.findFirst({
+          where: {
+            vehicleEntryId: vehicle.id,
+            id: { not: photo.id },
+            moderationStatus: "APPROVED",
+            url: { not: null },
+          },
+          orderBy: { sortOrder: "asc" },
+          select: { id: true },
+        });
+        await tx.vehicleEntry.update({
+          where: { id: vehicle.id },
+          data: { primaryPhotoId: replacement?.id ?? null },
+        });
+      }
+
+      await tx.vehiclePhoto.delete({ where: { id: photo.id } });
+    });
+
+    await deletePhotoObjects(app, deps, photo.id, photo.storageKey);
+    return { ok: true };
+  });
+
   app.post("/registrations/:id/photos", async (request, reply) => {
     const staff = await requireStaff(app, request);
     const params = z.object({ id: z.string() }).parse(request.params);
@@ -281,6 +337,51 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
     const image = await readUploadedImage(app, request);
     const result = await createPendingPhoto(app, deps, vehicle.id, `staff:${staff.id}`, "STAFF", image);
     return reply.code(202).send(result);
+  });
+
+  app.delete("/registrations/:id/photos/:photoId", async (request) => {
+    await requireStaff(app, request);
+    const params = z
+      .object({
+        id: z.string().trim().min(1),
+        photoId: z.string().trim().min(1),
+      })
+      .parse(request.params);
+    const vehicle = await prisma.vehicleEntry.findFirst({
+      where: { id: params.id, eventId },
+      select: { id: true, primaryPhotoId: true },
+    });
+    if (!vehicle) throw app.httpErrors.notFound("Registration not found");
+
+    const photo = await prisma.vehiclePhoto.findFirst({
+      where: { id: params.photoId, vehicleEntryId: vehicle.id },
+      select: { id: true, storageKey: true },
+    });
+    if (!photo) throw app.httpErrors.notFound("Photo not found");
+
+    await prisma.$transaction(async (tx) => {
+      if (vehicle.primaryPhotoId === photo.id) {
+        const replacement = await tx.vehiclePhoto.findFirst({
+          where: {
+            vehicleEntryId: vehicle.id,
+            id: { not: photo.id },
+            moderationStatus: "APPROVED",
+            url: { not: null },
+          },
+          orderBy: { sortOrder: "asc" },
+          select: { id: true },
+        });
+        await tx.vehicleEntry.update({
+          where: { id: vehicle.id },
+          data: { primaryPhotoId: replacement?.id ?? null },
+        });
+      }
+
+      await tx.vehiclePhoto.delete({ where: { id: photo.id } });
+    });
+
+    await deletePhotoObjects(app, deps, photo.id, photo.storageKey);
+    return { ok: true };
   });
 
   app.post(
@@ -315,6 +416,11 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
     });
     if (!qrCard?.vehicleEntry) throw app.httpErrors.notFound("Vehicle not found");
     const vehicle = qrCard.vehicleEntry;
+    const photos = [...vehicle.photos].sort((a, b) => {
+      if (a.id === vehicle.primaryPhotoId) return -1;
+      if (b.id === vehicle.primaryPhotoId) return 1;
+      return a.sortOrder - b.sortOrder;
+    });
     return {
       vehicle: {
         entryNumber: vehicle.entryNumber,
@@ -326,11 +432,13 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
         ownerPublicName: vehicle.owner.publicNameOptIn
           ? vehicle.owner.publicName?.trim() || vehicle.owner.firstName
           : null,
-        photos: vehicle.photos.map((photo) => ({
+        primaryPhotoId: vehicle.primaryPhotoId ?? null,
+        photos: photos.map((photo) => ({
           id: photo.id,
           url: photo.url,
           altText: photo.altText,
           sortOrder: photo.sortOrder,
+          isPrimary: photo.id === vehicle.primaryPhotoId,
         })),
       },
     };

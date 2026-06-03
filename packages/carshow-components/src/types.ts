@@ -60,10 +60,13 @@ export type QrCard = {
 
 export type VehiclePhoto = {
   id: string;
-  vehicleEntryId: string;
-  url: string;
+  vehicleEntryId?: string;
+  url: string | null;
   altText?: string | null;
   sortOrder: number;
+  isPrimary?: boolean;
+  ownerUploaded?: boolean;
+  moderationStatus?: PhotoModerationStatus;
   createdAt: string;
 };
 
@@ -98,7 +101,9 @@ export type Registration = {
   plateNumber?: string | null;
   exteriorColor?: string | null;
   internalNotes?: string | null;
+  buildStory?: string | null;
   ownerAccessCode: string;
+  primaryPhotoId?: string | null;
   status: VehicleStatus;
   checkedInAt?: string | null;
   owner: Owner;
@@ -206,6 +211,7 @@ export type RegistrationPayload = {
     plateNumber?: string;
     exteriorColor?: string;
     internalNotes?: string;
+    buildStory?: string;
   };
 };
 
@@ -224,6 +230,7 @@ export type PublicPhoto = {
   thumbUrl: string | null;
   altText: string | null;
   sortOrder: number;
+  isPrimary?: boolean;
 };
 
 export type PublicVehicle = {
@@ -237,6 +244,7 @@ export type PublicVehicle = {
   buildStory: string | null;
   category: PublicCategory;
   ownerName: string | null;
+  primaryPhotoId?: string | null;
   photos: PublicPhoto[];
 };
 

@@ -55,6 +55,10 @@ export class LocalFsPhotoStorage implements PhotoStorage {
     await this.safeUnlink(this.path(publicKey(id)));
   }
 
+  async deleteStorageKey(storageKey: string) {
+    await this.safeUnlink(this.path(storageKey));
+  }
+
   publicUrl(storageKey: string) {
     return `${this.publicBaseUrl}/media/${storageKey}`;
   }

@@ -5,6 +5,8 @@ export type OwnerPhoto = {
   url: string | null;
   altText: string | null;
   sortOrder: number;
+  isPrimary: boolean;
+  ownerUploaded: boolean;
   moderationStatus: "PENDING" | "PROCESSING" | "HUMAN_REVIEW" | "APPROVED" | "REJECTED" | "FAILED";
   createdAt: string;
 };
@@ -20,6 +22,7 @@ export type OwnerVehicle = {
   exteriorColor: string | null;
   buildStory: string;
   ownerAccessCode: string;
+  primaryPhotoId: string | null;
   status: "DRAFT" | "REGISTERED" | "CHECKED_IN";
   category: { id: string; name: string; slug: string };
   owner: {
@@ -114,4 +117,25 @@ export async function uploadOwnerPhoto(vehicleId: string, token: string, file: F
     headers: ownerHeaders(token),
     body: form,
   });
+}
+
+export async function setOwnerPrimaryPhoto(vehicleId: string, token: string, photoId: string) {
+  return request<{ vehicle: OwnerVehicle; vehicles: OwnerVehicleSummary[] }>(
+    `/owner/vehicles/${encodeURIComponent(vehicleId)}/primary-photo`,
+    {
+      method: "PATCH",
+      headers: ownerHeaders(token),
+      body: JSON.stringify({ photoId }),
+    },
+  );
+}
+
+export async function deleteOwnerPhoto(vehicleId: string, token: string, photoId: string) {
+  return request<{ ok: true }>(
+    `/owner/vehicles/${encodeURIComponent(vehicleId)}/photos/${encodeURIComponent(photoId)}`,
+    {
+      method: "DELETE",
+      headers: ownerHeaders(token),
+    },
+  );
 }

@@ -1,8 +1,14 @@
 import { X } from "lucide-react";
-import { Button, vehicleName, type Registration } from "@carshow/carshow-components";
+import { Button, vehicleName, type Registration, type VehiclePhoto } from "@carshow/carshow-components";
+
+type PhotoWithUrl = VehiclePhoto & { url: string };
+
+function hasPhotoUrl(photo: VehiclePhoto): photo is PhotoWithUrl {
+  return Boolean(photo.url);
+}
 
 export function WinnerDrawer({ registration, onClose }: { registration: Registration; onClose: () => void }) {
-  const photos = registration.photos ?? [];
+  const photos = (registration.photos ?? []).filter(hasPhotoUrl);
 
   return (
     <div className="drawer-backdrop" role="presentation">
@@ -70,4 +76,3 @@ export function WinnerDrawer({ registration, onClose }: { registration: Registra
     </div>
   );
 }
-

@@ -21,6 +21,7 @@ export interface PhotoStorage {
   ): Promise<{ storageKey: string }>;
   /** Promote pending/<id> → public/<id>. */
   moveToPublic(id: string): Promise<{ storageKey: string }>;
+  deleteStorageKey(storageKey: string): Promise<void>;
   deletePending(id: string): Promise<void>;
   deletePublic(id: string): Promise<void>;
   /** How an APPROVED photo is served to the public. */

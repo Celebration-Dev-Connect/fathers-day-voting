@@ -26,6 +26,7 @@ function registration(id: string, entryNumber: number): VotingRegistration {
     eventId: "event",
     ownerId: `owner-${id}`,
     categoryId: category.id,
+    primaryPhotoId: null,
     registeredByStaffId: null,
     entryNumber,
     ownerAccessCode: entryNumber.toString().padStart(5, "0"),

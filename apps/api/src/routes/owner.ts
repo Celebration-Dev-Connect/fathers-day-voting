@@ -39,6 +39,12 @@ function ownerVehicleSummary(vehicle: OwnerVehiclePayload) {
 }
 
 function ownerVehicleResponse(vehicle: OwnerVehiclePayload) {
+  const photos = [...vehicle.photos].sort((a, b) => {
+    if (a.id === vehicle.primaryPhotoId) return -1;
+    if (b.id === vehicle.primaryPhotoId) return 1;
+    return a.sortOrder - b.sortOrder;
+  });
+
   return {
     id: vehicle.id,
     entryNumber: vehicle.entryNumber,
@@ -50,6 +56,7 @@ function ownerVehicleResponse(vehicle: OwnerVehiclePayload) {
     exteriorColor: vehicle.exteriorColor ?? null,
     buildStory: vehicle.buildStory ?? "",
     ownerAccessCode: vehicle.ownerAccessCode,
+    primaryPhotoId: vehicle.primaryPhotoId ?? null,
     status: vehicle.status,
     category: {
       id: vehicle.category.id,
@@ -66,11 +73,13 @@ function ownerVehicleResponse(vehicle: OwnerVehiclePayload) {
       publicNameOptIn: vehicle.owner.publicNameOptIn,
       waiverAccepted: vehicle.owner.waiverAccepted,
     },
-    photos: vehicle.photos.map((photo) => ({
+    photos: photos.map((photo) => ({
       id: photo.id,
       url: photo.url,
       altText: photo.altText ?? null,
       sortOrder: photo.sortOrder,
+      isPrimary: photo.id === vehicle.primaryPhotoId,
+      ownerUploaded: photo.uploadedBy === `owner:${vehicle.ownerId}`,
       moderationStatus: photo.moderationStatus,
       createdAt: photo.createdAt.toISOString(),
     })),
@@ -221,6 +230,33 @@ export async function registerOwnerRoutes(app: FastifyInstance) {
           },
         });
       }
+    });
+
+    const updated = await findOwnerVehicleById(params.id, session.ownerId);
+    if (!updated) throw app.httpErrors.notFound("Vehicle not found");
+    const vehicles = await findOwnerVehicles(session.ownerId);
+    return { vehicle: ownerVehicleResponse(updated), vehicles: vehicles.map(ownerVehicleSummary) };
+  });
+
+  app.patch("/owner/vehicles/:id/primary-photo", async (request) => {
+    const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
+    const body = z.object({ photoId: z.string().trim().min(1) }).parse(request.body);
+    const { vehicle, session } = await requireOwnerVehicle(app, request, params.id);
+
+    const photo = await prisma.vehiclePhoto.findFirst({
+      where: {
+        id: body.photoId,
+        vehicleEntryId: vehicle.id,
+        moderationStatus: "APPROVED",
+        url: { not: null },
+      },
+      select: { id: true },
+    });
+    if (!photo) throw app.httpErrors.badRequest("Only approved photos can be set as primary");
+
+    await prisma.vehicleEntry.update({
+      where: { id: vehicle.id },
+      data: { primaryPhotoId: photo.id },
     });
 
     const updated = await findOwnerVehicleById(params.id, session.ownerId);

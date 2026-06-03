@@ -10,6 +10,12 @@ function toPublicVehicle(
     include: { owner: true; category: true; photos: true };
   }>,
 ) {
+  const photos = [...vehicle.photos].sort((a, b) => {
+    if (a.id === vehicle.primaryPhotoId) return -1;
+    if (b.id === vehicle.primaryPhotoId) return 1;
+    return a.sortOrder - b.sortOrder;
+  });
+
   return {
     id: vehicle.id,
     entryNumber: vehicle.entryNumber,
@@ -27,13 +33,15 @@ function toPublicVehicle(
     ownerName: vehicle.owner.publicNameOptIn
       ? vehicle.owner.publicName || `${vehicle.owner.firstName} ${vehicle.owner.lastName}`
       : null,
-    photos: vehicle.photos.map((p) => ({
+    primaryPhotoId: vehicle.primaryPhotoId ?? null,
+    photos: photos.map((p) => ({
       id: p.id,
       url: p.url,
       mediumUrl: p.mediumUrl ?? null,
       thumbUrl: p.thumbUrl ?? null,
       altText: p.altText ?? null,
       sortOrder: p.sortOrder,
+      isPrimary: p.id === vehicle.primaryPhotoId,
     })),
   };
 }
@@ -223,7 +231,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
       prisma.vehicleEntry.count({ where }),
       prisma.vehicleEntry.findMany({
         where,
-        include: { owner: true, category: true, photos: { where: { moderationStatus: "APPROVED" }, orderBy: { sortOrder: "asc" }, take: 1 } },
+        include: { owner: true, category: true, photos: { where: { moderationStatus: "APPROVED" }, orderBy: { sortOrder: "asc" } } },
         orderBy: { entryNumber: "asc" },
         skip: (query.page - 1) * PAGE_SIZE,
         take: PAGE_SIZE,

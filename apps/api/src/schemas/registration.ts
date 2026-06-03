@@ -19,10 +19,10 @@ export const vehicleSchema = z.object({
   plateNumber: z.string().trim().optional(),
   exteriorColor: z.string().trim().optional(),
   internalNotes: z.string().trim().optional(),
+  buildStory: z.string().trim().max(2500).optional(),
 });
 
 export const registrationSchema = z.object({
   owner: ownerSchema,
   vehicle: vehicleSchema,
 });
-

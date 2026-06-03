@@ -1,10 +1,12 @@
-import { Camera, CheckCircle2, CircleAlert, CloudUpload, Loader2, LogOut, Save } from "lucide-react";
+import { Camera, CheckCircle2, CircleAlert, CloudUpload, Loader2, LogOut, Save, Star, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Route, Routes, useNavigate } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { formatPhone } from "@carshow/carshow-components";
 import {
   createOwnerSession,
+  deleteOwnerPhoto,
   getOwnerVehicle,
+  setOwnerPrimaryPhoto,
   type OwnerPhoto,
   type OwnerVehicle,
   type OwnerVehicleSummary,
@@ -107,13 +109,19 @@ function PhotoManager({
   selectedPhotoId,
   onSelectPhoto,
   onAddPhoto,
+  onSetPrimary,
+  onDeletePhoto,
   uploading,
+  busyPhotoId,
 }: {
   photos: OwnerPhoto[];
   selectedPhotoId: string | null;
   onSelectPhoto: (id: string) => void;
   onAddPhoto: () => void;
+  onSetPrimary: (id: string) => void;
+  onDeletePhoto: (photo: OwnerPhoto) => void;
   uploading: boolean;
+  busyPhotoId: string | null;
 }) {
   const visiblePhotos = photos.filter((photo) => photo.url);
 
@@ -128,15 +136,36 @@ function PhotoManager({
 
       <div className="owner-photo-grid">
         {visiblePhotos.map((photo, index) => (
-          <button
+          <div
             key={photo.id}
             className={`owner-photo-tile ${selectedPhotoId === photo.id ? "is-selected" : ""}`}
-            type="button"
-            onClick={() => onSelectPhoto(photo.id)}
           >
-            <img src={photo.url ?? ""} alt={photo.altText ?? `Vehicle photo ${index + 1}`} />
-            {index === 0 ? <strong>Primary</strong> : null}
-          </button>
+            <button className="owner-photo-preview" type="button" onClick={() => onSelectPhoto(photo.id)}>
+              <img src={photo.url ?? ""} alt={photo.altText ?? `Vehicle photo ${index + 1}`} />
+              {photo.isPrimary ? <strong>Primary</strong> : null}
+            </button>
+            <div className="owner-photo-tile-actions">
+              {photo.moderationStatus === "APPROVED" && !photo.isPrimary ? (
+                <button type="button" disabled={busyPhotoId === photo.id} onClick={() => onSetPrimary(photo.id)}>
+                  {busyPhotoId === photo.id ? <Loader2 className="spin" aria-hidden="true" /> : <Star aria-hidden="true" />}
+                  Set Primary
+                </button>
+              ) : (
+                <span>{statusLabel(photo.moderationStatus)}</span>
+              )}
+              {photo.ownerUploaded ? (
+                <button
+                  className="owner-photo-delete"
+                  type="button"
+                  disabled={busyPhotoId === photo.id}
+                  onClick={() => onDeletePhoto(photo)}
+                  aria-label={`Delete photo ${photo.sortOrder}`}
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
+          </div>
         ))}
         <button
           className="owner-photo-tile owner-photo-add"
@@ -155,8 +184,21 @@ function PhotoManager({
             .filter((photo) => photo.moderationStatus !== "APPROVED")
             .map((photo) => (
               <p key={photo.id}>
-                <CloudUpload aria-hidden="true" />
-                Photo #{photo.sortOrder}: {statusLabel(photo.moderationStatus)}
+                <span>
+                  <CloudUpload aria-hidden="true" />
+                  Photo #{photo.sortOrder}: {statusLabel(photo.moderationStatus)}
+                </span>
+                {photo.ownerUploaded ? (
+                  <button
+                    type="button"
+                    disabled={busyPhotoId === photo.id}
+                    onClick={() => onDeletePhoto(photo)}
+                    aria-label={`Delete photo ${photo.sortOrder}`}
+                  >
+                    {busyPhotoId === photo.id ? <Loader2 className="spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
+                    Delete
+                  </button>
+                ) : null}
               </p>
             ))}
         </div>
@@ -259,7 +301,6 @@ function OwnerPhotoUploadDialog({
 }
 
 function OwnerPortal() {
-  const navigate = useNavigate();
   const [session, setSession] = useState<StoredOwnerSession | null>(() => {
     const raw = localStorage.getItem(OWNER_SESSION_KEY);
     if (!raw) return null;
@@ -286,6 +327,7 @@ function OwnerPortal() {
   const [exteriorColor, setExteriorColor] = useState("");
   const [publicNameOptIn, setPublicNameOptIn] = useState(false);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
+  const [busyPhotoId, setBusyPhotoId] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -307,7 +349,7 @@ function OwnerPortal() {
     setPlateNumber(nextVehicle.plateNumber ?? "");
     setExteriorColor(nextVehicle.exteriorColor ?? "");
     setPublicNameOptIn(nextVehicle.owner.publicNameOptIn);
-    setSelectedPhotoId(nextVehicle.photos.find((photo) => photo.url)?.id ?? null);
+    setSelectedPhotoId(nextVehicle.primaryPhotoId ?? nextVehicle.photos.find((photo) => photo.url)?.id ?? null);
   }
 
   useEffect(() => {
@@ -342,7 +384,10 @@ function OwnerPortal() {
   }, [session?.token, session?.vehicleId]);
 
   const selectedPhoto = useMemo(
-    () => vehicle?.photos.find((photo) => photo.id === selectedPhotoId && photo.url) ?? vehicle?.photos.find((photo) => photo.url),
+    () =>
+      vehicle?.photos.find((photo) => photo.id === selectedPhotoId && photo.url) ??
+      vehicle?.photos.find((photo) => photo.id === vehicle.primaryPhotoId && photo.url) ??
+      vehicle?.photos.find((photo) => photo.url),
     [selectedPhotoId, vehicle],
   );
 
@@ -420,6 +465,44 @@ function OwnerPortal() {
     setSession(nextSession);
   }
 
+  async function handleSetPrimary(photoId: string) {
+    if (!session || !vehicle) return;
+    setBusyPhotoId(photoId);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await setOwnerPrimaryPhoto(vehicle.id, session.token, photoId);
+      hydrateVehicle(result.vehicle);
+      setVehicles(result.vehicles);
+      setSelectedPhotoId(photoId);
+      setMessage("Primary photo updated");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update primary photo");
+    } finally {
+      setBusyPhotoId(null);
+    }
+  }
+
+  async function handleDeletePhoto(photo: OwnerPhoto) {
+    if (!session || !vehicle) return;
+    const confirmed = window.confirm("Remove this photo? This cannot be undone.");
+    if (!confirmed) return;
+    setBusyPhotoId(photo.id);
+    setError(null);
+    setMessage(null);
+    try {
+      await deleteOwnerPhoto(vehicle.id, session.token, photo.id);
+      const result = await getOwnerVehicle(vehicle.id, session.token);
+      hydrateVehicle(result.vehicle);
+      setVehicles(result.vehicles);
+      setMessage("Photo removed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete photo");
+    } finally {
+      setBusyPhotoId(null);
+    }
+  }
+
   if (!session) return <OwnerLoginView onLogin={handleLogin} />;
 
   return (
@@ -494,7 +577,10 @@ function OwnerPortal() {
               selectedPhotoId={selectedPhotoId}
               onSelectPhoto={setSelectedPhotoId}
               onAddPhoto={() => setUploadOpen(true)}
+              onSetPrimary={(photoId) => void handleSetPrimary(photoId)}
+              onDeletePhoto={(photo) => void handleDeletePhoto(photo)}
               uploading={uploadOpen}
+              busyPhotoId={busyPhotoId}
             />
 
             <section className="owner-card owner-form-card">
@@ -613,7 +699,7 @@ function OwnerPortal() {
             void getOwnerVehicle(vehicle.id, session.token).then(({ vehicle: nextVehicle, vehicles: nextVehicles }) => {
               hydrateVehicle(nextVehicle);
               setVehicles(nextVehicles);
-              setSelectedPhotoId(nextVehicle.photos.find((photo) => photo.url)?.id ?? null);
+              setSelectedPhotoId(nextVehicle.primaryPhotoId ?? nextVehicle.photos.find((photo) => photo.url)?.id ?? null);
               setMessage("Photo uploaded for review");
             });
           }}

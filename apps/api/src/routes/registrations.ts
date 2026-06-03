@@ -6,6 +6,10 @@ import { eventId } from "../config.js";
 import { registrationSchema } from "../schemas/registration.js";
 import { normalizeSearch } from "../utils.js";
 
+type RegistrationPayload = Prisma.VehicleEntryGetPayload<{
+  include: { owner: true; category: true; qrCard: true; photos: true };
+}>;
+
 async function nextEntryNumber() {
   const latest = await prisma.vehicleEntry.findFirst({
     where: { eventId },
@@ -18,6 +22,30 @@ async function nextEntryNumber() {
 
 function accessCodeForEntry(entryNumber: number) {
   return (entryNumber % 100000).toString().padStart(5, "0");
+}
+
+function registrationResponse(registration: RegistrationPayload) {
+  const photos = [...registration.photos].sort((a, b) => {
+    if (a.id === registration.primaryPhotoId) return -1;
+    if (b.id === registration.primaryPhotoId) return 1;
+    return a.sortOrder - b.sortOrder;
+  });
+
+  return {
+    ...registration,
+    primaryPhotoId: registration.primaryPhotoId ?? null,
+    photos: photos.map((photo) => ({
+      id: photo.id,
+      vehicleEntryId: photo.vehicleEntryId,
+      url: photo.url,
+      altText: photo.altText,
+      sortOrder: photo.sortOrder,
+      isPrimary: photo.id === registration.primaryPhotoId,
+      ownerUploaded: photo.uploadedBy === `owner:${registration.ownerId}`,
+      moderationStatus: photo.moderationStatus,
+      createdAt: photo.createdAt.toISOString(),
+    })),
+  };
 }
 
 export async function registerRegistrationRoutes(app: FastifyInstance) {
@@ -74,11 +102,12 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
         owner: true,
         category: true,
         qrCard: true,
+        photos: { orderBy: { sortOrder: "asc" } },
       },
       take: 100,
     });
 
-    return { registrations };
+    return { registrations: registrations.map(registrationResponse) };
   });
 
   app.post("/registrations", async (request) => {
@@ -126,17 +155,19 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
           plateNumber: body.vehicle.plateNumber,
           exteriorColor: body.vehicle.exteriorColor,
           internalNotes: body.vehicle.internalNotes,
+          buildStory: body.vehicle.buildStory,
           registeredByStaffId: staff.id,
         },
         include: {
           owner: true,
           category: true,
           qrCard: true,
+          photos: { orderBy: { sortOrder: "asc" } },
         },
       });
     });
 
-    return { registration };
+    return { registration: registrationResponse(registration) };
   });
 
   app.get("/registrations/:id", async (request) => {
@@ -148,6 +179,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
         owner: true,
         category: true,
         qrCard: true,
+        photos: { orderBy: { sortOrder: "asc" } },
         qrAuditLogs: {
           include: { staffUser: true, qrCard: true },
           orderBy: { createdAt: "desc" },
@@ -156,7 +188,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
     });
 
     if (!registration) throw app.httpErrors.notFound("Registration not found");
-    return { registration };
+    return { registration: registrationResponse(registration) };
   });
 
   app.patch("/registrations/:id", async (request) => {
@@ -194,13 +226,44 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
               plateNumber: body.vehicle.plateNumber,
               exteriorColor: body.vehicle.exteriorColor,
               internalNotes: body.vehicle.internalNotes,
+              buildStory: body.vehicle.buildStory,
             }
           : {},
-        include: { owner: true, category: true, qrCard: true },
+        include: { owner: true, category: true, qrCard: true, photos: { orderBy: { sortOrder: "asc" } } },
       });
     });
 
-    return { registration };
+    return { registration: registrationResponse(registration) };
+  });
+
+  app.patch("/registrations/:id/primary-photo", async (request) => {
+    await requireStaff(app, request);
+    const params = z.object({ id: z.string() }).parse(request.params);
+    const body = z.object({ photoId: z.string().trim().min(1) }).parse(request.body);
+    const existing = await prisma.vehicleEntry.findFirst({
+      where: { id: params.id, eventId },
+      select: { id: true },
+    });
+    if (!existing) throw app.httpErrors.notFound("Registration not found");
+
+    const photo = await prisma.vehiclePhoto.findFirst({
+      where: {
+        id: body.photoId,
+        vehicleEntryId: existing.id,
+        moderationStatus: "APPROVED",
+        url: { not: null },
+      },
+      select: { id: true },
+    });
+    if (!photo) throw app.httpErrors.badRequest("Only approved photos can be set as hero");
+
+    const registration = await prisma.vehicleEntry.update({
+      where: { id: existing.id },
+      data: { primaryPhotoId: photo.id },
+      include: { owner: true, category: true, qrCard: true, photos: { orderBy: { sortOrder: "asc" } } },
+    });
+
+    return { registration: registrationResponse(registration) };
   });
 
   app.post("/registrations/:id/check-in", async (request) => {
@@ -218,9 +281,9 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
         status: VehicleStatus.CHECKED_IN,
         checkedInAt: new Date(),
       },
-      include: { owner: true, category: true, qrCard: true },
+      include: { owner: true, category: true, qrCard: true, photos: { orderBy: { sortOrder: "asc" } } },
     });
 
-    return { registration };
+    return { registration: registrationResponse(registration) };
   });
 }

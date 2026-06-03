@@ -1,8 +1,16 @@
-import { CheckCircle2, Save } from "lucide-react";
+import { Camera, CheckCircle2, ImagePlus, Loader2, Save, Star, Trash2 } from "lucide-react";
 import { Alert, Button, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
-import type { Category, Registration, RegistrationPayload } from "@carshow/carshow-components";
-import { FormEvent, useEffect, useState } from "react";
-import { checkInRegistration, createRegistration, updateRegistration } from "../api";
+import type { Category, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import {
+  checkInRegistration,
+  createRegistration,
+  deleteRegistrationPhoto,
+  getRegistration,
+  setRegistrationPrimaryPhoto,
+  updateRegistration,
+  uploadRegistrationPhoto,
+} from "../api";
 import { QrAssignment } from "./QrAssignment";
 
 const emptyPayload: RegistrationPayload = {
@@ -24,6 +32,7 @@ const emptyPayload: RegistrationPayload = {
     plateNumber: "",
     exteriorColor: "",
     internalNotes: "",
+    buildStory: "",
   },
 };
 
@@ -48,6 +57,9 @@ export function RegistrationEditor({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!payload.vehicle.categoryId && categories[0]) {
@@ -99,6 +111,61 @@ export function RegistrationEditor({
       setMessage("Vehicle checked in.");
     } catch (checkInError) {
       setError(checkInError instanceof Error ? checkInError.message : "Check-in failed");
+    }
+  }
+
+  async function refreshRegistration(messageText?: string) {
+    if (!registration) return;
+    const result = await getRegistration(registration.id);
+    onSaved(result.registration);
+    if (messageText) setMessage(messageText);
+  }
+
+  async function uploadPhoto(file: File | null) {
+    if (!registration || !file) return;
+    setUploadingPhoto(true);
+    setError("");
+    setMessage("");
+    try {
+      await uploadRegistrationPhoto(registration.id, file);
+      await refreshRegistration("Photo uploaded for review.");
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Photo upload failed");
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function setHeroPhoto(photoId: string) {
+    if (!registration) return;
+    setPhotoBusyId(photoId);
+    setError("");
+    setMessage("");
+    try {
+      const result = await setRegistrationPrimaryPhoto(registration.id, photoId);
+      onSaved(result.registration);
+      setMessage("Hero image updated.");
+    } catch (primaryError) {
+      setError(primaryError instanceof Error ? primaryError.message : "Could not update hero image");
+    } finally {
+      setPhotoBusyId(null);
+    }
+  }
+
+  async function deletePhoto(photo: VehiclePhoto) {
+    if (!registration) return;
+    if (!window.confirm("Delete this photo? This cannot be undone.")) return;
+    setPhotoBusyId(photo.id);
+    setError("");
+    setMessage("");
+    try {
+      await deleteRegistrationPhoto(registration.id, photo.id);
+      await refreshRegistration("Photo deleted.");
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Could not delete photo");
+    } finally {
+      setPhotoBusyId(null);
     }
   }
 
@@ -206,6 +273,17 @@ export function RegistrationEditor({
       </label>
 
       <label>
+        Owner story / build description
+        <textarea
+          value={payload.vehicle.buildStory}
+          onChange={(event) => updateVehicle("buildStory", event.target.value)}
+          rows={5}
+          maxLength={2500}
+          placeholder="Add or edit the story the owner wants shown with their vehicle."
+        />
+      </label>
+
+      <label>
         Internal notes
         <textarea
           value={payload.vehicle.internalNotes}
@@ -213,6 +291,68 @@ export function RegistrationEditor({
           rows={3}
         />
       </label>
+
+      {registration ? (
+        <section className="owner-assist-panel">
+          <div className="owner-assist-header">
+            <div>
+              <p className="eyebrow">Owner Support</p>
+              <h3>Photos and hero image</h3>
+            </div>
+            <div>
+              <input
+                ref={fileInputRef}
+                className="visually-hidden"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => void uploadPhoto(event.target.files?.[0] ?? null)}
+              />
+              <Button type="button" variant="secondary" disabled={uploadingPhoto} onClick={() => fileInputRef.current?.click()}>
+                {uploadingPhoto ? <Loader2 className="spin" size={18} /> : <ImagePlus size={18} />}
+                {uploadingPhoto ? "Uploading..." : "Upload Photo"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="owner-assist-photo-grid">
+            {(registration.photos ?? []).map((photo, index) => (
+              <div className={`owner-assist-photo ${photo.isPrimary ? "primary" : ""}`} key={photo.id}>
+                <div className="owner-assist-photo-preview">
+                  {photo.url ? (
+                    <img src={photo.url} alt={photo.altText ?? `Vehicle photo ${index + 1}`} />
+                  ) : (
+                    <div>
+                      <Camera aria-hidden="true" />
+                      <span>{photo.moderationStatus ?? "Pending"}</span>
+                    </div>
+                  )}
+                  {photo.isPrimary ? <strong>Hero</strong> : null}
+                </div>
+                <div className="owner-assist-photo-actions">
+                  {photo.url && photo.moderationStatus === "APPROVED" && !photo.isPrimary ? (
+                    <button type="button" disabled={photoBusyId === photo.id} onClick={() => void setHeroPhoto(photo.id)}>
+                      {photoBusyId === photo.id ? <Loader2 className="spin" size={16} /> : <Star size={16} />}
+                      Set Hero
+                    </button>
+                  ) : (
+                    <span>{photo.isPrimary ? "Hero image" : photo.moderationStatus ?? "Pending review"}</span>
+                  )}
+                  <button
+                    className="danger"
+                    type="button"
+                    disabled={photoBusyId === photo.id}
+                    onClick={() => void deletePhoto(photo)}
+                    aria-label={`Delete photo ${photo.sortOrder}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {!(registration.photos ?? []).length ? <div className="photo-empty">No photos uploaded yet.</div> : null}
+          </div>
+        </section>
+      ) : null}
 
       {registration ? (
         <div className="action-strip">

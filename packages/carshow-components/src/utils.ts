@@ -64,6 +64,7 @@ export function payloadFromRegistration(registration: Registration): Registratio
       plateNumber: registration.plateNumber ?? "",
       exteriorColor: registration.exteriorColor ?? "",
       internalNotes: registration.internalNotes ?? "",
+      buildStory: registration.buildStory ?? "",
     },
   };
 }

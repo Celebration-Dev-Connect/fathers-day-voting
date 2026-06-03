@@ -30,10 +30,11 @@ export function clearToken() {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -82,6 +83,10 @@ export async function listRegistrations(search = "") {
   return request<{ registrations: Registration[] }>(`/registrations?${params.toString()}`);
 }
 
+export async function getRegistration(id: string) {
+  return request<{ registration: Registration }>(`/registrations/${encodeURIComponent(id)}`);
+}
+
 export async function getDashboardMetrics() {
   return request<{ metrics: DashboardMetrics }>("/registrations/metrics");
 }
@@ -104,6 +109,29 @@ export async function checkInRegistration(id: string) {
   return request<{ registration: Registration }>(`/registrations/${id}/check-in`, {
     method: "POST",
   });
+}
+
+export async function uploadRegistrationPhoto(id: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return request<{ id: string; status: "PENDING" }>(`/registrations/${encodeURIComponent(id)}/photos`, {
+    method: "POST",
+    body: form,
+  });
+}
+
+export async function setRegistrationPrimaryPhoto(id: string, photoId: string) {
+  return request<{ registration: Registration }>(`/registrations/${encodeURIComponent(id)}/primary-photo`, {
+    method: "PATCH",
+    body: JSON.stringify({ photoId }),
+  });
+}
+
+export async function deleteRegistrationPhoto(id: string, photoId: string) {
+  return request<{ ok: true }>(
+    `/registrations/${encodeURIComponent(id)}/photos/${encodeURIComponent(photoId)}`,
+    { method: "DELETE" },
+  );
 }
 
 export async function listQrCards(status = "") {

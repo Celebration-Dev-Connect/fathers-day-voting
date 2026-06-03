@@ -244,7 +244,7 @@ textarea {
 .owner-photo-tile {
   position: relative;
   display: grid;
-  min-height: 132px;
+  grid-template-rows: minmax(132px, 1fr) auto;
   padding: 0;
   border: 2px solid #dedede;
   border-radius: 6px;
@@ -256,13 +256,24 @@ textarea {
   border-color: #c9002b;
 }
 
-.owner-photo-tile img {
+.owner-photo-preview {
+  position: relative;
+  display: block;
+  min-height: 132px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #f4f4f4;
+  overflow: hidden;
+}
+
+.owner-photo-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.owner-photo-tile strong {
+.owner-photo-preview strong {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -275,9 +286,56 @@ textarea {
   text-transform: uppercase;
 }
 
+.owner-photo-tile-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px;
+  background: #ffffff;
+}
+
+.owner-photo-tile-actions button,
+.owner-photo-tile-actions span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 32px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.owner-photo-tile-actions button {
+  border: 1px solid #dedede;
+  background: #ffffff;
+  color: #171c24;
+}
+
+.owner-photo-tile-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.owner-photo-tile-actions span {
+  color: #74767b;
+}
+
+.owner-photo-delete {
+  width: 34px;
+  color: #b90a29 !important;
+}
+
 .owner-photo-add {
+  grid-template-rows: none;
   place-items: center;
   gap: 8px;
+  min-height: 182px;
   border-style: dashed;
   color: #74767b;
   font-weight: 900;
@@ -300,8 +358,36 @@ textarea {
 }
 
 .owner-photo-queue p {
+  justify-content: space-between;
   margin: 0;
   font-size: 14px;
+}
+
+.owner-photo-queue span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.owner-photo-queue button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid #dedede;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #b90a29;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.owner-photo-queue button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .owner-form-card {

@@ -7,6 +7,7 @@ const isProduction = process.env.NODE_ENV === "production";
 
 const storageDriverSchema = z.enum(["local", "s3"]);
 const moderationDriverSchema = z.enum(["mock", "rekognition"]);
+const textModerationDriverSchema = z.enum(["mock", "comprehend", "none"]);
 
 const envSchema = z
   .object({
@@ -18,6 +19,8 @@ const envSchema = z
 
     storageDriver: storageDriverSchema.default("local"),
     moderationDriver: moderationDriverSchema.default("mock"),
+    textModerationDriver: textModerationDriverSchema.default("mock"),
+    textModerationMinConfidence: z.coerce.number().min(0).max(1).default(0.5),
 
     // Enables the email/dev-login path even when NODE_ENV=production.
     // Used for test deployments that run real infra (S3/RDS/Rekognition) but
@@ -71,6 +74,8 @@ const parsed = envSchema.safeParse({
   jwtSecret: process.env.JWT_SECRET,
   storageDriver: process.env.STORAGE_DRIVER,
   moderationDriver: process.env.MODERATION_DRIVER,
+  textModerationDriver: process.env.TEXT_MODERATION_DRIVER,
+  textModerationMinConfidence: process.env.TEXT_MODERATION_MIN_CONFIDENCE,
   enableDevLogin: process.env.ENABLE_DEV_LOGIN,
   localStorageDir: process.env.LOCAL_STORAGE_DIR,
   mediaPublicBaseUrl: process.env.MEDIA_PUBLIC_BASE_URL,
@@ -114,6 +119,10 @@ export const config = {
   moderation: {
     driver: env.moderationDriver,
     minConfidence: env.moderationMinConfidence,
+  },
+  textModeration: {
+    driver: env.textModerationDriver,
+    minConfidence: env.textModerationMinConfidence,
   },
   aws: {
     region: env.awsRegion,

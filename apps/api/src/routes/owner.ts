@@ -2,6 +2,9 @@ import { Prisma, prisma } from "@carshow/db";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { eventId } from "../config.js";
+import type { TextModerator } from "../text/moderation/index.js";
+
+type OwnerRouteDeps = { textModerator: TextModerator };
 
 type OwnerVehiclePayload = Prisma.VehicleEntryGetPayload<{
   include: { owner: true; category: true; photos: true };
@@ -121,7 +124,7 @@ export async function requireOwnerVehicle(app: FastifyInstance, request: Fastify
   return { session, vehicle };
 }
 
-export async function registerOwnerRoutes(app: FastifyInstance) {
+export async function registerOwnerRoutes(app: FastifyInstance, deps: OwnerRouteDeps) {
   app.post(
     "/owner/session",
     {
@@ -216,6 +219,21 @@ export async function registerOwnerRoutes(app: FastifyInstance) {
       .parse(request.body);
 
     const { vehicle, session } = await requireOwnerVehicle(app, request, params.id);
+
+    const textsToCheck = [
+      body.owner?.publicName,
+      body.vehicle?.nickname,
+      body.vehicle?.buildStory,
+    ].filter((t): t is string => !!t);
+
+    if (textsToCheck.length > 0) {
+      const modResult = await deps.textModerator.moderate(textsToCheck);
+      if (!modResult.approved) {
+        throw app.httpErrors.unprocessableEntity(
+          "Your submission contains content that doesn't meet our community guidelines. Please review and resubmit.",
+        );
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       if (body.owner) {

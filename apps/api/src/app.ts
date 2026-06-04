@@ -9,6 +9,7 @@ import Fastify from "fastify";
 import { config } from "./config.js";
 import type { ImageModerator } from "./media/moderation/index.js";
 import type { PhotoStorage } from "./media/storage/index.js";
+import type { TextModerator } from "./text/moderation/index.js";
 import { PhotoModerationWorker } from "./media/worker.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerCategoryRoutes } from "./routes/categories.js";
@@ -23,9 +24,10 @@ import { registerVotingRoutes } from "./routes/voting.js";
 export type AppDeps = {
   storage: PhotoStorage;
   moderator: ImageModerator;
+  textModerator: TextModerator;
 };
 
-export async function buildApp({ storage, moderator }: AppDeps) {
+export async function buildApp({ storage, moderator, textModerator }: AppDeps) {
   const app = Fastify({ logger: true, trustProxy: true });
 
   await app.register(cors, { origin: true, credentials: true });
@@ -65,7 +67,7 @@ export async function buildApp({ storage, moderator }: AppDeps) {
   await registerJudgingRoutes(app);
   await registerRegistrationRoutes(app);
   await registerQrCardRoutes(app);
-  await registerOwnerRoutes(app);
+  await registerOwnerRoutes(app, { textModerator });
   await registerPhotosRoutes(app, { storage, worker });
   await registerPublicRoutes(app);
 

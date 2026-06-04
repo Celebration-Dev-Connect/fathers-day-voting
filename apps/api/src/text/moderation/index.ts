@@ -6,7 +6,7 @@ import type { TextModerator } from "./types.js";
 export function createTextModerator(): TextModerator {
   if (config.textModeration.driver === "comprehend") {
     return new ComprehendTextModerator(
-      config.aws.region!,
+      config.aws.rekognitionRegion!,
       config.textModeration.minConfidence,
     );
   }

@@ -1,13 +1,11 @@
 import type { TextModerationResult, TextModerator } from "./types.js";
+import { containsBadWords } from "./wordlist.js";
 
-const UNSAFE_MARKER = "unsafe";
-
-/** Dev/test driver — deterministic without AWS:
- *  - any text containing "unsafe" → rejected
- *  - everything else              → approved */
+/** Dev/test driver — runs the real word-list filter (no AWS needed).
+ *  Also rejects the "unsafe" sentinel for deterministic testing. */
 export class MockTextModerator implements TextModerator {
   async moderate(texts: string[]): Promise<TextModerationResult> {
-    if (texts.some((t) => t.toLowerCase().includes(UNSAFE_MARKER))) {
+    if (containsBadWords(texts) || texts.some((t) => t.toLowerCase().includes("unsafe"))) {
       return { approved: false, reason: "wordlist" };
     }
     return { approved: true };

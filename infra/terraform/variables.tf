@@ -55,21 +55,21 @@ variable "ecs_memory" {
 }
 
 variable "ecs_min_size" {
-  description = "ECS service minimum task count. Test: 1."
+  description = "ECS service minimum task count. Prod: 2 to avoid cold-start lag at event open. Test: 1."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "ecs_max_size" {
-  description = "ECS service maximum task count for auto scaling. Test: 1."
+  description = "ECS service maximum task count for auto scaling. Prod: 5 for 10k-attendee headroom. Test: 1."
   type        = number
-  default     = 3
+  default     = 5
 }
 
 variable "rds_instance_class" {
-  description = "RDS instance class. Test: db.t3.micro."
+  description = "RDS instance class. Prod: db.t3.medium (t3.micro/small deplete CPU credits under 7h sustained load). Test: db.t3.micro."
   type        = string
-  default     = "db.t3.micro"
+  default     = "db.t3.medium"
 }
 
 variable "rds_allocated_storage" {

@@ -148,6 +148,7 @@ model VehicleEntry {
   @@unique([eventId, ownerAccessCode])
   @@index([eventId, status])
   @@index([eventId, categoryId])
+  @@index([eventId, categoryId, status, entryNumber])
   @@index([ownerId])
 }
 
@@ -187,8 +188,9 @@ model VehiclePhoto {
 
   @@unique([vehicleEntryId, sortOrder])
   @@index([vehicleEntryId])
+  @@index([vehicleEntryId, moderationStatus, sortOrder])
   @@index([moderationStatus])
-  @@index([source])
+  @@index([moderationStatus, processingStartedAt])
 }
 
 model PeopleChoiceVote {

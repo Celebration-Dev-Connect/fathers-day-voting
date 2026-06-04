@@ -44,7 +44,7 @@ function parseBallot(): BallotCookie | null {
 
 function saveBallot(ballot: BallotCookie): void {
   const encoded = encodeURIComponent(JSON.stringify(ballot));
-  document.cookie = `${COOKIE_NAME}=${encoded}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+  document.cookie = `${COOKIE_NAME}=${encoded}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax; Secure`;
 }
 
 function getBallot(): BallotCookie {

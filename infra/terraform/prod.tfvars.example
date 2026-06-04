@@ -16,12 +16,15 @@ db_username = "carshow"
 # issued before CloudFront can build.
 route53_zone_id = ""
 
-# ── Full resources (defaults; shown for clarity) ──
+# ── Full resources (event-day sizing) ──
+# ecs_min_size=2 pre-warms 2 tasks before gates open (no cold-start lag at arrival surge).
+# ecs_max_size=6 gives headroom for up to 10,000 attendees over 7 hours.
+# db.t3.small avoids CPU-credit depletion under 7h sustained load (t3.micro would throttle).
 ecs_cpu        = "1024"
 ecs_memory     = "2048"
-ecs_min_size   = 1
-ecs_max_size   = 3
-rds_instance_class    = "db.t3.micro"
+ecs_min_size   = 2
+ecs_max_size   = 5
+rds_instance_class    = "db.t3.medium"
 rds_allocated_storage = 20
 rds_backup_retention  = 1
 

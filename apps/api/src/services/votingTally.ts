@@ -4,7 +4,7 @@ export const votingRegistrationInclude = {
   owner: true,
   category: true,
   qrCard: true,
-  photos: { orderBy: { sortOrder: "asc" as const } },
+  photos: { where: { moderationStatus: "APPROVED" as const }, orderBy: { sortOrder: "asc" as const } },
 } satisfies Prisma.VehicleEntryInclude;
 
 export type VotingRegistration = Prisma.VehicleEntryGetPayload<{

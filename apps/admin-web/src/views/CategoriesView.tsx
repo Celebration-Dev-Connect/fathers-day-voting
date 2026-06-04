@@ -104,38 +104,40 @@ export function CategoriesView({
           />
         ))}
       </div>
-      <PageHeader eyebrow="Event-Wide Voting" title="Special Awards" />
-      {staff.role === "ADMIN" ? (
-        <form className="inline-form inline-form-stacked" onSubmit={addSpecialAward}>
-          <input
-            value={specialAwardName}
-            onChange={(event) => setSpecialAwardName(event.target.value)}
-            placeholder="New special award name"
-          />
-          <input
-            value={specialAwardDescription}
-            onChange={(event) => setSpecialAwardDescription(event.target.value)}
-            placeholder="Optional description"
-          />
-          <Button type="submit">
-            <Plus size={20} />
-            Add Special Award
-          </Button>
-        </form>
-      ) : null}
-      <div className="category-grid">
-        {specialAwards.map((specialAward) => (
-          <SpecialAwardCard
-            key={specialAward.id}
-            specialAward={specialAward}
-            canEdit={staff.role === "ADMIN"}
-            onToggleActive={async () => {
-              await updateSpecialAward(specialAward.id, { active: !specialAward.active });
-              onRefresh();
-            }}
-            onDelete={() => removeSpecialAward(specialAward)}
-          />
-        ))}
+      <div className="setup-section">
+        <PageHeader eyebrow="Event-Wide Voting" title="Special Awards" />
+        {staff.role === "ADMIN" ? (
+          <form className="inline-form inline-form-stacked" onSubmit={addSpecialAward}>
+            <input
+              value={specialAwardName}
+              onChange={(event) => setSpecialAwardName(event.target.value)}
+              placeholder="New special award name"
+            />
+            <input
+              value={specialAwardDescription}
+              onChange={(event) => setSpecialAwardDescription(event.target.value)}
+              placeholder="Optional description"
+            />
+            <Button type="submit">
+              <Plus size={20} />
+              Add Special Award
+            </Button>
+          </form>
+        ) : null}
+        <div className="category-grid">
+          {specialAwards.map((specialAward) => (
+            <SpecialAwardCard
+              key={specialAward.id}
+              specialAward={specialAward}
+              canEdit={staff.role === "ADMIN"}
+              onToggleActive={async () => {
+                await updateSpecialAward(specialAward.id, { active: !specialAward.active });
+                onRefresh();
+              }}
+              onDelete={() => removeSpecialAward(specialAward)}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

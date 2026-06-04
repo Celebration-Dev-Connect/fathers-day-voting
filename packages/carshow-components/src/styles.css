@@ -1263,6 +1263,10 @@ textarea:focus {
   margin-top: 16px;
 }
 
+.setup-section {
+  margin-top: 40px;
+}
+
 .category-card {
   min-height: 96px;
   padding: 16px;

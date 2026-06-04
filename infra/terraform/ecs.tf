@@ -56,6 +56,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "CDN_BASE_URL", value = "https://${var.domain}/photos" },
       { name = "STORAGE_DRIVER", value = "s3" },
       { name = "MODERATION_DRIVER", value = "rekognition" },
+      { name = "TEXT_MODERATION_DRIVER", value = "comprehend" },
       { name = "ENABLE_DEV_LOGIN", value = var.enable_dev_login ? "true" : "false" },
       { name = "RUN_SEED", value = var.run_seed ? "true" : "false" },
       { name = "PLANNING_CENTER_CALLBACK_URL", value = var.pco_callback_url },

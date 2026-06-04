@@ -84,6 +84,12 @@ data "aws_iam_policy_document" "ecs_task" {
     actions   = ["rekognition:DetectModerationLabels", "rekognition:DetectLabels"]
     resources = ["*"]
   }
+
+  statement {
+    sid       = "Comprehend"
+    actions   = ["comprehend:DetectToxicContent"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role_policy" "ecs_task" {

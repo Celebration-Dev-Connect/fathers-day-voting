@@ -26,7 +26,7 @@ export type AppDeps = {
 };
 
 export async function buildApp({ storage, moderator }: AppDeps) {
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: true, trustProxy: true });
 
   await app.register(cors, { origin: true, credentials: true });
   await app.register(sensible);

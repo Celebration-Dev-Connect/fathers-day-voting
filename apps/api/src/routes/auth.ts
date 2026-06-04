@@ -119,10 +119,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       throw app.httpErrors.unauthorized("Unknown dev staff user");
     }
 
-    const token = app.jwt.sign({
-      staffUserId: staff.id,
-      role: staff.role,
-    });
+    const token = app.jwt.sign({ staffUserId: staff.id, role: staff.role }, { expiresIn: "12h" });
 
     return reply.send({
       token,
@@ -187,7 +184,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         update: { email, displayName, role, active: true },
       });
 
-      const jwt = app.jwt.sign({ staffUserId: staff.id, role: staff.role });
+      const jwt = app.jwt.sign({ staffUserId: staff.id, role: staff.role }, { expiresIn: "12h" });
       return reply.redirect(`${spaUrl}/#token=${jwt}`);
     });
   }

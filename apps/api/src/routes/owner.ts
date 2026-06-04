@@ -122,7 +122,23 @@ export async function requireOwnerVehicle(app: FastifyInstance, request: Fastify
 }
 
 export async function registerOwnerRoutes(app: FastifyInstance) {
-  app.post("/owner/session", async (request) => {
+  app.post(
+    "/owner/session",
+    {
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "5 minutes",
+          // Key by access code so shared WiFi doesn't lock out all owners.
+          // This limits guessing attempts against any specific code, not per IP.
+          keyGenerator: (req) => {
+            const b = req.body as Record<string, unknown> | undefined;
+            return typeof b?.accessCode === "string" ? `ac:${b.accessCode.replace(/\D/g, "").slice(0, 5)}` : req.ip;
+          },
+        },
+      },
+    },
+    async (request) => {
     const body = z
       .object({
         lastName: z.string().trim().min(1).max(80),

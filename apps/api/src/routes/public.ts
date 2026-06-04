@@ -5,6 +5,10 @@ import { eventId } from "../config.js";
 
 const PAGE_SIZE = 12;
 
+// Hero photo result cached for 60 seconds to avoid repeated ORDER BY RANDOM() full-sorts.
+let heroPhotoCache: { photos: Array<{ url: string; altText: string | null; year: number; make: string; model: string; nickname: string | null }>; cachedAt: number } | null = null;
+const HERO_CACHE_TTL_MS = 60_000;
+
 function toPublicVehicle(
   vehicle: Prisma.VehicleEntryGetPayload<{
     include: { owner: true; category: true; photos: true };
@@ -48,6 +52,9 @@ function toPublicVehicle(
 
 export async function registerPublicRoutes(app: FastifyInstance) {
   app.get("/public/hero-photos", async () => {
+    if (heroPhotoCache && Date.now() - heroPhotoCache.cachedAt < HERO_CACHE_TTL_MS) {
+      return { photos: heroPhotoCache.photos };
+    }
     const photos = await prisma.$queryRaw<
       Array<{ url: string; altText: string | null; year: number; make: string; model: string; nickname: string | null }>
     >`
@@ -62,6 +69,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
       ORDER BY RANDOM()
       LIMIT 10
     `;
+    heroPhotoCache = { photos, cachedAt: Date.now() };
     return { photos };
   });
 
@@ -139,7 +147,23 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/public/vehicles/:token/vote", async (request) => {
+  app.post(
+    "/public/vehicles/:token/vote",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute",
+          // Key by voterKey so shared venue WiFi doesn't block all visitors at once.
+          // Falls back to IP only if the body is somehow missing voterKey.
+          keyGenerator: (req) => {
+            const b = req.body as Record<string, unknown> | undefined;
+            return typeof b?.voterKey === "string" ? `vk:${b.voterKey}` : req.ip;
+          },
+        },
+      },
+    },
+    async (request) => {
     const params = z.object({ token: z.string().trim().min(1) }).parse(request.params);
     const body = z.object({ voterKey: z.string().trim().min(1) }).parse(request.body);
 
@@ -184,7 +208,21 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     return { vehicle: toPublicVehicle(vehicle) };
   });
 
-  app.post("/public/entries/:vehicleId/vote", async (request) => {
+  app.post(
+    "/public/entries/:vehicleId/vote",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute",
+          keyGenerator: (req) => {
+            const b = req.body as Record<string, unknown> | undefined;
+            return typeof b?.voterKey === "string" ? `vk:${b.voterKey}` : req.ip;
+          },
+        },
+      },
+    },
+    async (request) => {
     const params = z.object({ vehicleId: z.string().trim().min(1) }).parse(request.params);
     const body = z.object({ voterKey: z.string().trim().min(1) }).parse(request.body);
 

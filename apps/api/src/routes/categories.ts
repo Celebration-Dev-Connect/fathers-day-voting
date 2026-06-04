@@ -12,7 +12,16 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
       categories: await prisma.category.findMany({
         where: { eventId },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-        include: { _count: { select: { vehicleEntries: true } } },
+        include: {
+          _count: {
+            select: {
+              vehicleEntries: true,
+              judgeCategoryPicks: true,
+              peopleChoiceVotes: true,
+              winnerOverrides: true,
+            },
+          },
+        },
       }),
     };
   });
@@ -66,5 +75,114 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
 
     return { category };
   });
-}
 
+  app.delete("/categories/:id", async (request) => {
+    await requireAdmin(app, request);
+    const params = z.object({ id: z.string() }).parse(request.params);
+    const category = await prisma.category.findFirst({
+      where: { id: params.id, eventId },
+      include: {
+        _count: {
+          select: {
+            vehicleEntries: true,
+            judgeCategoryPicks: true,
+            peopleChoiceVotes: true,
+            winnerOverrides: true,
+          },
+        },
+      },
+    });
+
+    if (!category) throw app.httpErrors.notFound("Category not found");
+
+    const usageCount =
+      category._count.vehicleEntries +
+      category._count.judgeCategoryPicks +
+      category._count.peopleChoiceVotes +
+      category._count.winnerOverrides;
+    if (usageCount > 0) {
+      throw app.httpErrors.conflict("Cannot delete a category that has registrations, votes, or winner data.");
+    }
+
+    await prisma.category.delete({ where: { id: category.id } });
+    return { ok: true };
+  });
+
+  app.get("/special-awards", async (request) => {
+    await requireStaff(app, request);
+    return {
+      specialAwards: await prisma.specialAward.findMany({
+        where: { eventId },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        include: { _count: { select: { votes: true } } },
+      }),
+    };
+  });
+
+  app.post("/special-awards", async (request) => {
+    await requireAdmin(app, request);
+    const body = z
+      .object({
+        name: z.string().trim().min(1),
+        description: z.string().trim().max(500).optional(),
+        active: z.boolean().default(true),
+      })
+      .parse(request.body);
+
+    const count = await prisma.specialAward.count({ where: { eventId } });
+    const specialAward = await prisma.specialAward.create({
+      data: {
+        eventId,
+        name: body.name,
+        description: body.description,
+        active: body.active,
+        sortOrder: count + 1,
+      },
+    });
+
+    return { specialAward };
+  });
+
+  app.patch("/special-awards/:id", async (request) => {
+    await requireAdmin(app, request);
+    const params = z.object({ id: z.string() }).parse(request.params);
+    const body = z
+      .object({
+        name: z.string().trim().min(1).optional(),
+        description: z.string().trim().max(500).nullable().optional(),
+        active: z.boolean().optional(),
+      })
+      .parse(request.body);
+
+    const existing = await prisma.specialAward.findFirst({
+      where: { id: params.id, eventId },
+    });
+
+    if (!existing) throw app.httpErrors.notFound("Special award not found");
+
+    const specialAward = await prisma.specialAward.update({
+      where: { id: existing.id },
+      data: body,
+      include: { _count: { select: { votes: true } } },
+    });
+
+    return { specialAward };
+  });
+
+  app.delete("/special-awards/:id", async (request) => {
+    await requireAdmin(app, request);
+    const params = z.object({ id: z.string() }).parse(request.params);
+    const specialAward = await prisma.specialAward.findFirst({
+      where: { id: params.id, eventId },
+      include: { _count: { select: { votes: true } } },
+    });
+
+    if (!specialAward) throw app.httpErrors.notFound("Special award not found");
+    if (specialAward._count.votes > 0) {
+      throw app.httpErrors.conflict("Cannot delete a special award that already has votes.");
+    }
+
+    await prisma.specialAward.delete({ where: { id: specialAward.id } });
+    return { ok: true };
+  });
+}

@@ -1,4 +1,4 @@
-import type { Category, Prisma } from "@carshow/db";
+import type { Category, Prisma, SpecialAward } from "@carshow/db";
 
 export const votingRegistrationInclude = {
   owner: true,
@@ -42,6 +42,20 @@ export type PeopleChoiceTallyItem = {
   votes: number;
   rank: number;
   tieBreakPoints: number;
+};
+
+export type SpecialAwardVoteGroup = {
+  specialAwardId: string;
+  vehicleEntryId: string;
+  _count: {
+    _all: number;
+  };
+};
+
+export type SpecialAwardTallyItem = {
+  registration: VotingRegistration;
+  votes: number;
+  rank: number;
 };
 
 export type JudgeScoreItem = {
@@ -187,3 +201,38 @@ export function buildVotingTallies({
   });
 }
 
+export function buildSpecialAwardTallies({
+  specialAwards,
+  voteGroups,
+  votedVehicles,
+}: {
+  specialAwards: SpecialAward[];
+  voteGroups: SpecialAwardVoteGroup[];
+  votedVehicles: VotingRegistration[];
+}) {
+  const vehicleById = new Map(votedVehicles.map((vehicle) => [vehicle.id, vehicle]));
+  const votesByAward = new Map<string, SpecialAwardTallyItem[]>();
+
+  for (const vote of voteGroups) {
+    const vehicle = vehicleById.get(vote.vehicleEntryId);
+    if (!vehicle) continue;
+    const awardVotes = votesByAward.get(vote.specialAwardId) ?? [];
+    awardVotes.push({ registration: vehicle, votes: vote._count._all, rank: 0 });
+    votesByAward.set(vote.specialAwardId, awardVotes);
+  }
+
+  for (const awardVotes of votesByAward.values()) {
+    awardVotes.sort((first, second) => {
+      if (second.votes !== first.votes) return second.votes - first.votes;
+      return first.registration.entryNumber - second.registration.entryNumber;
+    });
+    awardVotes.forEach((item, index) => {
+      item.rank = index + 1;
+    });
+  }
+
+  return specialAwards.map((specialAward) => ({
+    specialAward,
+    results: (votesByAward.get(specialAward.id) ?? []).slice(0, 10),
+  }));
+}

@@ -1,7 +1,16 @@
 import { AdminShell as AdminShellTemplate, Alert, LoginCard } from "@carshow/carshow-components";
-import type { Category, DashboardMetrics, Registration, StaffUser } from "@carshow/carshow-components";
+import type { Category, DashboardMetrics, Registration, SpecialAward, StaffUser } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
-import { clearToken, devLogin, getDashboardMetrics, listCategories, listRegistrations, me, setToken } from "./api";
+import {
+  clearToken,
+  devLogin,
+  getDashboardMetrics,
+  listCategories,
+  listRegistrations,
+  listSpecialAwards,
+  me,
+  setToken,
+} from "./api";
 import { API_URL } from "./config";
 import { Sidebar } from "./organisms/Sidebar";
 import { CategoriesView } from "./views/CategoriesView";
@@ -84,6 +93,7 @@ function AdminShellConnected({
 }) {
   const [view, setView] = useState<View>("dashboard");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [specialAwards, setSpecialAwards] = useState<SpecialAward[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     total: 0,
@@ -97,8 +107,11 @@ function AdminShellConnected({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    listCategories()
-      .then(({ categories }) => setCategories(categories))
+    Promise.all([listCategories(), listSpecialAwards()])
+      .then(([categoryResult, specialAwardResult]) => {
+        setCategories(categoryResult.categories);
+        setSpecialAwards(specialAwardResult.specialAwards);
+      })
       .catch((loadError) => setError(loadError.message));
   }, [refreshKey]);
 
@@ -149,7 +162,12 @@ function AdminShellConnected({
       ) : null}
       {view === "qr-cards" ? <QrCardsView /> : null}
       {view === "categories" ? (
-        <CategoriesView staff={staff} categories={categories} onRefresh={refresh} />
+        <CategoriesView
+          staff={staff}
+          categories={categories}
+          specialAwards={specialAwards}
+          onRefresh={refresh}
+        />
       ) : null}
       {view === "photo-review" ? <PhotoReviewView /> : null}
       {view === "voting" ? <VotingView staff={staff} /> : null}

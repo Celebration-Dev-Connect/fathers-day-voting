@@ -187,6 +187,26 @@ async function main() {
     where: { eventId },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   });
+  const bestPaintAward = await prisma.specialAward.upsert({
+    where: {
+      eventId_name: {
+        eventId,
+        name: "Best Paint Job",
+      },
+    },
+    update: {
+      description: "Event-wide special award across every vehicle category.",
+      active: true,
+      sortOrder: 1,
+    },
+    create: {
+      eventId,
+      name: "Best Paint Job",
+      description: "Event-wide special award across every vehicle category.",
+      active: true,
+      sortOrder: 1,
+    },
+  });
 
   for (const [categoryIndex, category] of seededCategories.entries()) {
     const categoryVehicles = vehiclesByCategory[category.name] ?? vehiclesByCategory.Custom;
@@ -261,7 +281,6 @@ async function main() {
       });
 
       demoVehicleIds.push(vehicleId);
-
       for (let photoIndex = 1; photoIndex <= 3; photoIndex += 1) {
         await prisma.vehiclePhoto.upsert({
           where: {
@@ -328,6 +347,23 @@ async function main() {
       }
     }
   }
+
+  const bestPaintVehicleIds = seededCategories.flatMap((category) =>
+    Array.from({ length: 4 }, (_, index) => `seed-vehicle-${category.slug}-${index + 1}`),
+  );
+
+  await prisma.specialAwardVote.createMany({
+    data: bestPaintVehicleIds.flatMap((vehicleId, vehicleIndex) =>
+      Array.from({ length: Math.max(1, 32 - vehicleIndex * 2) }, (_, voteIndex) => ({
+        eventId,
+        specialAwardId: bestPaintAward.id,
+        vehicleEntryId: vehicleId,
+        voterKey: `seed-special-best-paint-${vehicleIndex + 1}-${voteIndex + 1}`,
+        createdAt: new Date(`2026-06-21T19:${(voteIndex % 50).toString().padStart(2, "0")}:00.000Z`),
+      })),
+    ),
+    skipDuplicates: true,
+  });
 }
 
 main()

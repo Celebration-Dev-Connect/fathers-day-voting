@@ -58,6 +58,8 @@ model Event {
   peopleChoiceVotes  PeopleChoiceVote[]
   judgeCategoryPicks JudgeCategoryPick[]
   winnerOverrides    CategoryWinnerOverride[]
+  specialAwards      SpecialAward[]
+  specialAwardVotes  SpecialAwardVote[]
 }
 
 model StaffUser {
@@ -140,6 +142,7 @@ model VehicleEntry {
   judgeCategoryPicks  JudgeCategoryPick[]
   winnerOverrides     CategoryWinnerOverride[]
   photos              VehiclePhoto[]           @relation("VehiclePhotos")
+  specialAwardVotes   SpecialAwardVote[]
 
   @@unique([eventId, entryNumber])
   @@unique([eventId, ownerAccessCode])
@@ -202,6 +205,38 @@ model PeopleChoiceVote {
   @@unique([eventId, categoryId, voterKey])
   @@index([eventId, vehicleEntryId])
   @@index([eventId, createdAt])
+}
+
+model SpecialAward {
+  id          String             @id @default(cuid())
+  eventId     String
+  name        String
+  description String?
+  active      Boolean            @default(true)
+  sortOrder   Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  event       Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  votes       SpecialAwardVote[]
+
+  @@unique([eventId, name])
+  @@index([eventId, active])
+}
+
+model SpecialAwardVote {
+  id             String       @id @default(cuid())
+  eventId        String
+  specialAwardId String
+  vehicleEntryId String
+  voterKey       String?
+  createdAt      DateTime     @default(now())
+  event          Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  specialAward   SpecialAward @relation(fields: [specialAwardId], references: [id], onDelete: Cascade)
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, specialAwardId, voterKey])
+  @@index([eventId, specialAwardId])
+  @@index([eventId, vehicleEntryId])
 }
 
 model JudgeCategoryPick {

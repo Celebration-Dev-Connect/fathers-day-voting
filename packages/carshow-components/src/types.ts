@@ -16,6 +16,20 @@ export type Category = {
   sortOrder: number;
   _count?: {
     vehicleEntries: number;
+    judgeCategoryPicks?: number;
+    peopleChoiceVotes?: number;
+    winnerOverrides?: number;
+  };
+};
+
+export type SpecialAward = {
+  id: string;
+  name: string;
+  description?: string | null;
+  active: boolean;
+  sortOrder: number;
+  _count?: {
+    votes: number;
   };
 };
 
@@ -147,6 +161,17 @@ export type CategoryVotingTally = {
   judgeRanking: JudgeTopPick[];
   judgeTop3: JudgeTopPick[];
   judgingDescription: string;
+};
+
+export type SpecialAwardTallyItem = {
+  registration: Registration;
+  votes: number;
+  rank: number;
+};
+
+export type SpecialAwardVotingTally = {
+  specialAward: SpecialAward;
+  results: SpecialAwardTallyItem[];
 };
 
 export type JudgeCategorySummary = {

@@ -3,7 +3,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAdmin, requireStaff } from "../auth.js";
 import { eventId } from "../config.js";
-import { buildVotingTallies, votingRegistrationInclude } from "../services/votingTally.js";
+import {
+  buildSpecialAwardTallies,
+  buildVotingTallies,
+  votingRegistrationInclude,
+} from "../services/votingTally.js";
 
 const eventControlsSelect = {
   id: true,
@@ -74,7 +78,14 @@ export async function registerVotingRoutes(app: FastifyInstance) {
 
     if (!event) throw app.httpErrors.notFound("Event not found");
 
-    const [categories, voteGroups, judgePicks, winnerOverrides] = await Promise.all([
+    const [
+      categories,
+      voteGroups,
+      judgePicks,
+      winnerOverrides,
+      specialAwards,
+      specialAwardVoteGroups,
+    ] = await Promise.all([
       prisma.category.findMany({
         where: { eventId },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -104,12 +115,26 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         },
         orderBy: [{ categoryId: "asc" }, { rank: "asc" }],
       }),
+      prisma.specialAward.findMany({
+        where: { eventId },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      }),
+      prisma.specialAwardVote.groupBy({
+        by: ["specialAwardId", "vehicleEntryId"],
+        where: {
+          eventId,
+          createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
+        },
+        _count: { _all: true },
+      }),
     ]);
 
     const votedVehicleIds = voteGroups.map((vote) => vote.vehicleEntryId);
-    const votedVehicles = votedVehicleIds.length
+    const specialAwardVotedVehicleIds = specialAwardVoteGroups.map((vote) => vote.vehicleEntryId);
+    const allVotedVehicleIds = [...new Set([...votedVehicleIds, ...specialAwardVotedVehicleIds])];
+    const votedVehicles = allVotedVehicleIds.length
       ? await prisma.vehicleEntry.findMany({
-          where: { id: { in: votedVehicleIds }, eventId },
+          where: { id: { in: allVotedVehicleIds }, eventId },
           include: votingRegistrationInclude,
         })
       : [];
@@ -122,6 +147,11 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         votedVehicles,
         judgePicks,
         winnerOverrides,
+      }),
+      specialAwards: buildSpecialAwardTallies({
+        specialAwards,
+        voteGroups: specialAwardVoteGroups,
+        votedVehicles,
       }),
     };
   });

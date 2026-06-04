@@ -658,6 +658,10 @@ textarea:focus {
   gap: 8px;
 }
 
+.inline-form-stacked {
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) auto;
+}
+
 .qr-audit {
   border-top: 1px solid var(--border-grey);
   padding-top: 12px;
@@ -914,6 +918,12 @@ textarea:focus {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.special-awards-results {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
 }
 
 .tally-card {
@@ -1270,6 +1280,14 @@ textarea:focus {
 .category-card span {
   color: var(--muted-grey);
   font-size: 13px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .alert,
@@ -1646,6 +1664,11 @@ textarea:focus {
   .judge-completion-grid,
   .tally-grid,
   .voting-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-form,
+  .inline-form-stacked {
     grid-template-columns: 1fr;
   }
 }

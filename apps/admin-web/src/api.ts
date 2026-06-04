@@ -10,6 +10,8 @@ import type {
   Registration,
   RegistrationPayload,
   StaffUser,
+  SpecialAward,
+  SpecialAwardVotingTally,
   VotingSettings,
 } from "@carshow/carshow-components";
 import { API_URL } from "./config";
@@ -74,6 +76,39 @@ export async function updateCategory(id: string, input: Partial<Pick<Category, "
   return request<{ category: Category }>(`/categories/${id}`, {
     method: "PATCH",
     body: JSON.stringify(input),
+  });
+}
+
+export async function deleteCategory(id: string) {
+  return request<{ ok: true }>(`/categories/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function listSpecialAwards() {
+  return request<{ specialAwards: SpecialAward[] }>("/special-awards");
+}
+
+export async function createSpecialAward(input: Pick<SpecialAward, "name"> & { description?: string }) {
+  return request<{ specialAward: SpecialAward }>("/special-awards", {
+    method: "POST",
+    body: JSON.stringify({ ...input, active: true }),
+  });
+}
+
+export async function updateSpecialAward(
+  id: string,
+  input: Partial<Pick<SpecialAward, "name" | "description" | "active">>,
+) {
+  return request<{ specialAward: SpecialAward }>(`/special-awards/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteSpecialAward(id: string) {
+  return request<{ ok: true }>(`/special-awards/${id}`, {
+    method: "DELETE",
   });
 }
 
@@ -175,7 +210,11 @@ export async function updateVotingSettings(
 }
 
 export async function getVotingTallies() {
-  return request<{ event: Omit<VotingSettings, "id" | "name">; categories: CategoryVotingTally[] }>("/voting/tallies");
+  return request<{
+    event: Omit<VotingSettings, "id" | "name">;
+    categories: CategoryVotingTally[];
+    specialAwards: SpecialAwardVotingTally[];
+  }>("/voting/tallies");
 }
 
 export async function getJudgeCompletion() {

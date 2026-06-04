@@ -8,6 +8,7 @@ import {
   type JudgeCategoryCompletion,
   type Registration,
   type StaffUser,
+  type SpecialAwardVotingTally,
   type VotingSettings as VotingSettingsType,
 } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
@@ -30,6 +31,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
   const [settings, setSettings] = useState<VotingSettingsType | null>(null);
   const [cutoff, setCutoff] = useState("");
   const [tallies, setTallies] = useState<CategoryVotingTally[]>([]);
+  const [specialAwards, setSpecialAwards] = useState<SpecialAwardVotingTally[]>([]);
   const [judgeCompletion, setJudgeCompletion] = useState<JudgeCategoryCompletion[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,6 +54,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
       setSettings(settingsResult.event);
       setCutoff(toDateTimeLocalValue(settingsResult.event.peopleChoiceCutoff));
       setTallies(tallyResult.categories);
+      setSpecialAwards(tallyResult.specialAwards);
       setJudgeCompletion(completionResult.categories);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load voting results");
@@ -152,6 +155,9 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
 
       {loading ? <div className="empty-state">Loading voting tallies...</div> : null}
       {!loading ? (
+        <SpecialAwardsResults specialAwards={specialAwards} onSelectWinner={setSelectedWinner} />
+      ) : null}
+      {!loading ? (
         <TallyGrid
           tallies={tallies}
           canManage={canManage}
@@ -170,6 +176,66 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
         />
       ) : null}
       {showJudgingGuide ? <JudgingGuideDrawer onClose={() => setShowJudgingGuide(false)} /> : null}
+    </section>
+  );
+}
+
+function SpecialAwardsResults({
+  specialAwards,
+  onSelectWinner,
+}: {
+  specialAwards: SpecialAwardVotingTally[];
+  onSelectWinner: (registration: Registration) => void;
+}) {
+  if (!specialAwards.length) return null;
+
+  return (
+    <section className="special-awards-results">
+      <div className="tally-card-header">
+        <div>
+          <p className="eyebrow">Event-Wide Ballot</p>
+          <h2>Special Awards</h2>
+        </div>
+      </div>
+      <div className="tally-grid">
+        {specialAwards.map((award) => (
+          <article className="tally-card" key={award.specialAward.id}>
+            <div className="tally-card-header">
+              <div>
+                <p className="eyebrow">{award.specialAward.active ? "Active" : "Inactive"}</p>
+                <h2>{award.specialAward.name}</h2>
+              </div>
+            </div>
+            {award.specialAward.description ? (
+              <p className="muted-copy">{award.specialAward.description}</p>
+            ) : null}
+            {award.results.length ? (
+              <div className="rank-list">
+                {award.results.slice(0, 10).map((item) => (
+                  <button
+                    type="button"
+                    className="rank-row winner-row"
+                    key={item.registration.id}
+                    onClick={() => onSelectWinner(item.registration)}
+                  >
+                    <span className="rank-badge">{item.rank}</span>
+                    <div>
+                      <strong>
+                        {item.registration.year} {item.registration.make} {item.registration.model}
+                      </strong>
+                      <span>
+                        #{item.registration.entryNumber.toString().padStart(3, "0")} - {item.votes} votes
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="muted-copy">No special award votes yet.</p>
+            )}
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

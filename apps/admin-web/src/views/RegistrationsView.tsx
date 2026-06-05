@@ -1,7 +1,8 @@
-import { Plus } from "lucide-react";
-import { Button, PageHeader, RegistrationRow, SearchBox } from "@carshow/carshow-components";
+import { Plus, Upload } from "lucide-react";
+import { Alert, Button, PageHeader, RegistrationRow, SearchBox } from "@carshow/carshow-components";
 import type { Category, Registration } from "@carshow/carshow-components";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { importRegistrationsCsv } from "../api";
 import { RegistrationEditor } from "../organisms/RegistrationEditor";
 
 export function RegistrationsView({
@@ -22,10 +23,33 @@ export function RegistrationsView({
   onRefresh: () => void;
 }) {
   const [showNewEditor, setShowNewEditor] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
+  const [importError, setImportError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function selectRegistration(registration: Registration) {
     setShowNewEditor(false);
     onSelect(selected?.id === registration.id ? null : registration);
+  }
+
+  async function importCsv(file: File | null) {
+    if (!file) return;
+    setImporting(true);
+    setImportMessage("");
+    setImportError("");
+    try {
+      const result = await importRegistrationsCsv(file);
+      setShowNewEditor(false);
+      onSelect(null);
+      onRefresh();
+      setImportMessage(result.message);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Could not import CSV");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   return (
@@ -36,17 +60,32 @@ export function RegistrationsView({
           title="Staff Registrations"
           compact
           actions={
-            <Button
-              onClick={() => {
-                onSelect(null);
-                setShowNewEditor(true);
-              }}
-            >
-              <Plus size={20} />
-              New
-            </Button>
+            <div className="header-actions">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="visually-hidden"
+                onChange={(event) => void importCsv(event.target.files?.[0] ?? null)}
+              />
+              <Button variant="secondary" disabled={importing} onClick={() => fileInputRef.current?.click()}>
+                <Upload size={20} />
+                {importing ? "Importing" : "Import CSV"}
+              </Button>
+              <Button
+                onClick={() => {
+                  onSelect(null);
+                  setShowNewEditor(true);
+                }}
+              >
+                <Plus size={20} />
+                New
+              </Button>
+            </div>
           }
         />
+        {importMessage ? <Alert variant="success">{importMessage}</Alert> : null}
+        {importError ? <Alert variant="danger">{importError}</Alert> : null}
         <SearchBox
           value={search}
           placeholder="Search owner, phone, plate, entry, QR..."

@@ -140,6 +140,21 @@ export async function updateRegistration(id: string, payload: RegistrationPayloa
   });
 }
 
+export async function importRegistrationsCsv(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return request<{
+    imported: number;
+    created: number;
+    updated: number;
+    replacedSeeded: number;
+    message: string;
+  }>("/registrations/import-csv", {
+    method: "POST",
+    body: form,
+  });
+}
+
 export async function checkInRegistration(id: string) {
   return request<{ registration: Registration }>(`/registrations/${id}/check-in`, {
     method: "POST",

@@ -187,6 +187,19 @@ async function main() {
     where: { eventId },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   });
+
+  const realRegistrationCount = await prisma.vehicleEntry.count({
+    where: {
+      eventId,
+      id: { not: { startsWith: "seed-vehicle-" } },
+    },
+  });
+
+  if (realRegistrationCount > 0) {
+    console.log(`Skipping demo vehicle seed because ${realRegistrationCount} imported/real registrations exist.`);
+    return;
+  }
+
   const bestPaintAward = await prisma.specialAward.upsert({
     where: {
       eventId_name: {

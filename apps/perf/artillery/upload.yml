@@ -1,0 +1,26 @@
+config:
+  target: "http://localhost:4000"
+  processor: "./helpers.cjs"
+  # Low sustained rate — upload is I/O-heavy (file write + DB write + async
+  # Sharp resize) and realistic event-day volume is not high.
+  phases:
+    - name: Warm-up
+      duration: 20
+      arrivalRate: 1
+    - name: Sustained
+      duration: 120
+      arrivalRate: 5
+  ensure:
+    p99: 2500
+    # We spoof X-Forwarded-For across 20 IPs (12/min budget each = 240/min
+    # total headroom), so 429s should stay well under 2%. Higher than 2%
+    # means the IP rotation in helpers.js isn't working as expected.
+    maxErrorRate: 2
+
+scenarios:
+  - name: "Photo upload"
+    beforeScenario: "setUploadVars"
+    flow:
+      - post:
+          url: "/v/{{ uploadToken }}/photos"
+          beforeRequest: "attachMultipart"

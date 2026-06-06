@@ -1,0 +1,50 @@
+config:
+  # Override with --target on the CLI; this default is used if forgotten.
+  target: "http://localhost:4000"
+  processor: "./helpers.cjs"
+  phases:
+    - name: Warm-up
+      duration: 30
+      arrivalRate: 5
+    - name: Ramp
+      duration: 60
+      arrivalRate: 5
+      rampTo: 40
+    - name: Sustained
+      duration: 120
+      arrivalRate: 40
+    - name: Ramp down
+      duration: 30
+      arrivalRate: 40
+      rampTo: 5
+  ensure:
+    p99: 800
+    maxErrorRate: 0.5
+
+scenarios:
+  - name: "Browse visitor flow"
+    beforeScenario: "setVars"
+    flow:
+      # Landing page — hero photos (60s in-memory cache, ORDER BY RANDOM() underneath)
+      - get:
+          url: "/public/hero-photos"
+      - think: 1
+
+      # Load category list
+      - get:
+          url: "/public/event"
+      - think: 1
+
+      # Browse a category
+      - get:
+          url: "/public/categories/{{ slug }}/entries"
+      - think: 1
+
+      # Click a car (by QR token — the path the public portal uses)
+      - get:
+          url: "/public/vehicles/{{ token }}"
+      - think: 1
+
+      # Click a car (by entry number — alternative detail path)
+      - get:
+          url: "/public/entries/{{ entryNumber }}"

@@ -154,8 +154,13 @@ export async function registerPublicRoutes(app: FastifyInstance) {
         rateLimit: {
           max: 30,
           timeWindow: "1 minute",
-          // Key by voterKey so shared venue WiFi doesn't block all visitors at once.
-          // Falls back to IP only if the body is somehow missing voterKey.
+          // preHandler fires after body parsing, so req.body is available.
+          // Default onRequest hook runs before parsing — body is always null there,
+          // causing the keyGenerator to fall back to IP and rate-limit the whole
+          // venue WiFi after 30 votes from any shared IP.
+          hook: "preHandler",
+          // Key by voterKey so each visitor gets their own 30/min budget.
+          // Falls back to IP only if voterKey is somehow absent from the body.
           keyGenerator: (req) => {
             const b = req.body as Record<string, unknown> | undefined;
             return typeof b?.voterKey === "string" ? `vk:${b.voterKey}` : req.ip;
@@ -215,6 +220,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
         rateLimit: {
           max: 30,
           timeWindow: "1 minute",
+          hook: "preHandler",
           keyGenerator: (req) => {
             const b = req.body as Record<string, unknown> | undefined;
             return typeof b?.voterKey === "string" ? `vk:${b.voterKey}` : req.ip;

@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "perf": "tsx scripts/run-perf.ts",
+    "perf": "tsx --env-file-if-exists=../../.env scripts/run-perf.ts",
+    "fetch-fixtures": "tsx --env-file-if-exists=../../.env scripts/fetch-fixtures.ts",
     "perf:browse": "artillery run --output reports/browse.json artillery/browse.yml",
     "perf:vote": "artillery run --output reports/vote.json artillery/vote.yml",
     "perf:upload": "artillery run --output reports/upload.json artillery/upload.yml",

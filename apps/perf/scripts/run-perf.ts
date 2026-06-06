@@ -40,9 +40,10 @@ mkdirSync(join(ROOT, 'reports'), { recursive: true });
 await checkApiUp();
 console.log(`✓ API is up at ${TARGET_URL}`);
 
-run('Fetch fixtures', `tsx scripts/fetch-fixtures.ts`);
+run('Fetch fixtures', `tsx --env-file-if-exists=../../.env scripts/fetch-fixtures.ts`);
 
-const artilleryBin = join(ROOT, 'node_modules', '.bin', 'artillery');
+// Artillery is hoisted to the repo root node_modules by npm workspaces.
+const artilleryBin = join(ROOT, '..', '..', 'node_modules', '.bin', 'artillery');
 const target = `--target "${TARGET_URL}"`;
 
 const scenarios = [

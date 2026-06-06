@@ -22,13 +22,16 @@ config:
 
 scenarios:
   - name: "Vote submission"
-    beforeScenario: "setVars"
+    beforeScenario: "setVoteVars"
     flow:
       # Each VU votes for one vehicle. voterKey is unique per VU so the
-      # 30/min rate limit (keyed by voterKey) is never triggered.
+      # 30/min rate limit (keyed by voterKey when body is parsed, IP otherwise)
+      # is never triggered. X-Forwarded-For is rotated via setVoteRequest as a
+      # defence against the IP fallback path in the keyGenerator.
       # A 409 means the voterKey already voted in this category — expected
       # when running the test multiple times without re-seeding voterKeys.
       - post:
           url: "/public/entries/{{ vehicleId }}/vote"
+          beforeRequest: "setVoteRequest"
           json:
             voterKey: "{{ voterKey }}"

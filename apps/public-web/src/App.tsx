@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom";
+import logoHeader from "./assets/logo-header.png";
 import { VotePanel } from "./components/VotePanel";
 import { VotingProvider, useVoting } from "./context/VotingContext";
 import { BrowseView } from "./views/BrowseView";
@@ -21,9 +22,16 @@ function Header() {
         onClick={() => navigate("/")}
         style={{ cursor: "pointer" }}
       >
-        <div>
-          <p className="public-header-brand">Celebration Church</p>
-          <h1 className="public-header-title">Father's Day Car Show</h1>
+        <div className="public-header-identity">
+          <img
+            src={logoHeader}
+            alt="Father's Day Car Show"
+            className="public-header-logo"
+          />
+          <div className="public-header-text">
+            <p className="public-header-brand">Celebration Church</p>
+            <h1 className="public-header-title">Father's Day Car Show</h1>
+          </div>
         </div>
         {showVoting && (
           <button

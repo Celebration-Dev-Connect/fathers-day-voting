@@ -2458,6 +2458,24 @@ textarea:focus {
   margin: 0;
 }
 
+.public-header-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.public-header-logo {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+
+@media (max-width: 599px) {
+  .public-header-text {
+    display: none;
+  }
+}
+
 .public-content {
   padding: 20px;
   max-width: 640px;
@@ -2977,6 +2995,13 @@ textarea:focus {
   text-shadow: 0 3px 16px rgba(0, 0, 0, 0.5);
 }
 
+.hero-logo {
+  width: min(300px, 70vw);
+  height: auto;
+  margin: 0 0 20px;
+  filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.5));
+}
+
 .hero-date {
   font-size: 14px;
   font-weight: 700;
@@ -3000,6 +3025,12 @@ textarea:focus {
   align-items: center;
   gap: 12px;
   margin-bottom: 24px;
+  width: 100%;
+}
+
+.hero-browse-btn,
+.hero-scan-btn {
+  width: min(240px, 80vw);
 }
 
 .hero-browse-btn {

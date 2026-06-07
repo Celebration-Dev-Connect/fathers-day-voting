@@ -14,6 +14,7 @@ const eventControlsSelect = {
   name: true,
   registrationOpen: true,
   votingOpen: true,
+  judgesVotingEnabled: true,
   judgingOpen: true,
   resultsPublished: true,
   peopleChoiceCutoff: true,
@@ -37,6 +38,7 @@ export async function registerVotingRoutes(app: FastifyInstance) {
       .object({
         votingOpen: z.boolean().optional(),
         registrationOpen: z.boolean().optional(),
+        judgesVotingEnabled: z.boolean().optional(),
         judgingOpen: z.boolean().optional(),
         resultsPublished: z.boolean().optional(),
         peopleChoiceCutoff: z.string().datetime().nullable().optional(),
@@ -48,7 +50,8 @@ export async function registerVotingRoutes(app: FastifyInstance) {
       data: {
         registrationOpen: body.registrationOpen,
         votingOpen: body.votingOpen,
-        judgingOpen: body.judgingOpen,
+        judgesVotingEnabled: body.judgesVotingEnabled,
+        judgingOpen: body.judgesVotingEnabled === false ? false : body.judgingOpen,
         resultsPublished: body.resultsPublished,
         peopleChoiceCutoff:
           body.peopleChoiceCutoff === undefined
@@ -70,6 +73,7 @@ export async function registerVotingRoutes(app: FastifyInstance) {
       select: {
         votingOpen: true,
         registrationOpen: true,
+        judgesVotingEnabled: true,
         judgingOpen: true,
         resultsPublished: true,
         peopleChoiceCutoff: true,
@@ -145,8 +149,8 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         categories,
         voteGroups,
         votedVehicles,
-        judgePicks,
-        winnerOverrides,
+        judgePicks: event.judgesVotingEnabled ? judgePicks : [],
+        winnerOverrides: event.judgesVotingEnabled ? winnerOverrides : [],
       }),
       specialAwards: buildSpecialAwardTallies({
         specialAwards,

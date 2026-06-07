@@ -3,11 +3,13 @@ import { Button, vehicleName, type CategoryVotingTally, type Registration } from
 
 export function TallyGrid({
   tallies,
+  judgesVotingEnabled,
   canManage,
   onSelectWinner,
   onFinalizeWinners,
 }: {
   tallies: CategoryVotingTally[];
+  judgesVotingEnabled: boolean;
   canManage: boolean;
   onSelectWinner: (registration: Registration) => void;
   onFinalizeWinners: (tally: CategoryVotingTally) => void;
@@ -24,13 +26,19 @@ export function TallyGrid({
           </div>
 
           <PeopleChoiceSection tally={tally} onSelectWinner={onSelectWinner} />
-          <JudgeTop3Section
-            tally={tally}
-            canManage={canManage}
-            onSelectWinner={onSelectWinner}
-            onFinalizeWinners={onFinalizeWinners}
-          />
-          <JudgingRankingSection tally={tally} onSelectWinner={onSelectWinner} />
+          {judgesVotingEnabled ? (
+            <>
+              <JudgeTop3Section
+                tally={tally}
+                canManage={canManage}
+                onSelectWinner={onSelectWinner}
+                onFinalizeWinners={onFinalizeWinners}
+              />
+              <JudgingRankingSection tally={tally} onSelectWinner={onSelectWinner} />
+            </>
+          ) : (
+            <p className="muted-copy">Judge voting is disabled. Results use People's Choice votes only.</p>
+          )}
         </article>
       ))}
     </div>
@@ -158,4 +166,3 @@ function JudgingRankingSection({
     </section>
   );
 }
-

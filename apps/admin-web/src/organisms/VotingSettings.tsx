@@ -76,6 +76,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
       const result = await updateVotingSettings({
         registrationOpen: settings.registrationOpen,
         votingOpen: settings.votingOpen,
+        judgesVotingEnabled: settings.judgesVotingEnabled,
         judgingOpen: settings.judgingOpen,
         resultsPublished: settings.resultsPublished,
         peopleChoiceCutoff: fromDateTimeLocalValue(cutoff),
@@ -92,7 +93,10 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
   }
 
   function updateSetting<
-    Key extends keyof Pick<VotingSettingsType, "registrationOpen" | "votingOpen" | "judgingOpen" | "resultsPublished">,
+    Key extends keyof Pick<
+      VotingSettingsType,
+      "registrationOpen" | "votingOpen" | "judgesVotingEnabled" | "judgingOpen" | "resultsPublished"
+    >,
   >(key: Key, value: VotingSettingsType[Key]) {
     setSettings((current) => (current ? { ...current, [key]: value } : current));
   }
@@ -151,7 +155,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
         onSave={saveSettings}
       />
 
-      {!loading ? <JudgeCompletionPanel categories={judgeCompletion} /> : null}
+      {!loading && settings?.judgesVotingEnabled ? <JudgeCompletionPanel categories={judgeCompletion} /> : null}
 
       {loading ? <div className="empty-state">Loading voting tallies...</div> : null}
       {!loading ? (
@@ -160,6 +164,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
       {!loading ? (
         <TallyGrid
           tallies={tallies}
+          judgesVotingEnabled={settings?.judgesVotingEnabled ?? true}
           canManage={canManage}
           onSelectWinner={setSelectedWinner}
           onFinalizeWinners={setManualCategory}

@@ -14,6 +14,12 @@ export function EventStatusBanner({ settings }: { settings: VotingSettings }) {
       <div className="event-status-flags" aria-label="Current event controls">
         <StatusFlag active={settings.registrationOpen} activeLabel="Registration open" inactiveLabel="Registration closed" />
         <StatusFlag active={settings.votingOpen} activeLabel="People's choice open" inactiveLabel="People's choice closed" />
+        <StatusFlag
+          active={settings.judgesVotingEnabled}
+          activeLabel="Judge voting enabled"
+          inactiveLabel="Judge voting disabled"
+          icon="judge"
+        />
         <StatusFlag active={settings.judgingOpen} activeLabel="Judging open" inactiveLabel="Judging closed" icon="judge" />
         <StatusFlag active={settings.resultsPublished} activeLabel="Results published" inactiveLabel="Results hidden" icon="results" />
       </div>
@@ -51,7 +57,7 @@ function getEventPhase(settings: VotingSettings) {
     };
   }
 
-  if (settings.judgingOpen) {
+  if (settings.judgesVotingEnabled && settings.judgingOpen) {
     return {
       label: "Judging In Progress",
       description: "Judges can submit rankings. Results remain hidden until published.",

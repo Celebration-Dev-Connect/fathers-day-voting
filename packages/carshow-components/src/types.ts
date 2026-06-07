@@ -48,6 +48,7 @@ export type VotingSettings = {
   name: string;
   registrationOpen: boolean;
   votingOpen: boolean;
+  judgesVotingEnabled: boolean;
   judgingOpen: boolean;
   resultsPublished: boolean;
   peopleChoiceCutoff?: string | null;
@@ -186,6 +187,7 @@ export type JudgeCategorySummary = {
 
 export type JudgeSession = {
   staff: StaffUser;
+  judgesVotingEnabled: boolean;
   judgingOpen: boolean;
   resultsPublished: boolean;
   categories: JudgeCategorySummary[];
@@ -215,6 +217,7 @@ export type JudgeBallotPick = {
 
 export type JudgeBallot = {
   category: Category;
+  judgesVotingEnabled: boolean;
   judgingOpen: boolean;
   submitted: boolean;
   picks: JudgeBallotPick[];

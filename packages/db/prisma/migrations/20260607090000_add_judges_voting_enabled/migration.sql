@@ -1,0 +1,2 @@
+ALTER TABLE "Event"
+ADD COLUMN "judgesVotingEnabled" BOOLEAN NOT NULL DEFAULT true;

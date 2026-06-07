@@ -232,7 +232,12 @@ export async function updateVotingSettings(
   input: Partial<
     Pick<
       VotingSettings,
-      "registrationOpen" | "votingOpen" | "judgingOpen" | "resultsPublished" | "peopleChoiceCutoff"
+      | "registrationOpen"
+      | "votingOpen"
+      | "judgesVotingEnabled"
+      | "judgingOpen"
+      | "resultsPublished"
+      | "peopleChoiceCutoff"
     >
   >,
 ) {

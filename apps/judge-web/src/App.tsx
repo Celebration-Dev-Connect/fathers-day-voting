@@ -249,15 +249,20 @@ function JudgeEventBanner({
 }) {
   const rankedCount = selectedCategory?.rankedCount ?? 0;
   const eligibleCount = selectedCategory?.eligibleVehicleCount ?? 0;
+  const judgingAvailable = session.judgesVotingEnabled && session.judgingOpen;
 
   return (
-    <section className={session.judgingOpen ? "judge-event-banner open" : "judge-event-banner closed"}>
+    <section className={judgingAvailable ? "judge-event-banner open" : "judge-event-banner closed"}>
       <div>
-        {session.judgingOpen ? <ShieldCheck size={24} /> : <Clock size={24} />}
+        {judgingAvailable ? <ShieldCheck size={24} /> : <Clock size={24} />}
         <div>
-          <strong>{session.judgingOpen ? "Judging is open" : "Judging is closed"}</strong>
+          <strong>
+            {!session.judgesVotingEnabled ? "Judge voting is disabled" : session.judgingOpen ? "Judging is open" : "Judging is closed"}
+          </strong>
           <span>
-            {session.judgingOpen
+            {!session.judgesVotingEnabled
+              ? "People's Choice votes will be used for results."
+              : session.judgingOpen
               ? "Save your draft as you rank. Admin can tally saved picks while final ballot locking is being built."
               : "Ballots are read-only while judging is closed."}
           </span>
@@ -536,20 +541,27 @@ function toPublicEntry(registration: Registration): PublicEntry {
     model: registration.model,
     nickname: registration.nickname ?? null,
     exteriorColor: registration.exteriorColor ?? null,
+    buildStory: registration.buildStory ?? null,
     category: {
       id: registration.category.id,
       name: registration.category.name,
       slug: registration.category.slug,
     },
     ownerName: publicOwnerName(registration),
-    photos: (registration.photos ?? []).map((photo) => ({
-      id: photo.id,
-      url: photo.url,
-      mediumUrl: null,
-      thumbUrl: null,
-      altText: photo.altText ?? null,
-      sortOrder: photo.sortOrder,
-    })),
+    photos: (registration.photos ?? []).flatMap((photo) =>
+      photo.url
+        ? [
+            {
+              id: photo.id,
+              url: photo.url,
+              mediumUrl: null,
+              thumbUrl: null,
+              altText: photo.altText ?? null,
+              sortOrder: photo.sortOrder,
+            },
+          ]
+        : [],
+    ),
   };
 }
 

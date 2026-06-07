@@ -50,7 +50,7 @@ async function loadBallot(categoryId: string, judgeKey: string) {
   });
   const event = await prisma.event.findUnique({
     where: { id: eventId },
-    select: { judgingOpen: true },
+    select: { judgesVotingEnabled: true, judgingOpen: true },
   });
 
   if (!category) return null;
@@ -72,7 +72,8 @@ async function loadBallot(categoryId: string, judgeKey: string) {
 
   return {
     category,
-    judgingOpen: event.judgingOpen,
+    judgesVotingEnabled: event.judgesVotingEnabled,
+    judgingOpen: event.judgesVotingEnabled && event.judgingOpen,
     submitted: false,
     picks: picks.map((pick) => ({
       rank: pick.rank,
@@ -86,7 +87,7 @@ export async function registerJudgingRoutes(app: FastifyInstance) {
     const staff = await requireJudge(app, request);
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      select: { judgingOpen: true, resultsPublished: true },
+      select: { judgesVotingEnabled: true, judgingOpen: true, resultsPublished: true },
     });
 
     if (!event) throw app.httpErrors.notFound("Event not found");
@@ -98,7 +99,8 @@ export async function registerJudgingRoutes(app: FastifyInstance) {
         displayName: staff.displayName,
         role: staff.role,
       },
-      judgingOpen: event.judgingOpen,
+      judgesVotingEnabled: event.judgesVotingEnabled,
+      judgingOpen: event.judgesVotingEnabled && event.judgingOpen,
       resultsPublished: event.resultsPublished,
       categories: await loadCategorySummaries(judgeKeyForStaff(staff.id)),
     };
@@ -147,10 +149,11 @@ export async function registerJudgingRoutes(app: FastifyInstance) {
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      select: { judgingOpen: true },
+      select: { judgesVotingEnabled: true, judgingOpen: true },
     });
 
     if (!event) throw app.httpErrors.notFound("Event not found");
+    if (!event.judgesVotingEnabled) throw app.httpErrors.forbidden("Judge voting is disabled");
     if (!event.judgingOpen) throw app.httpErrors.forbidden("Judging is closed");
 
     const vehicles = await prisma.vehicleEntry.findMany({

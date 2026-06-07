@@ -48,6 +48,7 @@ model Event {
   registrationOpen   Boolean                  @default(true)
   votingOpen         Boolean                  @default(false)
   peopleChoiceCutoff DateTime?
+  judgesVotingEnabled Boolean                  @default(true)
   judgingOpen        Boolean                  @default(false)
   resultsPublished   Boolean                  @default(false)
   createdAt          DateTime                 @default(now())

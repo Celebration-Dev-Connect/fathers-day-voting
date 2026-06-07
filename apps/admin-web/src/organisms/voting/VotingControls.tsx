@@ -5,7 +5,12 @@ import {
   type VotingSettings as VotingSettingsType,
 } from "@carshow/carshow-components";
 
-type EventControlKey = "registrationOpen" | "votingOpen" | "judgingOpen" | "resultsPublished";
+type EventControlKey =
+  | "registrationOpen"
+  | "votingOpen"
+  | "judgesVotingEnabled"
+  | "judgingOpen"
+  | "resultsPublished";
 
 export function VotingControls({
   settings,
@@ -63,8 +68,18 @@ export function VotingControls({
       <label className="toggle-row">
         <input
           type="checkbox"
-          checked={settings?.judgingOpen ?? false}
+          checked={settings?.judgesVotingEnabled ?? false}
           disabled={!canManage || !settings}
+          onChange={(event) => onSettingChange("judgesVotingEnabled", event.target.checked)}
+        />
+        <Gavel size={18} />
+        Use judge voting in results
+      </label>
+      <label className="toggle-row">
+        <input
+          type="checkbox"
+          checked={settings?.judgingOpen ?? false}
+          disabled={!canManage || !settings || !settings.judgesVotingEnabled}
           onChange={(event) => onSettingChange("judgingOpen", event.target.checked)}
         />
         <Gavel size={18} />

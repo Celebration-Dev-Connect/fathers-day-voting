@@ -3,7 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { useVoting } from "../context/VotingContext";
 
 export function VotePanel({ onClose }: { onClose: () => void }) {
-  const { categories, drafts, submitted, submitVote, clearSelection } = useVoting();
+  const {
+    categories,
+    specialAwards,
+    drafts,
+    submitted,
+    specialAwardDrafts,
+    specialAwardSubmitted,
+    submitVote,
+    submitSpecialAward,
+    clearSelection,
+    clearSpecialAwardSelection,
+  } = useVoting();
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
@@ -23,13 +34,35 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
     }
   }
 
+  async function handleSpecialAwardSubmit(specialAwardId: string) {
+    setSubmitting(specialAwardId);
+    setErrors((previous) => {
+      const next = { ...previous };
+      delete next[specialAwardId];
+      return next;
+    });
+    try {
+      await submitSpecialAward(specialAwardId);
+    } catch (error) {
+      setErrors((previous) => ({
+        ...previous,
+        [specialAwardId]: error instanceof Error ? error.message : "Failed to submit",
+      }));
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
   function browse(slug: string) {
     navigate(`/browse/${slug}`);
     onClose();
   }
 
-  const pendingCount = categories.filter((c) => drafts[c.id] && !submitted[c.id]).length;
-  const submittedCount = Object.keys(submitted).length;
+  const pendingCount =
+    categories.filter((category) => drafts[category.id] && !submitted[category.id]).length +
+    specialAwards.filter((award) => specialAwardDrafts[award.id] && !specialAwardSubmitted[award.id]).length;
+  const submittedCount = Object.keys(submitted).length + Object.keys(specialAwardSubmitted).length;
+  const totalItems = categories.length + specialAwards.length;
 
   return (
     <>
@@ -40,8 +73,8 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
             <h2 className="vote-panel-title">Your Ballot</h2>
             <p className="vote-panel-sub">
               {submittedCount > 0
-                ? `${submittedCount} of ${categories.length} votes locked in`
-                : "Select a car on each category page, then submit here"}
+                ? `${submittedCount} of ${totalItems} votes locked in`
+                : "Select category and special award picks, then submit here"}
             </p>
           </div>
           <button className="vote-panel-close" onClick={onClose} aria-label="Close ballot">✕</button>
@@ -106,6 +139,75 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
                   <div className="vote-panel-empty">
                     <span className="vote-panel-empty-label">No car selected yet</span>
                     <button className="vote-panel-browse-btn" onClick={() => browse(cat.slug)}>
+                      Browse →
+                    </button>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+          {specialAwards.map((award) => {
+            const draft = specialAwardDrafts[award.id];
+            const submittedPick = specialAwardSubmitted[award.id];
+            const isSubmitted = Boolean(submittedPick);
+            const isSubmitting = submitting === award.id;
+
+            return (
+              <li key={award.id} className={`vote-panel-item special-award${isSubmitted ? " submitted" : ""}`}>
+                <p className="vote-panel-category">{award.name}</p>
+                <span className="vote-panel-item-kind">Special Award · All categories</span>
+
+                {isSubmitted ? (
+                  <div className="vote-panel-locked">
+                    <div className="vote-panel-locked-left">
+                      <span className="vote-panel-check">✓</span>
+                      <span className="vote-panel-locked-label">Vote locked in!</span>
+                    </div>
+                    <button
+                      className="vote-panel-browse-btn"
+                      onClick={() => {
+                        if (submittedPick?.entryNumber) navigate(`/browse/entry/${submittedPick.entryNumber}`);
+                        onClose();
+                      }}
+                    >
+                      View →
+                    </button>
+                  </div>
+                ) : draft ? (
+                  <div className="vote-panel-draft">
+                    <p className="vote-panel-pick">
+                      <span className="vote-panel-entry">#{draft.entryNumber}</span>{" "}
+                      {draft.year} {draft.make} {draft.model}
+                      {draft.nickname ? ` — "${draft.nickname}"` : ""}
+                    </p>
+                    <div className="vote-panel-row">
+                      <button
+                        className="vote-panel-submit-btn"
+                        onClick={() => handleSpecialAwardSubmit(award.id)}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Submitting…" : "Submit Vote"}
+                      </button>
+                      <button
+                        className="vote-panel-clear-btn"
+                        onClick={() => clearSpecialAwardSelection(award.id)}
+                        disabled={isSubmitting}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    {errors[award.id] && <p className="vote-panel-error">{errors[award.id]}</p>}
+                  </div>
+                ) : (
+                  <div className="vote-panel-empty">
+                    <span className="vote-panel-empty-label">No car selected yet</span>
+                    <button
+                      className="vote-panel-browse-btn"
+                      onClick={() => {
+                        navigate("/browse");
+                        onClose();
+                      }}
+                    >
                       Browse →
                     </button>
                   </div>

@@ -10,10 +10,28 @@ import { VehicleView } from "./views/VehicleView";
 
 function Header() {
   const navigate = useNavigate();
-  const { votingOpen, cutoffPassed, categories, drafts, submitted, isPanelOpen, togglePanel, closePanel } = useVoting();
+  const {
+    votingOpen,
+    cutoffPassed,
+    categories,
+    specialAwards,
+    drafts,
+    submitted,
+    specialAwardDrafts,
+    specialAwardSubmitted,
+    isPanelOpen,
+    togglePanel,
+    closePanel,
+  } = useVoting();
 
   const showVoting = votingOpen && !cutoffPassed;
-  const totalInteracted = Object.keys(drafts).length + Object.keys(submitted).length;
+  const totalInteracted =
+    Object.keys(drafts).length +
+    Object.keys(submitted).length +
+    Object.keys(specialAwardDrafts).length +
+    Object.keys(specialAwardSubmitted).length;
+  const totalSubmitted = Object.keys(submitted).length + Object.keys(specialAwardSubmitted).length;
+  const totalBallotItems = categories.length + specialAwards.length;
 
   return (
     <>
@@ -42,7 +60,7 @@ function Header() {
             Vote Now
             {totalInteracted > 0 && (
               <span className="vote-now-badge">
-                {Object.keys(submitted).length}/{categories.length}
+                {totalSubmitted}/{totalBallotItems}
               </span>
             )}
           </button>

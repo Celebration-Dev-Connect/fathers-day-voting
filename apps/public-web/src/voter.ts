@@ -12,10 +12,17 @@ export type DraftPick = {
   categoryName: string;
 };
 
+export type SpecialAwardPick = Omit<DraftPick, "categoryId" | "categoryName"> & {
+  specialAwardId: string;
+  specialAwardName: string;
+};
+
 type BallotCookie = {
   voterKey: string;
   drafts: Record<string, DraftPick>; // categoryId → pending pick
   submitted: Record<string, DraftPick>; // categoryId → locked pick
+  specialAwardDrafts: Record<string, SpecialAwardPick>;
+  specialAwardSubmitted: Record<string, SpecialAwardPick>;
 };
 
 function parseBallot(): BallotCookie | null {
@@ -36,7 +43,11 @@ function parseBallot(): BallotCookie | null {
       }
     }
 
-    return parsed;
+    return {
+      ...parsed,
+      specialAwardDrafts: parsed.specialAwardDrafts ?? {},
+      specialAwardSubmitted: parsed.specialAwardSubmitted ?? {},
+    };
   } catch {
     return null;
   }
@@ -50,7 +61,13 @@ function saveBallot(ballot: BallotCookie): void {
 function getBallot(): BallotCookie {
   const existing = parseBallot();
   if (existing?.voterKey) return existing;
-  const fresh: BallotCookie = { voterKey: crypto.randomUUID(), drafts: {}, submitted: {} };
+  const fresh: BallotCookie = {
+    voterKey: crypto.randomUUID(),
+    drafts: {},
+    submitted: {},
+    specialAwardDrafts: {},
+    specialAwardSubmitted: {},
+  };
   saveBallot(fresh);
   return fresh;
 }
@@ -83,5 +100,32 @@ export function markCategorySubmitted(pick: DraftPick): void {
   const ballot = getBallot();
   ballot.submitted[pick.categoryId] = pick;
   delete ballot.drafts[pick.categoryId];
+  saveBallot(ballot);
+}
+
+export function getSpecialAwardDrafts(): Record<string, SpecialAwardPick> {
+  return getBallot().specialAwardDrafts;
+}
+
+export function getSpecialAwardSubmitted(): Record<string, SpecialAwardPick> {
+  return getBallot().specialAwardSubmitted;
+}
+
+export function setSpecialAwardDraftPick(pick: SpecialAwardPick): void {
+  const ballot = getBallot();
+  ballot.specialAwardDrafts[pick.specialAwardId] = pick;
+  saveBallot(ballot);
+}
+
+export function clearSpecialAwardDraftPick(specialAwardId: string): void {
+  const ballot = getBallot();
+  delete ballot.specialAwardDrafts[specialAwardId];
+  saveBallot(ballot);
+}
+
+export function markSpecialAwardSubmitted(pick: SpecialAwardPick): void {
+  const ballot = getBallot();
+  ballot.specialAwardSubmitted[pick.specialAwardId] = pick;
+  delete ballot.specialAwardDrafts[pick.specialAwardId];
   saveBallot(ballot);
 }

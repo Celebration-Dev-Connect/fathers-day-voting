@@ -254,6 +254,12 @@ export type PublicCategory = {
   slug: string;
 };
 
+export type PublicSpecialAward = {
+  id: string;
+  name: string;
+  description: string | null;
+};
+
 export type PublicPhoto = {
   id: string;
   url: string;

@@ -1,4 +1,10 @@
-import type { PublicCategory, PublicEntry, PublicEvent, PublicVehicle } from "@carshow/carshow-components";
+import type {
+  PublicCategory,
+  PublicEntry,
+  PublicEvent,
+  PublicSpecialAward,
+  PublicVehicle,
+} from "@carshow/carshow-components";
 import { API_URL } from "./config";
 
 export type HeroPhoto = {
@@ -41,7 +47,7 @@ export async function getHeroPhotos() {
 }
 
 export async function getPublicEvent() {
-  return request<{ event: PublicEvent; categories: PublicCategory[] }>("/public/event");
+  return request<{ event: PublicEvent; categories: PublicCategory[]; specialAwards: PublicSpecialAward[] }>("/public/event");
 }
 
 export type VehicleResponse =
@@ -79,6 +85,13 @@ export async function getEntryByNumber(entryNumber: number) {
 export async function submitBrowseVote(vehicleId: string, voterKey: string) {
   return request<{ ok: true; categoryName: string }>(
     `/public/entries/${encodeURIComponent(vehicleId)}/vote`,
+    { method: "POST", body: JSON.stringify({ voterKey }) },
+  );
+}
+
+export async function submitSpecialAwardVote(vehicleId: string, specialAwardId: string, voterKey: string) {
+  return request<{ ok: true; specialAwardName: string }>(
+    `/public/entries/${encodeURIComponent(vehicleId)}/special-awards/${encodeURIComponent(specialAwardId)}/vote`,
     { method: "POST", body: JSON.stringify({ voterKey }) },
   );
 }

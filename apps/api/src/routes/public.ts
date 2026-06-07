@@ -87,13 +87,20 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     });
     if (!event) throw app.httpErrors.notFound("Event not found");
 
-    const categories = await prisma.category.findMany({
-      where: { eventId, active: true },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, slug: true },
-    });
+    const [categories, specialAwards] = await Promise.all([
+      prisma.category.findMany({
+        where: { eventId, active: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, slug: true },
+      }),
+      prisma.specialAward.findMany({
+        where: { eventId, active: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, description: true },
+      }),
+    ]);
 
-    return { event, categories };
+    return { event, categories, specialAwards };
   });
 
   app.get("/public/vehicles/:token", async (request) => {
@@ -260,6 +267,69 @@ export async function registerPublicRoutes(app: FastifyInstance) {
 
     return { ok: true as const, categoryName: vehicle.category.name };
   });
+
+  app.post(
+    "/public/entries/:vehicleId/special-awards/:specialAwardId/vote",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute",
+          hook: "preHandler",
+          keyGenerator: (req) => {
+            const body = req.body as Record<string, unknown> | undefined;
+            return typeof body?.voterKey === "string" ? `vk:${body.voterKey}` : req.ip;
+          },
+        },
+      },
+    },
+    async (request) => {
+      const params = z
+        .object({ vehicleId: z.string().trim().min(1), specialAwardId: z.string().trim().min(1) })
+        .parse(request.params);
+      const body = z.object({ voterKey: z.string().trim().min(1) }).parse(request.body);
+
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { votingOpen: true, peopleChoiceCutoff: true },
+      });
+      if (!event?.votingOpen) throw app.httpErrors.forbidden("Voting is not currently open");
+      if (event.peopleChoiceCutoff && new Date() > event.peopleChoiceCutoff) {
+        throw app.httpErrors.forbidden("Voting has closed");
+      }
+
+      const [vehicle, specialAward] = await Promise.all([
+        prisma.vehicleEntry.findFirst({
+          where: { id: params.vehicleId, eventId, status: VehicleStatus.CHECKED_IN },
+          select: { id: true },
+        }),
+        prisma.specialAward.findFirst({
+          where: { id: params.specialAwardId, eventId, active: true },
+          select: { id: true, name: true },
+        }),
+      ]);
+      if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
+      if (!specialAward) throw app.httpErrors.notFound("Special award not found");
+
+      try {
+        await prisma.specialAwardVote.create({
+          data: {
+            eventId,
+            specialAwardId: specialAward.id,
+            vehicleEntryId: vehicle.id,
+            voterKey: body.voterKey,
+          },
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          throw app.httpErrors.conflict(`You've already voted for ${specialAward.name}`);
+        }
+        throw error;
+      }
+
+      return { ok: true as const, specialAwardName: specialAward.name };
+    },
+  );
 
   app.get("/public/categories/:slug/entries", async (request) => {
     const params = z.object({ slug: z.string().trim().min(1) }).parse(request.params);

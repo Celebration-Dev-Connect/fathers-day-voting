@@ -2228,6 +2228,20 @@ textarea:focus {
   margin: 0 0 8px;
 }
 
+.vote-panel-item-kind {
+  display: block;
+  margin-top: -6px;
+  margin-bottom: 10px;
+  color: var(--muted-grey);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.vote-panel-item.special-award {
+  border-left: 4px solid var(--primary);
+}
+
 .vote-panel-locked {
   display: flex;
   align-items: center;
@@ -2458,6 +2472,27 @@ textarea:focus {
   color: var(--muted-grey);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.special-award-vote-sections {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.special-award-vote-sections > h2,
+.special-award-vote-sections > p {
+  margin: 0;
+}
+
+.special-award-vote-section {
+  border-top-color: var(--on-surface);
+}
+
+.special-award-description {
+  margin: 4px 0 0;
+  color: var(--muted-grey);
+  line-height: 1.45;
 }
 
 .public-header {

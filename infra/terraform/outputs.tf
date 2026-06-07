@@ -4,18 +4,18 @@ output "public_domain" {
 }
 
 output "cloudfront_domain" {
-  description = "Add a CNAME record in your DNS registrar: var.domain → this value."
-  value       = aws_cloudfront_distribution.main.domain_name
+  description = "Add a CNAME record in your DNS registrar: var.domain → this value. Empty when skip_cloudfront = true."
+  value       = var.skip_cloudfront ? "" : aws_cloudfront_distribution.main[0].domain_name
 }
 
 output "cloudfront_distribution_id" {
-  description = "Used for cache invalidations after SPA deploys: aws cloudfront create-invalidation --distribution-id <id> --paths '/index.html'"
-  value       = aws_cloudfront_distribution.main.id
+  description = "Used for cache invalidations after SPA deploys: aws cloudfront create-invalidation --distribution-id <id> --paths '/index.html'. Empty when skip_cloudfront = true."
+  value       = var.skip_cloudfront ? "" : aws_cloudfront_distribution.main[0].id
 }
 
 output "acm_validation_records" {
-  description = "Add these CNAME records in your DNS registrar to validate the ACM certificate. The CloudFront distribution will not serve HTTPS until the cert is issued."
-  value = {
+  description = "Add these CNAME records in your DNS registrar to validate the ACM certificate. Empty when skip_cloudfront = true (cert is unused)."
+  value = var.skip_cloudfront ? {} : {
     for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
       name  = dvo.resource_record_name
       type  = dvo.resource_record_type

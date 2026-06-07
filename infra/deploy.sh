@@ -2,11 +2,13 @@
 #
 # deploy.sh — build, push, and deploy the Father's Day Car Show stack to AWS.
 #
-# Deploys one of two configurations, each isolated in its own Terraform
-# workspace + state so a test deploy can never touch prod:
+# Deploys one of three configurations, each isolated in its own Terraform
+# workspace + state so a test or perf deploy can never touch prod:
 #
 #   test  — cheap, disposable: reduced resources, local dev-login, demo seed,
 #           one-command teardown.   (infra/terraform/test.tfvars)
+#   perf  — prod-sized, disposable: used by perf-test-aws.sh to load test
+#           the full stack before event day. (infra/terraform/perf.tfvars)
 #   prod  — full-size, protected.  (infra/terraform/prod.tfvars)
 #
 # Credentials are never taken as arguments or printed. The script uses the
@@ -49,9 +51,10 @@ USAGE:
   infra/deploy.sh --env <test|prod> [options]
 
 REQUIRED:
-  -e, --env <test|prod>   Which configuration to deploy:
+  -e, --env <test|perf|prod>  Which configuration to deploy:
                             test = reduced resources, local login, seeded demo
                                    data, easy teardown
+                            perf = prod-sized, disposable (use perf-test-aws.sh)
                             prod = full resources, protected data
 
 OPTIONS:
@@ -94,7 +97,7 @@ NOTES:
     (copy <env>.tfvars.example and fill it in).
   * The API image is always built for linux/amd64 — App Runner only runs
     x86_64, so this works correctly from Apple Silicon too.
-  * Each env lives in its own Terraform workspace ("test" / "prod").
+  * Each env lives in its own Terraform workspace ("test" / "perf" / "prod").
 EOF
 }
 
@@ -119,8 +122,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ── Validate inputs ──────────────────────────────────────────────────────────
-[[ -n "$ENVIRONMENT" ]] || { usage; die "--env is required (test or prod)"; }
-[[ "$ENVIRONMENT" == "test" || "$ENVIRONMENT" == "prod" ]] || die "--env must be 'test' or 'prod' (got '$ENVIRONMENT')"
+[[ -n "$ENVIRONMENT" ]] || { usage; die "--env is required (test, perf, or prod)"; }
+[[ "$ENVIRONMENT" == "test" || "$ENVIRONMENT" == "perf" || "$ENVIRONMENT" == "prod" ]] || die "--env must be 'test', 'perf', or 'prod' (got '$ENVIRONMENT')"
 
 VAR_FILE_NAME="$ENVIRONMENT.tfvars"
 VAR_FILE="$TF_DIR/$VAR_FILE_NAME"
@@ -243,8 +246,24 @@ if [[ "$ENVIRONMENT" == "prod" ]] && ! $AUTO_APPROVE; then
 fi
 
 # ── Bootstrap: ensure the ECR repo exists before docker push ─────────────────
+# The ECR repo name (carshow/api) is shared across all workspaces in the same
+# account. If another workspace already created it, import it into this
+# workspace's state rather than failing with RepositoryAlreadyExistsException.
 if ! $SKIP_INFRA; then
-  info "Ensuring ECR repository exists"
+  ECR_REPO_NAME="${ENVIRONMENT%%-*}/api"
+  # Use the project variable from tfvars if we can parse it, else fall back to env prefix
+  # awk -F'"' is portable (BSD + GNU); sed \s* is not valid on macOS BSD sed
+  _parsed_project="$(awk -F'"' '/^project[[:space:]]*=/ {print $2; exit}' "$VAR_FILE")"
+  [[ -n "$_parsed_project" ]] && ECR_REPO_NAME="${_parsed_project}/api"
+  info "Ensuring ECR repository exists ($ECR_REPO_NAME)"
+  if ! tf state show aws_ecr_repository.api >/dev/null 2>&1; then
+    if aws ecr describe-repositories --repository-names "$ECR_REPO_NAME" \
+        --region "$REGION" >/dev/null 2>&1; then
+      info "ECR repo already exists in AWS — importing into workspace state"
+      tf import "${tf_var_args[@]}" -var="image_tag=$IMAGE_TAG" \
+        aws_ecr_repository.api "$ECR_REPO_NAME" >/dev/null
+    fi
+  fi
   tf apply "${tf_var_args[@]}" -var="image_tag=$IMAGE_TAG" \
     -target=aws_ecr_repository.api -auto-approve >/dev/null
 fi

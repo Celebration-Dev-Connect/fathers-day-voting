@@ -1,0 +1,42 @@
+# Copy to perf.tfvars and adjust. Prod-sized, disposable PERF stack.
+# Deploy and run load tests with:
+#   ./infra/perf-test-aws.sh --profile carshow
+#
+# This environment is intentionally ephemeral — deploy, test, destroy.
+# It runs full prod-sized resources so load test results reflect event-day behaviour.
+# No DNS or CloudFront setup required; the orchestration script targets the ALB
+# URL (http://...) directly.
+
+region      = "ca-central-1"
+project     = "carshow"
+environment = "perf"
+domain      = "carshow-perf.chasesspace.com"
+db_username = "carshow"
+
+# Leave empty — the orchestration script targets the ALB URL directly (no DNS needed).
+route53_zone_id = ""
+
+# ── Prod-equivalent resources ──
+ecs_cpu               = "1024"
+ecs_memory            = "2048"
+ecs_min_size          = 2
+ecs_max_size          = 5
+rds_instance_class    = "db.t3.medium"
+rds_allocated_storage = 20
+rds_backup_retention  = 0
+
+# ── Perf behavior ──
+skip_cloudfront   = true   # skip CloudFront, OAC, CF functions (~15 min faster deploy, no ACM cert needed)
+enable_dev_login  = true   # required: orchestration script uses dev-login to fetch fixtures
+run_seed          = true   # seed demo data on first boot
+teardown_friendly = true   # allows single-command destroy (no final snapshot, no deletion protection)
+
+image_tag = "latest"
+
+# ── Planning Center OAuth (leave blank — dev-login is used instead) ──
+pco_client_id     = ""
+pco_client_secret = ""
+pco_callback_url  = ""
+pco_team_name     = "carshow"
+admin_web_url     = ""
+judge_web_url     = ""

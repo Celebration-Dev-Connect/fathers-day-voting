@@ -44,18 +44,21 @@ resource "aws_s3_bucket_lifecycle_configuration" "photos" {
 }
 
 data "aws_iam_policy_document" "photos_bucket" {
-  statement {
-    sid       = "AllowCloudFrontReadPublicPrefix"
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.photos.arn}/public/*"]
-    principals {
-      type        = "Service"
-      identifiers = ["cloudfront.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "AWS:SourceArn"
-      values   = [aws_cloudfront_distribution.main.arn]
+  dynamic "statement" {
+    for_each = var.skip_cloudfront ? [] : [1]
+    content {
+      sid       = "AllowCloudFrontReadPublicPrefix"
+      actions   = ["s3:GetObject"]
+      resources = ["${aws_s3_bucket.photos.arn}/public/*"]
+      principals {
+        type        = "Service"
+        identifiers = ["cloudfront.amazonaws.com"]
+      }
+      condition {
+        test     = "StringEquals"
+        variable = "AWS:SourceArn"
+        values   = [aws_cloudfront_distribution.main[0].arn]
+      }
     }
   }
 
@@ -105,23 +108,27 @@ resource "aws_s3_bucket_ownership_controls" "admin_web" {
 }
 
 data "aws_iam_policy_document" "admin_web_bucket" {
-  statement {
-    sid       = "AllowCloudFrontRead"
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.admin_web.arn}/*"]
-    principals {
-      type        = "Service"
-      identifiers = ["cloudfront.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "AWS:SourceArn"
-      values   = [aws_cloudfront_distribution.main.arn]
+  dynamic "statement" {
+    for_each = var.skip_cloudfront ? [] : [1]
+    content {
+      sid       = "AllowCloudFrontRead"
+      actions   = ["s3:GetObject"]
+      resources = ["${aws_s3_bucket.admin_web.arn}/*"]
+      principals {
+        type        = "Service"
+        identifiers = ["cloudfront.amazonaws.com"]
+      }
+      condition {
+        test     = "StringEquals"
+        variable = "AWS:SourceArn"
+        values   = [aws_cloudfront_distribution.main[0].arn]
+      }
     }
   }
 }
 
 resource "aws_s3_bucket_policy" "admin_web" {
+  count      = var.skip_cloudfront ? 0 : 1
   bucket     = aws_s3_bucket.admin_web.id
   policy     = data.aws_iam_policy_document.admin_web_bucket.json
   depends_on = [aws_s3_bucket_public_access_block.admin_web]
@@ -153,23 +160,27 @@ resource "aws_s3_bucket_ownership_controls" "judge_web" {
 }
 
 data "aws_iam_policy_document" "judge_web_bucket" {
-  statement {
-    sid       = "AllowCloudFrontRead"
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.judge_web.arn}/*"]
-    principals {
-      type        = "Service"
-      identifiers = ["cloudfront.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "AWS:SourceArn"
-      values   = [aws_cloudfront_distribution.main.arn]
+  dynamic "statement" {
+    for_each = var.skip_cloudfront ? [] : [1]
+    content {
+      sid       = "AllowCloudFrontRead"
+      actions   = ["s3:GetObject"]
+      resources = ["${aws_s3_bucket.judge_web.arn}/*"]
+      principals {
+        type        = "Service"
+        identifiers = ["cloudfront.amazonaws.com"]
+      }
+      condition {
+        test     = "StringEquals"
+        variable = "AWS:SourceArn"
+        values   = [aws_cloudfront_distribution.main[0].arn]
+      }
     }
   }
 }
 
 resource "aws_s3_bucket_policy" "judge_web" {
+  count      = var.skip_cloudfront ? 0 : 1
   bucket     = aws_s3_bucket.judge_web.id
   policy     = data.aws_iam_policy_document.judge_web_bucket.json
   depends_on = [aws_s3_bucket_public_access_block.judge_web]
@@ -201,23 +212,27 @@ resource "aws_s3_bucket_ownership_controls" "public_web" {
 }
 
 data "aws_iam_policy_document" "public_web_bucket" {
-  statement {
-    sid       = "AllowCloudFrontRead"
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.public_web.arn}/*"]
-    principals {
-      type        = "Service"
-      identifiers = ["cloudfront.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "AWS:SourceArn"
-      values   = [aws_cloudfront_distribution.main.arn]
+  dynamic "statement" {
+    for_each = var.skip_cloudfront ? [] : [1]
+    content {
+      sid       = "AllowCloudFrontRead"
+      actions   = ["s3:GetObject"]
+      resources = ["${aws_s3_bucket.public_web.arn}/*"]
+      principals {
+        type        = "Service"
+        identifiers = ["cloudfront.amazonaws.com"]
+      }
+      condition {
+        test     = "StringEquals"
+        variable = "AWS:SourceArn"
+        values   = [aws_cloudfront_distribution.main[0].arn]
+      }
     }
   }
 }
 
 resource "aws_s3_bucket_policy" "public_web" {
+  count      = var.skip_cloudfront ? 0 : 1
   bucket     = aws_s3_bucket.public_web.id
   policy     = data.aws_iam_policy_document.public_web_bucket.json
   depends_on = [aws_s3_bucket_public_access_block.public_web]

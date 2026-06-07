@@ -1267,6 +1267,109 @@ textarea:focus {
   margin-top: 40px;
 }
 
+.setup-description {
+  max-width: 760px;
+  color: var(--muted-grey);
+  line-height: 1.5;
+}
+
+.import-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.import-rule-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.import-rule-card label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted-grey);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.import-year-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.csv-preview {
+  margin: 16px 0;
+  border: 2px solid var(--border-grey);
+  background: var(--pure-white);
+}
+
+.csv-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-grey);
+}
+
+.csv-preview-header h2,
+.csv-preview-header p {
+  margin: 0;
+}
+
+.csv-preview-header span,
+.csv-preview-table td span {
+  display: block;
+  color: var(--muted-grey);
+  font-size: 13px;
+}
+
+.csv-preview-table-wrap {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.csv-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.csv-preview-table th,
+.csv-preview-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-grey);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.csv-preview-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--light-grey);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.csv-row-unresolved {
+  background: #fff8e7;
+}
+
+.csv-category-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9a6700;
+}
+
+.csv-category-select select {
+  min-width: 180px;
+}
+
 .category-card {
   min-height: 96px;
   padding: 16px;
@@ -1665,6 +1768,7 @@ textarea:focus {
   .photo-review-facts,
   .registrations-layout,
   .category-grid,
+  .import-rule-grid,
   .judge-completion-grid,
   .tally-grid,
   .voting-settings {
@@ -1684,6 +1788,16 @@ textarea:focus {
 
   .app-shell {
     display: block;
+  }
+
+  .csv-preview-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .csv-preview-header .header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .sidebar {

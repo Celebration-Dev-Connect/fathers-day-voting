@@ -118,12 +118,37 @@ function parseRegistrationCsv(text: string) {
   });
 }
 
-function categoryNameForCsvRow(row: CsvRegistrationRow) {
-  if (row.vehicleType.includes("bike") || row.vehicleType.includes("motorcycle")) return "Motorbike";
-  if (row.vehicleType.includes("van") || row.vehicleType.includes("suv")) return "Van/SUV";
-  if (row.vehicleType.includes("truck")) return "Truck";
-  if (row.vehicleType.includes("custom")) return "Custom";
-  return row.year < 2000 ? "Classic Car" : "Modern Car";
+type ImportCategory = {
+  id: string;
+  name: string;
+  importIdentifier: string | null;
+  importYearMin: number | null;
+  importYearMax: number | null;
+};
+
+function matchingCategoriesForCsvRow(row: CsvRegistrationRow, categories: ImportCategory[]) {
+  return categories.filter((category) => {
+    if (!category.importIdentifier || category.importIdentifier !== row.vehicleType) return false;
+    if (category.importYearMin !== null && row.year < category.importYearMin) return false;
+    if (category.importYearMax !== null && row.year > category.importYearMax) return false;
+    return true;
+  });
+}
+
+function parseCsvOrBadRequest(app: FastifyInstance, csvText: string) {
+  let rows: CsvRegistrationRow[];
+  try {
+    rows = parseRegistrationCsv(csvText.replace(/^\uFEFF/, ""));
+  } catch (error) {
+    throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Could not parse CSV");
+  }
+  if (!rows.length) throw app.httpErrors.badRequest("CSV has no registration rows");
+  const rowNumbers = new Set<number>();
+  for (const row of rows) {
+    if (rowNumbers.has(row.entryNumber)) throw app.httpErrors.badRequest(`CSV has duplicate entry ${row.entryNumber}`);
+    rowNumbers.add(row.entryNumber);
+  }
+  return rows;
 }
 
 function importNotesForCsvRow(row: CsvRegistrationRow) {
@@ -283,53 +308,53 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
     return { registration: registrationResponse(registration) };
   });
 
+  app.post("/registrations/import-csv/preview", async (request) => {
+    const staff = await requireStaff(app, request);
+    if (staff.role !== StaffRole.ADMIN) throw app.httpErrors.forbidden("Only admins can import registrations");
+    const body = z.object({ csvText: z.string().min(1) }).parse(request.body);
+    const rows = parseCsvOrBadRequest(app, body.csvText);
+    const categories = await prisma.category.findMany({
+      where: { eventId },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    });
+
+    return {
+      rows: rows.map((row) => {
+        const matches = matchingCategoriesForCsvRow(row, categories);
+        return {
+          entryNumber: row.entryNumber,
+          ownerName: `${row.firstName} ${row.lastName}`.trim(),
+          vehicleType: row.vehicleType,
+          year: row.year,
+          vehicleName: `${row.year} ${row.make} ${row.model}`.trim(),
+          matchedCategoryIds: matches.map((category) => category.id),
+          status: matches.length === 1 ? "MATCHED" : matches.length === 0 ? "UNMATCHED" : "CONFLICT",
+        };
+      }),
+    };
+  });
+
   app.post("/registrations/import-csv", async (request, reply) => {
     const staff = await requireStaff(app, request);
     if (staff.role !== StaffRole.ADMIN) throw app.httpErrors.forbidden("Only admins can import registrations");
-
-    const file = await request.file();
-    if (!file) throw app.httpErrors.badRequest("No CSV file provided");
-    if (file.mimetype && !["text/csv", "application/vnd.ms-excel", "application/octet-stream"].includes(file.mimetype)) {
-      throw app.httpErrors.unsupportedMediaType("Upload a CSV file");
-    }
-
-    const csvText = (await file.toBuffer()).toString("utf8").replace(/^\uFEFF/, "");
-    let rows: CsvRegistrationRow[];
-    try {
-      rows = parseRegistrationCsv(csvText);
-    } catch (error) {
-      throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Could not parse CSV");
-    }
-    if (!rows.length) throw app.httpErrors.badRequest("CSV has no registration rows");
+    const body = z
+      .object({
+        csvText: z.string().min(1),
+        categoryAssignments: z.record(z.string(), z.string()),
+      })
+      .parse(request.body);
+    const rows = parseCsvOrBadRequest(app, body.csvText);
 
     const categories = await prisma.category.findMany({ where: { eventId } });
-    const categoryByName = new Map(categories.map((category) => [category.name.toLowerCase(), category]));
-    const fallbackCategory = categoryByName.get("custom") ?? categories[0];
-    if (!fallbackCategory) throw app.httpErrors.badRequest("Create at least one category before importing");
-    if (rows.some((row) => categoryNameForCsvRow(row) === "Van/SUV") && !categoryByName.has("van/suv")) {
-      const sortOrder = categories.reduce((max, category) => Math.max(max, category.sortOrder), 0) + 1;
-      const vanSuvCategory = await prisma.category.upsert({
-        where: { eventId_slug: { eventId, slug: "van-suv" } },
-        update: { name: "Van/SUV", active: true },
-        create: {
-          eventId,
-          name: "Van/SUV",
-          slug: "van-suv",
-          active: true,
-          sortOrder,
-        },
-      });
-      categories.push(vanSuvCategory);
-      categoryByName.set(vanSuvCategory.name.toLowerCase(), vanSuvCategory);
-    }
+    const categoryById = new Map(categories.map((category) => [category.id, category]));
+    if (!categories.length) throw app.httpErrors.badRequest("Create at least one category before importing");
 
     const seedVehicleCount = await prisma.vehicleEntry.count({
       where: { eventId, id: { startsWith: "seed-vehicle-" } },
     });
-    const rowNumbers = new Set<number>();
     for (const row of rows) {
-      if (rowNumbers.has(row.entryNumber)) throw app.httpErrors.badRequest(`CSV has duplicate entry ${row.entryNumber}`);
-      rowNumbers.add(row.entryNumber);
+      const category = categoryById.get(body.categoryAssignments[String(row.entryNumber)]);
+      if (!category) throw app.httpErrors.badRequest(`Choose a category for entry ${row.entryNumber}`);
       registrationSchema.parse({
         owner: {
           firstName: row.firstName,
@@ -341,7 +366,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
           waiverAccepted: Boolean(row.signature),
         },
         vehicle: {
-          categoryId: (categoryByName.get(categoryNameForCsvRow(row).toLowerCase()) ?? fallbackCategory).id,
+          categoryId: category.id,
           year: row.year,
           make: row.make,
           model: row.model,
@@ -360,7 +385,8 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
       let created = 0;
       let updated = 0;
       for (const row of rows) {
-        const category = categoryByName.get(categoryNameForCsvRow(row).toLowerCase()) ?? fallbackCategory;
+        const category = categoryById.get(body.categoryAssignments[String(row.entryNumber)]);
+        if (!category) throw app.httpErrors.badRequest(`Choose a category for entry ${row.entryNumber}`);
         const existing = await tx.vehicleEntry.findUnique({
           where: { eventId_entryNumber: { eventId, entryNumber: row.entryNumber } },
           select: { id: true, ownerId: true },

@@ -1,8 +1,8 @@
-import { Plus, Upload } from "lucide-react";
+import { AlertTriangle, Check, Plus, Upload, X } from "lucide-react";
 import { Alert, Button, PageHeader, RegistrationRow, SearchBox } from "@carshow/carshow-components";
 import type { Category, Registration } from "@carshow/carshow-components";
 import { useRef, useState } from "react";
-import { importRegistrationsCsv } from "../api";
+import { importRegistrationsCsv, previewRegistrationsCsv, type RegistrationCsvPreviewRow } from "../api";
 import { RegistrationEditor } from "../organisms/RegistrationEditor";
 
 export function RegistrationsView({
@@ -26,6 +26,9 @@ export function RegistrationsView({
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
+  const [importCsvText, setImportCsvText] = useState("");
+  const [previewRows, setPreviewRows] = useState<RegistrationCsvPreviewRow[]>([]);
+  const [categoryAssignments, setCategoryAssignments] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function selectRegistration(registration: Registration) {
@@ -33,13 +36,44 @@ export function RegistrationsView({
     onSelect(selected?.id === registration.id ? null : registration);
   }
 
-  async function importCsv(file: File | null) {
+  async function previewCsv(file: File | null) {
     if (!file) return;
     setImporting(true);
     setImportMessage("");
     setImportError("");
     try {
-      const result = await importRegistrationsCsv(file);
+      const csvText = await file.text();
+      const result = await previewRegistrationsCsv(csvText);
+      setImportCsvText(csvText);
+      setPreviewRows(result.rows);
+      setCategoryAssignments(
+        Object.fromEntries(
+          result.rows
+            .filter((row) => row.matchedCategoryIds.length === 1)
+            .map((row) => [String(row.entryNumber), row.matchedCategoryIds[0]]),
+        ),
+      );
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Could not preview CSV");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function closePreview() {
+    setImportCsvText("");
+    setPreviewRows([]);
+    setCategoryAssignments({});
+  }
+
+  async function confirmImport() {
+    if (!importCsvText || previewRows.some((row) => !categoryAssignments[String(row.entryNumber)])) return;
+    setImporting(true);
+    setImportError("");
+    try {
+      const result = await importRegistrationsCsv(importCsvText, categoryAssignments);
+      closePreview();
       setShowNewEditor(false);
       onSelect(null);
       onRefresh();
@@ -48,7 +82,6 @@ export function RegistrationsView({
       setImportError(error instanceof Error ? error.message : "Could not import CSV");
     } finally {
       setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -66,7 +99,7 @@ export function RegistrationsView({
                 type="file"
                 accept=".csv,text/csv"
                 className="visually-hidden"
-                onChange={(event) => void importCsv(event.target.files?.[0] ?? null)}
+                onChange={(event) => void previewCsv(event.target.files?.[0] ?? null)}
               />
               <Button variant="secondary" disabled={importing} onClick={() => fileInputRef.current?.click()}>
                 <Upload size={20} />
@@ -86,6 +119,19 @@ export function RegistrationsView({
         />
         {importMessage ? <Alert variant="success">{importMessage}</Alert> : null}
         {importError ? <Alert variant="danger">{importError}</Alert> : null}
+        {previewRows.length ? (
+          <CsvImportPreview
+            categories={categories}
+            rows={previewRows}
+            assignments={categoryAssignments}
+            importing={importing}
+            onAssign={(entryNumber, categoryId) =>
+              setCategoryAssignments((current) => ({ ...current, [String(entryNumber)]: categoryId }))
+            }
+            onCancel={closePreview}
+            onConfirm={() => void confirmImport()}
+          />
+        ) : null}
         <SearchBox
           value={search}
           placeholder="Search owner, phone, plate, entry, QR..."
@@ -136,6 +182,90 @@ export function RegistrationsView({
           ))}
           {!registrations.length ? <div className="empty-state">No registrations found.</div> : null}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function CsvImportPreview({
+  categories,
+  rows,
+  assignments,
+  importing,
+  onAssign,
+  onCancel,
+  onConfirm,
+}: {
+  categories: Category[];
+  rows: RegistrationCsvPreviewRow[];
+  assignments: Record<string, string>;
+  importing: boolean;
+  onAssign: (entryNumber: number, categoryId: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const unresolved = rows.filter((row) => !assignments[String(row.entryNumber)]).length;
+  return (
+    <section className="csv-preview">
+      <div className="csv-preview-header">
+        <div>
+          <p className="eyebrow">Import Preview</p>
+          <h2>{rows.length} registrations</h2>
+          <span>{unresolved ? `${unresolved} need a category` : "All registrations are ready"}</span>
+        </div>
+        <div className="header-actions">
+          <Button variant="secondary" onClick={onCancel}>
+            <X size={18} />
+            Cancel
+          </Button>
+          <Button disabled={Boolean(unresolved) || importing} onClick={onConfirm}>
+            <Check size={18} />
+            {importing ? "Importing" : "Confirm Import"}
+          </Button>
+        </div>
+      </div>
+      <div className="csv-preview-table-wrap">
+        <table className="csv-preview-table">
+          <thead>
+            <tr>
+              <th>Entry</th>
+              <th>Vehicle</th>
+              <th>CSV Identifier</th>
+              <th>Category</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const assignment = assignments[String(row.entryNumber)] ?? "";
+              return (
+                <tr key={row.entryNumber} className={!assignment ? "csv-row-unresolved" : undefined}>
+                  <td>#{row.entryNumber}</td>
+                  <td>
+                    <strong>{row.vehicleName}</strong>
+                    <span>{row.ownerName}</span>
+                  </td>
+                  <td>
+                    <strong>{row.vehicleType}</strong>
+                    <span>{row.year}</span>
+                  </td>
+                  <td>
+                    <label className="csv-category-select">
+                      {!assignment ? <AlertTriangle size={16} /> : null}
+                      <select value={assignment} onChange={(event) => onAssign(row.entryNumber, event.target.value)}>
+                        <option value="">Choose category</option>
+                        {categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </section>
   );

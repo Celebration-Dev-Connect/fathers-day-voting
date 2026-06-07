@@ -16,6 +16,9 @@ const category = {
   slug: "muscle",
   active: true,
   sortOrder: 1,
+  importIdentifier: null,
+  importYearMin: null,
+  importYearMax: null,
   createdAt: new Date("2026-05-01T00:00:00.000Z"),
   updatedAt: new Date("2026-05-01T00:00:00.000Z"),
 } satisfies Category;

@@ -84,6 +84,9 @@ model Category {
   slug               String
   active             Boolean                  @default(true)
   sortOrder          Int                      @default(0)
+  importIdentifier   String?
+  importYearMin      Int?
+  importYearMax      Int?
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
   event              Event                    @relation(fields: [eventId], references: [id], onDelete: Cascade)

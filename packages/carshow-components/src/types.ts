@@ -14,6 +14,9 @@ export type Category = {
   slug: string;
   active: boolean;
   sortOrder: number;
+  importIdentifier?: string | null;
+  importYearMin?: number | null;
+  importYearMax?: number | null;
   _count?: {
     vehicleEntries: number;
     judgeCategoryPicks?: number;

@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { Alert, Button, CategoryCard, PageHeader } from "@carshow/carshow-components";
 import type { Category, SpecialAward, StaffUser } from "@carshow/carshow-components";
 import { FormEvent, useState } from "react";
@@ -105,6 +105,31 @@ export function CategoriesView({
         ))}
       </div>
       <div className="setup-section">
+        <PageHeader eyebrow="CSV Registration Import" title="Category Matching Rules" compact />
+        <p className="setup-description">
+          Match the CSV vehicle type identifier and optional inclusive year range to a category. Year ranges for the
+          same identifier cannot overlap.
+        </p>
+        <datalist id="csv-vehicle-identifiers">
+          <option value="car" />
+          <option value="truck" />
+          <option value="bike" />
+          <option value="van-suv" />
+          <option value="custom" />
+        </datalist>
+        <div className="import-rule-grid">
+          {categories.map((category) => (
+            <CategoryImportRule
+              key={category.id}
+              category={category}
+              canEdit={staff.role === "ADMIN"}
+              onSaved={onRefresh}
+              onError={setError}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="setup-section">
         <PageHeader eyebrow="Event-Wide Voting" title="Special Awards" />
         {staff.role === "ADMIN" ? (
           <form className="inline-form inline-form-stacked" onSubmit={addSpecialAward}>
@@ -140,6 +165,86 @@ export function CategoriesView({
         </div>
       </div>
     </section>
+  );
+}
+
+function CategoryImportRule({
+  category,
+  canEdit,
+  onSaved,
+  onError,
+}: {
+  category: Category;
+  canEdit: boolean;
+  onSaved: () => void;
+  onError: (message: string) => void;
+}) {
+  const [identifier, setIdentifier] = useState(category.importIdentifier ?? "");
+  const [yearMin, setYearMin] = useState(category.importYearMin?.toString() ?? "");
+  const [yearMax, setYearMax] = useState(category.importYearMax?.toString() ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function saveRule() {
+    setSaving(true);
+    onError("");
+    try {
+      await updateCategory(category.id, {
+        importIdentifier: identifier.trim().toLowerCase() || null,
+        importYearMin: yearMin ? Number(yearMin) : null,
+        importYearMax: yearMax ? Number(yearMax) : null,
+      });
+      onSaved();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Could not save import rule");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <article className="import-rule-card">
+      <strong>{category.name}</strong>
+      <label>
+        CSV identifier
+        <input
+          list="csv-vehicle-identifiers"
+          value={identifier}
+          disabled={!canEdit}
+          placeholder="Not matched"
+          onChange={(event) => setIdentifier(event.target.value)}
+        />
+      </label>
+      <div className="import-year-range">
+        <label>
+          Minimum year
+          <input
+            type="number"
+            min="1900"
+            max="2100"
+            value={yearMin}
+            disabled={!canEdit}
+            placeholder="Any"
+            onChange={(event) => setYearMin(event.target.value)}
+          />
+        </label>
+        <label>
+          Maximum year
+          <input
+            type="number"
+            min="1900"
+            max="2100"
+            value={yearMax}
+            disabled={!canEdit}
+            placeholder="Any"
+            onChange={(event) => setYearMax(event.target.value)}
+          />
+        </label>
+      </div>
+      <Button variant="secondary" disabled={!canEdit || saving} onClick={() => void saveRule()}>
+        <Save size={18} />
+        {saving ? "Saving" : "Save Rule"}
+      </Button>
+    </article>
   );
 }
 

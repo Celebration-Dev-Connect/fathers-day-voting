@@ -72,7 +72,10 @@ export async function createCategory(name: string) {
   });
 }
 
-export async function updateCategory(id: string, input: Partial<Pick<Category, "name" | "active">>) {
+export async function updateCategory(
+  id: string,
+  input: Partial<Pick<Category, "name" | "active" | "importIdentifier" | "importYearMin" | "importYearMax">>,
+) {
   return request<{ category: Category }>(`/categories/${id}`, {
     method: "PATCH",
     body: JSON.stringify(input),
@@ -140,9 +143,24 @@ export async function updateRegistration(id: string, payload: RegistrationPayloa
   });
 }
 
-export async function importRegistrationsCsv(file: File) {
-  const form = new FormData();
-  form.append("file", file);
+export type RegistrationCsvPreviewRow = {
+  entryNumber: number;
+  ownerName: string;
+  vehicleType: string;
+  year: number;
+  vehicleName: string;
+  matchedCategoryIds: string[];
+  status: "MATCHED" | "UNMATCHED" | "CONFLICT";
+};
+
+export async function previewRegistrationsCsv(csvText: string) {
+  return request<{ rows: RegistrationCsvPreviewRow[] }>("/registrations/import-csv/preview", {
+    method: "POST",
+    body: JSON.stringify({ csvText }),
+  });
+}
+
+export async function importRegistrationsCsv(csvText: string, categoryAssignments: Record<string, string>) {
   return request<{
     imported: number;
     created: number;
@@ -151,7 +169,7 @@ export async function importRegistrationsCsv(file: File) {
     message: string;
   }>("/registrations/import-csv", {
     method: "POST",
-    body: form,
+    body: JSON.stringify({ csvText, categoryAssignments }),
   });
 }
 

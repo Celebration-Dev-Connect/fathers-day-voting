@@ -1333,6 +1333,34 @@ textarea:focus {
   overflow: auto;
 }
 
+.csv-import-guide {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.csv-import-guide p {
+  margin: 6px 0 0;
+  color: var(--muted-grey);
+  line-height: 1.5;
+}
+
+.csv-rule-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.csv-rule-summary span {
+  border: 1px solid var(--border-grey);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--light-grey);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .csv-preview-table {
   width: 100%;
   border-collapse: collapse;

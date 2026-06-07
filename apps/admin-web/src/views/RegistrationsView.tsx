@@ -26,6 +26,7 @@ export function RegistrationsView({
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
+  const [showImportGuide, setShowImportGuide] = useState(false);
   const [importCsvText, setImportCsvText] = useState("");
   const [previewRows, setPreviewRows] = useState<RegistrationCsvPreviewRow[]>([]);
   const [categoryAssignments, setCategoryAssignments] = useState<Record<string, string>>({});
@@ -62,6 +63,7 @@ export function RegistrationsView({
   }
 
   function closePreview() {
+    setShowImportGuide(false);
     setImportCsvText("");
     setPreviewRows([]);
     setCategoryAssignments({});
@@ -101,7 +103,7 @@ export function RegistrationsView({
                 className="visually-hidden"
                 onChange={(event) => void previewCsv(event.target.files?.[0] ?? null)}
               />
-              <Button variant="secondary" disabled={importing} onClick={() => fileInputRef.current?.click()}>
+              <Button variant="secondary" disabled={importing} onClick={() => setShowImportGuide(true)}>
                 <Upload size={20} />
                 {importing ? "Importing" : "Import CSV"}
               </Button>
@@ -119,6 +121,13 @@ export function RegistrationsView({
         />
         {importMessage ? <Alert variant="success">{importMessage}</Alert> : null}
         {importError ? <Alert variant="danger">{importError}</Alert> : null}
+        {showImportGuide && !previewRows.length ? (
+          <CsvImportGuide
+            categories={categories}
+            onCancel={() => setShowImportGuide(false)}
+            onChooseFile={() => fileInputRef.current?.click()}
+          />
+        ) : null}
         {previewRows.length ? (
           <CsvImportPreview
             categories={categories}
@@ -181,6 +190,72 @@ export function RegistrationsView({
             </div>
           ))}
           {!registrations.length ? <div className="empty-state">No registrations found.</div> : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CsvImportGuide({
+  categories,
+  onCancel,
+  onChooseFile,
+}: {
+  categories: Category[];
+  onCancel: () => void;
+  onChooseFile: () => void;
+}) {
+  const mappedCategories = categories.filter((category) => category.importIdentifier);
+  return (
+    <section className="csv-preview">
+      <div className="csv-preview-header">
+        <div>
+          <p className="eyebrow">Before Importing</p>
+          <h2>Category Mapping Decision</h2>
+          <span>CSV rows are previewed first. Nothing is saved until you confirm the reviewed assignments.</span>
+        </div>
+        <div className="header-actions">
+          <Button variant="secondary" onClick={onCancel}>
+            <X size={18} />
+            Cancel
+          </Button>
+          <Button onClick={onChooseFile}>
+            <Upload size={18} />
+            Choose CSV
+          </Button>
+        </div>
+      </div>
+      <div className="csv-import-guide">
+        <div>
+          <strong>How a category is chosen</strong>
+          <p>
+            Each CSV vehicle type is matched against the Category Matching Rules. For car categories, the year range
+            decides whether a vehicle is Antique, Classic, Modern, or another configured category.
+          </p>
+        </div>
+        <div>
+          <strong>What happens after upload</strong>
+          <p>
+            The preview marks each row as matched, unmatched, or conflicting. Any row without a clear match must be
+            assigned by an admin before the import can continue.
+          </p>
+        </div>
+        <div>
+          <strong>Current matching rules</strong>
+          {mappedCategories.length ? (
+            <div className="csv-rule-summary">
+              {mappedCategories.map((category) => (
+                <span key={category.id}>
+                  {category.name}: {category.importIdentifier}
+                  {category.importYearMin || category.importYearMax
+                    ? `, ${category.importYearMin ?? "any"}-${category.importYearMax ?? "any"}`
+                    : ""}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p>No category matching rules are configured yet. Add them on the Categories page before importing.</p>
+          )}
         </div>
       </div>
     </section>

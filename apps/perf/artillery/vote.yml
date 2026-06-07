@@ -1,0 +1,37 @@
+config:
+  target: "http://localhost:4000"
+  processor: "./helpers.cjs"
+  phases:
+    - name: Warm-up
+      duration: 20
+      arrivalRate: 5
+    - name: Spike
+      # Simulates the "voting is open, scan your QR code" announcement moment.
+      duration: 30
+      arrivalRate: 5
+      rampTo: 50
+    - name: Sustained
+      duration: 60
+      arrivalRate: 20
+  ensure:
+    p99: 1200
+    # 5xx must be 0 — Prisma P2002 unique-constraint errors must always
+    # become 409 responses, never 500s. We don't cap 4xx here because
+    # 409 (duplicate vote) is expected for runs that reuse voterKey pools.
+    maxErrorRate: 5
+
+scenarios:
+  - name: "Vote submission"
+    beforeScenario: "setVoteVars"
+    flow:
+      # Each VU votes for one vehicle. voterKey is unique per VU so the
+      # 30/min rate limit (keyed by voterKey when body is parsed, IP otherwise)
+      # is never triggered. X-Forwarded-For is rotated via setVoteRequest as a
+      # defence against the IP fallback path in the keyGenerator.
+      # A 409 means the voterKey already voted in this category — expected
+      # when running the test multiple times without re-seeding voterKeys.
+      - post:
+          url: "/public/entries/{{ vehicleId }}/vote"
+          beforeRequest: "setVoteRequest"
+          json:
+            voterKey: "{{ voterKey }}"

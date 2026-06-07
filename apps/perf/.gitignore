@@ -1,0 +1,4 @@
+.env.perf
+reports/
+fixtures/seed-data.json
+node_modules/

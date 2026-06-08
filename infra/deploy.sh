@@ -262,10 +262,11 @@ if ! $SKIP_INFRA; then
       info "ECR repo already exists in AWS — importing into workspace state"
       tf import "${tf_var_args[@]}" -var="image_tag=$IMAGE_TAG" \
         aws_ecr_repository.api "$ECR_REPO_NAME" >/dev/null
+    else
+      tf apply "${tf_var_args[@]}" -var="image_tag=$IMAGE_TAG" \
+        -target=aws_ecr_repository.api -auto-approve >/dev/null
     fi
   fi
-  tf apply "${tf_var_args[@]}" -var="image_tag=$IMAGE_TAG" \
-    -target=aws_ecr_repository.api -auto-approve >/dev/null
 fi
 
 ECR_URL="$(tf output -raw ecr_repository_url 2>/dev/null)" \

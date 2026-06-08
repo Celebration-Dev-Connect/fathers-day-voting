@@ -1,12 +1,12 @@
 # ── Route 53 DNS automation ───────────────────────────────────────────────────
-# Active only when var.route53_zone_id is set (i.e. the domain is hosted in
-# Route 53 in this account). It creates the ACM validation record, blocks until
-# the certificate is issued, and points the domain at CloudFront — making the
-# whole stack a single apply. With external DNS (empty zone id) these resources
-# are skipped and you manage records manually.
+# Active only when var.route53_zone_id is set AND skip_cloudfront is false.
+# It creates the ACM validation record, blocks until the certificate is issued,
+# and points the domain at CloudFront — making the whole stack a single apply.
+# With external DNS (empty zone id) or skip_cloudfront = true these resources
+# are skipped and you manage records manually (or don't need them at all).
 
 locals {
-  manage_dns = var.route53_zone_id != ""
+  manage_dns = var.route53_zone_id != "" && !var.skip_cloudfront
 }
 
 # Validation CNAME(s) for the ACM certificate.
@@ -43,8 +43,8 @@ resource "aws_route53_record" "alias" {
   type    = "A"
 
   alias {
-    name                   = aws_cloudfront_distribution.main.domain_name
-    zone_id                = aws_cloudfront_distribution.main.hosted_zone_id
+    name                   = aws_cloudfront_distribution.main[0].domain_name
+    zone_id                = aws_cloudfront_distribution.main[0].hosted_zone_id
     evaluate_target_health = false
   }
 }

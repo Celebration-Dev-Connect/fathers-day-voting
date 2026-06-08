@@ -13,6 +13,7 @@ import type { TextModerator } from "./text/moderation/index.js";
 import { PhotoModerationWorker } from "./media/worker.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerCategoryRoutes } from "./routes/categories.js";
+import { registerInternalRoutes } from "./routes/internal.js";
 import { registerJudgingRoutes } from "./routes/judging.js";
 import { registerOwnerRoutes } from "./routes/owner.js";
 import { registerPhotosRoutes } from "./routes/photos.js";
@@ -62,6 +63,7 @@ export async function buildApp({ storage, moderator, textModerator }: AppDeps) {
   app.get("/health", async () => ({ ok: true }));
 
   await registerAuthRoutes(app);
+  await registerInternalRoutes(app);
   await registerCategoryRoutes(app);
   await registerVotingRoutes(app);
   await registerJudgingRoutes(app);

@@ -154,6 +154,17 @@ variable "judge_web_url" {
   default     = ""
 }
 
+variable "skip_cloudfront" {
+  description = <<-EOT
+    Skip CloudFront, OAC, and CF Functions. The ACM certificate is still created
+    but left unvalidated (harmless — it is never attached to anything). Use for
+    perf test stacks that target the ALB directly and don't need a public domain.
+    Saves ~10–15 min of CloudFront provisioning time per deploy.
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "image_tag" {
   description = <<-EOT
     ECR image tag for the ECS task definition.

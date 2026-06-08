@@ -12,9 +12,18 @@ resource "aws_secretsmanager_secret" "db_url" {
   }
 }
 
+locals {
+  # URL-encode the DB password so special chars don't break the connection string.
+  # % must be replaced first to avoid double-encoding.
+  db_password_url_encoded = replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(
+    random_password.db.result,
+    "%", "%25"), "#", "%23"), "@", "%40"), "?", "%3F"), "[", "%5B"), "]", "%5D"),
+    "&", "%26"), "=", "%3D"), "+", "%2B"), "/", "%2F"), "!", "%21")
+}
+
 resource "aws_secretsmanager_secret_version" "db_url" {
   secret_id     = aws_secretsmanager_secret.db_url.id
-  secret_string = "postgresql://${var.db_username}:${random_password.db.result}@${aws_db_instance.main.address}:5432/${var.project}?schema=public"
+  secret_string = "postgresql://${var.db_username}:${local.db_password_url_encoded}@${aws_db_instance.main.address}:5432/${var.project}?schema=public"
 }
 
 resource "aws_secretsmanager_secret" "jwt_secret" {

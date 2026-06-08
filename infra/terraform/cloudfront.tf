@@ -1,4 +1,8 @@
 # ── ACM certificate (must be in us-east-1 for CloudFront) ────────────────────
+# Always created so the ARN exists in state. When skip_cloudfront = true the
+# cert stays in PENDING_VALIDATION and is never attached to anything — that is
+# harmless. When skip_cloudfront = false, dns.tf handles validation (if
+# route53_zone_id is set) or you validate manually.
 
 resource "aws_acm_certificate" "main" {
   provider          = aws.us_east_1
@@ -15,14 +19,10 @@ resource "aws_acm_certificate" "main" {
   }
 }
 
-# Certificate validation: when var.route53_zone_id is set, Terraform creates the
-# validation record and waits for issuance automatically (see dns.tf). With
-# external DNS, add the records from output "acm_validation_records" at your
-# registrar and ensure the cert is issued before the distribution can build.
-
 # ── Shared OAC for all S3 origins ─────────────────────────────────────────────
 
 resource "aws_cloudfront_origin_access_control" "s3" {
+  count                             = var.skip_cloudfront ? 0 : 1
   name                              = "${var.project}-${var.environment}-s3"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
@@ -51,6 +51,7 @@ data "aws_cloudfront_origin_request_policy" "all_except_host" {
 # /api/* — strips the /api prefix before forwarding to App Runner so the
 # Fastify routes receive requests at / rather than /api/.
 resource "aws_cloudfront_function" "strip_api_prefix" {
+  count   = var.skip_cloudfront ? 0 : 1
   name    = "${var.project}-${var.environment}-strip-api-prefix"
   runtime = "cloudfront-js-2.0"
   publish = true
@@ -70,6 +71,7 @@ resource "aws_cloudfront_function" "strip_api_prefix" {
 # CloudFront shares one cache across all behaviors, so every SPA must use a
 # distinct fallback filename.
 resource "aws_cloudfront_function" "admin_routing" {
+  count   = var.skip_cloudfront ? 0 : 1
   name    = "${var.project}-${var.environment}-admin-routing"
   runtime = "cloudfront-js-2.0"
   publish = true
@@ -86,6 +88,7 @@ resource "aws_cloudfront_function" "admin_routing" {
 # /photos/* — rewrites /photos/<id> to /public/<id> to match the S3 key
 # layout used by the moderation pipeline (pending/ and public/ prefixes).
 resource "aws_cloudfront_function" "photos_prefix" {
+  count   = var.skip_cloudfront ? 0 : 1
   name    = "${var.project}-${var.environment}-photos-prefix"
   runtime = "cloudfront-js-2.0"
   publish = true
@@ -102,6 +105,7 @@ resource "aws_cloudfront_function" "photos_prefix" {
 # bucket root, then falls back to /judge.html for SPA client-side routing.
 # Unique fallback filename avoids the shared CloudFront cache key collision.
 resource "aws_cloudfront_function" "judge_routing" {
+  count   = var.skip_cloudfront ? 0 : 1
   name    = "${var.project}-${var.environment}-judge-routing"
   runtime = "cloudfront-js-2.0"
   publish = true
@@ -122,6 +126,7 @@ resource "aws_cloudfront_function" "judge_routing" {
 # /photos) are hard-rejected here so the public-web origin can never serve them,
 # even if the ordered behaviors somehow miss (belt-and-suspenders guard).
 resource "aws_cloudfront_function" "spa_routing" {
+  count   = var.skip_cloudfront ? 0 : 1
   name    = "${var.project}-${var.environment}-spa-routing"
   runtime = "cloudfront-js-2.0"
   publish = true
@@ -150,6 +155,7 @@ resource "aws_cloudfront_function" "spa_routing" {
 # ── Distribution ──────────────────────────────────────────────────────────────
 
 resource "aws_cloudfront_distribution" "main" {
+  count       = var.skip_cloudfront ? 0 : 1
   enabled     = true
   aliases     = [var.domain]
   comment     = "${var.project} ${var.environment}"
@@ -172,28 +178,28 @@ resource "aws_cloudfront_distribution" "main" {
   origin {
     origin_id                = "admin-web"
     domain_name              = aws_s3_bucket.admin_web.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
   }
 
   # Origin 3: Photos (S3) — CF function rewrites /photos/<id> → /public/<id>
   origin {
     origin_id                = "photos"
     domain_name              = aws_s3_bucket.photos.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
   }
 
   # Origin 4: Judge web SPA (S3)
   origin {
     origin_id                = "judge-web"
     domain_name              = aws_s3_bucket.judge_web.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
   }
 
   # Origin 5: Public web SPA (S3) — default origin
   origin {
     origin_id                = "public-web"
     domain_name              = aws_s3_bucket.public_web.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
   }
 
   # Behavior 1 (priority 1): /api/* → App Runner
@@ -208,7 +214,7 @@ resource "aws_cloudfront_distribution" "main" {
 
     function_association {
       event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.strip_api_prefix.arn
+      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
     }
   }
 
@@ -223,7 +229,7 @@ resource "aws_cloudfront_distribution" "main" {
 
     function_association {
       event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.admin_routing.arn
+      function_arn = aws_cloudfront_function.admin_routing[0].arn
     }
   }
 
@@ -238,7 +244,7 @@ resource "aws_cloudfront_distribution" "main" {
 
     function_association {
       event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.judge_routing.arn
+      function_arn = aws_cloudfront_function.judge_routing[0].arn
     }
   }
 
@@ -253,7 +259,7 @@ resource "aws_cloudfront_distribution" "main" {
 
     function_association {
       event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.photos_prefix.arn
+      function_arn = aws_cloudfront_function.photos_prefix[0].arn
     }
   }
 
@@ -267,7 +273,7 @@ resource "aws_cloudfront_distribution" "main" {
 
     function_association {
       event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.spa_routing.arn
+      function_arn = aws_cloudfront_function.spa_routing[0].arn
     }
   }
 

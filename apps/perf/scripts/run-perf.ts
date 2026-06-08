@@ -2,14 +2,16 @@
  * Orchestrates the full performance test suite:
  *   1. Fetch fixtures from the running API
  *   2. Run browse, vote, and upload scenarios
- *   3. Generate an HTML report for each
  *
  * Usage:
  *   TARGET_URL=http://localhost:4000 npm run perf --workspace @carshow/perf
+ *
+ * Results are written as JSON to apps/perf/reports/*.json.
+ * View them at https://app.artillery.io (drag-and-drop upload).
  */
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync } from 'fs';
+import { mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -56,14 +58,7 @@ for (const s of scenarios) {
   run(`${s.name} scenario`, `"${artilleryBin}" run ${target} --output ${s.out} ${s.yml}`);
 }
 
-console.log('\n── Generating HTML reports ──────────────────');
-for (const s of scenarios) {
-  if (existsSync(join(ROOT, s.out))) {
-    run(`Report: ${s.name}`, `"${artilleryBin}" report ${s.out}`);
-  }
-}
-
-console.log('\n✓ All scenarios complete. Open reports/*.html to review results.');
+console.log('\n✓ All scenarios complete. Results written to reports/*.json.');
 console.log('\nPost-run checklist:');
 console.log('  • Browse p99 should be flat during the sustained phase (no tail growth)');
 console.log('  • Vote scenario: 5xx rate must be 0%');

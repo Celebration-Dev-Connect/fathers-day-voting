@@ -1,17 +1,20 @@
-import { Car, CheckCircle2, Printer, QrCode } from "lucide-react";
+import { Car, CheckCircle2, Plus, Printer, QrCode } from "lucide-react";
 import { Alert, Button, Metric, PageHeader, QrPrintCard, chunk } from "@carshow/carshow-components";
 import type { QrCard } from "@carshow/carshow-components";
-import { useEffect, useState } from "react";
-import { listQrCards } from "../api";
+import { useCallback, useEffect, useState } from "react";
+import { generateQrCards, listQrCards } from "../api";
 import { PUBLIC_APP_URL } from "../config";
 
 export function QrCardsView() {
   const [qrCards, setQrCards] = useState<QrCard[]>([]);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [quantity, setQuantity] = useState(4);
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const loadQrCards = useCallback(() => {
     setLoading(true);
     setError("");
     listQrCards(status)
@@ -21,6 +24,26 @@ export function QrCardsView() {
       )
       .finally(() => setLoading(false));
   }, [status]);
+
+  useEffect(() => {
+    loadQrCards();
+  }, [loadQrCards]);
+
+  async function generate() {
+    setGenerating(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await generateQrCards(quantity);
+      setStatus("PRINTED");
+      setMessage(`Generated ${result.created} QR cards: ${result.firstCode} through ${result.lastCode}.`);
+      if (status === "PRINTED") loadQrCards();
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : "Could not generate QR cards");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   const availableCount = qrCards.filter((card) => card.status === "PRINTED").length;
   const assignedCount = qrCards.filter((card) => card.status === "ASSIGNED").length;
@@ -33,6 +56,21 @@ export function QrCardsView() {
           title="QR Cards"
           actions={
             <>
+              <label className="qr-quantity-field">
+                <span>Quantity</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={quantity}
+                  disabled={generating}
+                  onChange={(event) => setQuantity(Math.min(500, Math.max(1, Number(event.target.value) || 1)))}
+                />
+              </label>
+              <Button variant="secondary" disabled={generating} onClick={() => void generate()}>
+                <Plus size={20} />
+                {generating ? "Generating" : "Generate"}
+              </Button>
               <select
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
@@ -51,6 +89,7 @@ export function QrCardsView() {
             </>
           }
         />
+        {message ? <Alert variant="success">{message}</Alert> : null}
         {error ? <Alert variant="danger">{error}</Alert> : null}
         <div className="qr-summary">
           <Metric label="Loaded Cards" value={qrCards.length} icon={<QrCode />} />

@@ -257,6 +257,20 @@ textarea:focus {
   min-width: 160px;
 }
 
+.qr-quantity-field {
+  display: grid;
+  gap: 2px;
+  color: var(--muted-grey);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.qr-quantity-field input {
+  width: 90px;
+  min-height: 48px;
+}
+
 .primary-button,
 .secondary-button,
 .icon-button {

@@ -209,6 +209,13 @@ export async function listQrCards(status = "") {
   return request<{ qrCards: QrCard[] }>(`/qr-cards?${params.toString()}`);
 }
 
+export async function generateQrCards(quantity: number) {
+  return request<{ created: number; firstCode: string; lastCode: string }>("/qr-cards/generate", {
+    method: "POST",
+    body: JSON.stringify({ quantity }),
+  });
+}
+
 export async function lookupQrCard(code: string) {
   return request<{ qrCard: QrCard }>(`/qr-cards/${encodeURIComponent(code)}`);
 }

@@ -1,7 +1,8 @@
 import { QrCardStatus, VehicleStatus, prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { requireStaff } from "../auth.js";
+import { requireAdmin, requireStaff } from "../auth.js";
 import { eventId } from "../config.js";
 import { normalizeQrCode } from "../utils.js";
 
@@ -28,6 +29,34 @@ export async function registerQrCardRoutes(app: FastifyInstance) {
     });
 
     return { qrCards };
+  });
+
+  app.post("/qr-cards/generate", async (request, reply) => {
+    await requireAdmin(app, request);
+    const body = z.object({ quantity: z.number().int().min(1).max(500) }).parse(request.body);
+    const existingCards = await prisma.qrCard.findMany({
+      where: { eventId },
+      select: { visibleCode: true },
+    });
+    const highestNumber = existingCards.reduce((highest, card) => {
+      const match = /^C-(\d+)$/.exec(card.visibleCode);
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+    const printedAt = new Date();
+    const qrCards = Array.from({ length: body.quantity }, (_, index) => ({
+      eventId,
+      visibleCode: `C-${(highestNumber + index + 1).toString().padStart(3, "0")}`,
+      publicToken: `fd2026-${randomUUID()}`,
+      status: QrCardStatus.PRINTED,
+      printedAt,
+    }));
+
+    await prisma.qrCard.createMany({ data: qrCards });
+    return reply.code(201).send({
+      created: qrCards.length,
+      firstCode: qrCards[0].visibleCode,
+      lastCode: qrCards[qrCards.length - 1].visibleCode,
+    });
   });
 
   app.get("/qr-cards/:code", async (request) => {
@@ -168,4 +197,3 @@ export async function registerQrCardRoutes(app: FastifyInstance) {
     return { auditLogs };
   });
 }
-

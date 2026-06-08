@@ -12,9 +12,10 @@ config:
       arrivalRate: 5
   ensure:
     p99: 2500
-    # We spoof X-Forwarded-For across 20 IPs (12/min budget each = 240/min
-    # total headroom), so 429s should stay well under 2%. Higher than 2%
-    # means the IP rotation in helpers.js isn't working as expected.
+    # Each VU gets its own unique spoofed IP so its 12/min rate-limit budget
+    # is never shared with another VU. 429s should be 0%; any that appear
+    # indicate the X-Forwarded-For header is not reaching the API (e.g. a
+    # proxy is stripping or overwriting it).
     maxErrorRate: 2
 
 scenarios:

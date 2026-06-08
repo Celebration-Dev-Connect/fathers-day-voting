@@ -24,10 +24,9 @@ scenarios:
   - name: "Vote submission"
     beforeScenario: "setVoteVars"
     flow:
-      # Each VU votes for one vehicle. voterKey is unique per VU so the
-      # 30/min rate limit (keyed by voterKey when body is parsed, IP otherwise)
-      # is never triggered. X-Forwarded-For is rotated via setVoteRequest as a
-      # defence against the IP fallback path in the keyGenerator.
+      # Each VU uses a unique voterKey (primary key) AND a unique spoofed IP
+      # (fallback key). Neither key is ever shared between VUs, so the 30/min
+      # rate limit cannot fire regardless of which path the keyGenerator takes.
       # A 409 means the voterKey already voted in this category — expected
       # when running the test multiple times without re-seeding voterKeys.
       - post:

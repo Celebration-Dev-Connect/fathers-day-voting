@@ -135,6 +135,19 @@ PERF_JWT="$(printf '%s' "$LOGIN_RESP" | jq -r '.token')"
   || die "dev-login failed or returned no token. Response: $LOGIN_RESP"
 ok "JWT obtained"
 
+# ── Enable voting for the duration of the load test ───────────────────────────
+# The seed does not set votingOpen=true. Without this step the vote scenario
+# gets 403 on every request and never exercises the vote handler.
+# Set a far-future cutoff so the window doesn't close mid-test.
+info "Opening voting (cutoff: 2099-12-31T23:59:59Z)"
+VOTE_OPEN_RESP="$(curl -sf -X PATCH "$API_URL/voting/settings" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $PERF_JWT" \
+  -d '{"votingOpen":true,"peopleChoiceCutoff":"2099-12-31T23:59:59Z"}')"
+printf '%s\n' "$VOTE_OPEN_RESP" | jq -e '.event.votingOpen == true' >/dev/null \
+  || die "Failed to open voting. Response: $VOTE_OPEN_RESP"
+ok "Voting open"
+
 # ── Run load tests ─────────────────────────────────────────────────────────────
 bold ""
 bold "Step 3/3 — Run Artillery load tests"

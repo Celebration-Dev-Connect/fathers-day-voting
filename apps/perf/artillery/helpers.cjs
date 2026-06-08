@@ -44,10 +44,12 @@ const VOTER_POOL = Array.from(
   (_, i) => `perf-voter-${String(i).padStart(5, '0')}-${Date.now()}`
 );
 
-// Spread VUs across 50 fake IPs. This is the primary defence against IP-based
-// rate limiting on the vote endpoint — @fastify/rate-limit's keyGenerator reads
-// req.body.voterKey, but in some Fastify hook orderings the body may not be
-// parsed yet when the rate-limit preHandler fires, causing a fallback to IP.
+// Each VU gets its own unique fake IP — one VU = one visitor = one IP.
+// This prevents any shared rate-limit bucket across VUs, so no 429s can
+// accumulate even if the keyGenerator falls back to req.ip (e.g. the vote
+// endpoint's voterKey fallback when body parsing is unavailable).
+// spoofedIp supports up to 256*256 = 65536 unique addresses; well above
+// any realistic VU count.
 // trustProxy: true means Fastify honours X-Forwarded-For for request.ip.
 function spoofedIp(vuIndex) {
   return `10.1.${Math.floor(vuIndex / 256) % 256}.${vuIndex % 256}`;
@@ -74,10 +76,11 @@ module.exports.setVoteVars = function setVoteVars(userContext, events, done) {
   return done();
 };
 
-// beforeRequest hook used by vote.yml — rotates X-Forwarded-For across 50
-// fake IPs to stay within per-IP rate-limit budget.
+// beforeRequest hook used by vote.yml — sets a unique X-Forwarded-For per VU
+// so that, if the voterKey body fallback is ever triggered, each VU still has
+// its own IP bucket and cannot share rate-limit state with any other VU.
 module.exports.setVoteRequest = function setVoteRequest(requestParams, context, events, done) {
-  const ip = spoofedIp((context.vars._vuIndex || 0) % 50);
+  const ip = spoofedIp(context.vars._vuIndex || 0);
   requestParams.headers = Object.assign(requestParams.headers || {}, {
     'X-Forwarded-For': ip,
   });
@@ -93,8 +96,9 @@ module.exports.setUploadVars = function setUploadVars(userContext, events, done)
 };
 
 // beforeRequest hook for the upload POST — attaches the multipart body and
-// spoofs X-Forwarded-For so 20 VU groups each get their own rate-limit bucket
-// (12 uploads/min each = 240/min total headroom).
+// spoofs X-Forwarded-For with a unique IP per VU so each VU has its own
+// rate-limit bucket. The upload limit is 12/min per IP; with each VU making
+// exactly one request, no VU can ever exhaust its own budget.
 module.exports.attachMultipart = function attachMultipart(requestParams, context, events, done) {
   const form = new FormData();
   form.append('file', getImageBuffer(), {
@@ -102,11 +106,10 @@ module.exports.attachMultipart = function attachMultipart(requestParams, context
     contentType: 'image/jpeg',
   });
 
-  const ipBucket = (context.vars._vuIndex || 0) % 20;
   requestParams.headers = Object.assign(
     requestParams.headers || {},
     form.getHeaders(),
-    { 'X-Forwarded-For': `10.0.1.${ipBucket + 1}` }
+    { 'X-Forwarded-For': spoofedIp(context.vars._vuIndex || 0) }
   );
   requestParams.body = form;
   return done();

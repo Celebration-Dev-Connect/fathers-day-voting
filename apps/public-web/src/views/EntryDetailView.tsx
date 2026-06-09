@@ -78,7 +78,6 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
   return (
     <section className="special-award-vote-sections">
       <p className="eyebrow">Special Awards</p>
-      <h2>Vote across all categories</h2>
       {specialAwards.map((award) => {
         const draft = specialAwardDrafts[award.id];
         const submittedPick = specialAwardSubmitted[award.id];

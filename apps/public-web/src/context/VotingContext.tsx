@@ -13,6 +13,8 @@ import {
   getSubmitted,
   markCategorySubmitted,
   markSpecialAwardSubmitted,
+  moveSpecialAwardSubmittedToDraft,
+  moveSubmittedToDraft,
   setDraftPick,
   setSpecialAwardDraftPick,
 } from "../voter";
@@ -33,6 +35,8 @@ export interface VotingContextValue {
   clearSpecialAwardSelection: (specialAwardId: string) => void;
   submitVote: (categoryId: string) => Promise<void>;
   submitSpecialAward: (specialAwardId: string) => Promise<void>;
+  changeVote: (categoryId: string) => void;
+  changeSpecialAward: (specialAwardId: string) => void;
   isPanelOpen: boolean;
   openPanel: () => void;
   closePanel: () => void;
@@ -149,6 +153,20 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
     [specialAwardDrafts, voterKey],
   );
 
+  const changeVote = useCallback((categoryId: string) => {
+    const pick = moveSubmittedToDraft(categoryId);
+    if (!pick) return;
+    setSubmitted((prev) => { const next = { ...prev }; delete next[categoryId]; return next; });
+    setDrafts((prev) => ({ ...prev, [categoryId]: pick }));
+  }, []);
+
+  const changeSpecialAward = useCallback((specialAwardId: string) => {
+    const pick = moveSpecialAwardSubmittedToDraft(specialAwardId);
+    if (!pick) return;
+    setSpecialAwardSubmitted((prev) => { const next = { ...prev }; delete next[specialAwardId]; return next; });
+    setSpecialAwardDrafts((prev) => ({ ...prev, [specialAwardId]: pick }));
+  }, []);
+
   const openPanel = useCallback(() => setIsPanelOpen(true), []);
   const closePanel = useCallback(() => setIsPanelOpen(false), []);
   const togglePanel = useCallback(() => setIsPanelOpen((v) => !v), []);
@@ -157,12 +175,14 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
     () => ({
       voterKey, votingOpen, cutoffPassed, categories, specialAwards,
       drafts, submitted, specialAwardDrafts, specialAwardSubmitted,
-      select, selectSpecialAward, clearSelection, clearSpecialAwardSelection, submitVote, submitSpecialAward,
+      select, selectSpecialAward, clearSelection, clearSpecialAwardSelection,
+      submitVote, submitSpecialAward, changeVote, changeSpecialAward,
       isPanelOpen, openPanel, closePanel, togglePanel,
     }),
     [voterKey, votingOpen, cutoffPassed, categories, specialAwards, drafts, submitted,
       specialAwardDrafts, specialAwardSubmitted, select, selectSpecialAward, clearSelection,
-      clearSpecialAwardSelection, submitVote, submitSpecialAward, isPanelOpen, openPanel, closePanel, togglePanel],
+      clearSpecialAwardSelection, submitVote, submitSpecialAward, changeVote, changeSpecialAward,
+      isPanelOpen, openPanel, closePanel, togglePanel],
   );
 
   return <VotingContext.Provider value={value}>{children}</VotingContext.Provider>;

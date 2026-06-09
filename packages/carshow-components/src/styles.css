@@ -2289,6 +2289,12 @@ textarea:focus {
   color: #166534;
 }
 
+.vote-panel-locked-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .vote-panel-draft {
   display: grid;
   gap: 10px;
@@ -2504,8 +2510,9 @@ textarea:focus {
 }
 
 .special-award-description {
-  margin: 4px 0 0;
+  margin: -8px 0 12px;
   color: var(--muted-grey);
+  font-size: 12px;
   line-height: 1.45;
 }
 

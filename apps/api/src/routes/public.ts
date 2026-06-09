@@ -196,16 +196,11 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     if (!qrCard?.vehicleEntry) throw app.httpErrors.notFound("Vehicle not found");
     const vehicle = qrCard.vehicleEntry;
 
-    try {
-      await prisma.peopleChoiceVote.create({
-        data: { eventId, vehicleEntryId: vehicle.id, categoryId: vehicle.categoryId, voterKey: body.voterKey },
-      });
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw app.httpErrors.conflict(`You've already voted in the ${vehicle.category.name} category`);
-      }
-      throw err;
-    }
+    await prisma.peopleChoiceVote.upsert({
+      where: { eventId_categoryId_voterKey: { eventId, categoryId: vehicle.categoryId, voterKey: body.voterKey } },
+      create: { eventId, vehicleEntryId: vehicle.id, categoryId: vehicle.categoryId, voterKey: body.voterKey },
+      update: { vehicleEntryId: vehicle.id },
+    });
 
     return { ok: true, categoryName: vehicle.category.name };
   });
@@ -254,16 +249,11 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     });
     if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
 
-    try {
-      await prisma.peopleChoiceVote.create({
-        data: { eventId, vehicleEntryId: vehicle.id, categoryId: vehicle.categoryId, voterKey: body.voterKey },
-      });
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw app.httpErrors.conflict(`You've already voted in the ${vehicle.category.name} category`);
-      }
-      throw err;
-    }
+    await prisma.peopleChoiceVote.upsert({
+      where: { eventId_categoryId_voterKey: { eventId, categoryId: vehicle.categoryId, voterKey: body.voterKey } },
+      create: { eventId, vehicleEntryId: vehicle.id, categoryId: vehicle.categoryId, voterKey: body.voterKey },
+      update: { vehicleEntryId: vehicle.id },
+    });
 
     return { ok: true as const, categoryName: vehicle.category.name };
   });
@@ -311,21 +301,11 @@ export async function registerPublicRoutes(app: FastifyInstance) {
       if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
       if (!specialAward) throw app.httpErrors.notFound("Special award not found");
 
-      try {
-        await prisma.specialAwardVote.create({
-          data: {
-            eventId,
-            specialAwardId: specialAward.id,
-            vehicleEntryId: vehicle.id,
-            voterKey: body.voterKey,
-          },
-        });
-      } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-          throw app.httpErrors.conflict(`You've already voted for ${specialAward.name}`);
-        }
-        throw error;
-      }
+      await prisma.specialAwardVote.upsert({
+        where: { eventId_specialAwardId_voterKey: { eventId, specialAwardId: specialAward.id, voterKey: body.voterKey } },
+        create: { eventId, specialAwardId: specialAward.id, vehicleEntryId: vehicle.id, voterKey: body.voterKey },
+        update: { vehicleEntryId: vehicle.id },
+      });
 
       return { ok: true as const, specialAwardName: specialAward.name };
     },

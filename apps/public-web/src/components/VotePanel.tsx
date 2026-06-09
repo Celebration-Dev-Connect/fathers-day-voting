@@ -14,6 +14,8 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
     submitSpecialAward,
     clearSelection,
     clearSpecialAwardSelection,
+    changeVote,
+    changeSpecialAward,
   } = useVoting();
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -73,7 +75,7 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
             <h2 className="vote-panel-title">Your Ballot</h2>
             <p className="vote-panel-sub">
               {submittedCount > 0
-                ? `${submittedCount} of ${totalItems} votes locked in`
+                ? `${submittedCount} of ${totalItems} votes submitted`
                 : "Select category and special award picks, then submit here"}
             </p>
           </div>
@@ -82,7 +84,7 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
 
         {pendingCount > 0 && (
           <p className="vote-panel-hint">
-            You have {pendingCount} pending pick{pendingCount > 1 ? "s" : ""} — submit each to lock in your vote.
+            You have {pendingCount} pending pick{pendingCount > 1 ? "s" : ""} — submit each to record your vote.
           </p>
         )}
 
@@ -101,14 +103,22 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
                   <div className="vote-panel-locked">
                     <div className="vote-panel-locked-left">
                       <span className="vote-panel-check">✓</span>
-                      <span className="vote-panel-locked-label">Vote locked in!</span>
+                      <span className="vote-panel-locked-label">Vote submitted</span>
                     </div>
-                    <button
-                      className="vote-panel-browse-btn"
-                      onClick={() => { if (submittedPick?.entryNumber) navigate(`/browse/entry/${submittedPick.entryNumber}`); onClose(); }}
-                    >
-                      View →
-                    </button>
+                    <div className="vote-panel-locked-actions">
+                      <button
+                        className="vote-panel-clear-btn"
+                        onClick={() => changeVote(cat.id)}
+                      >
+                        Change
+                      </button>
+                      <button
+                        className="vote-panel-browse-btn"
+                        onClick={() => { if (submittedPick?.entryNumber) navigate(`/browse/entry/${submittedPick.entryNumber}`); onClose(); }}
+                      >
+                        View →
+                      </button>
+                    </div>
                   </div>
                 ) : draft ? (
                   <div className="vote-panel-draft">
@@ -155,23 +165,30 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
             return (
               <li key={award.id} className={`vote-panel-item special-award${isSubmitted ? " submitted" : ""}`}>
                 <p className="vote-panel-category">{award.name}</p>
-                <span className="vote-panel-item-kind">Special Award · All categories</span>
 
                 {isSubmitted ? (
                   <div className="vote-panel-locked">
                     <div className="vote-panel-locked-left">
                       <span className="vote-panel-check">✓</span>
-                      <span className="vote-panel-locked-label">Vote locked in!</span>
+                      <span className="vote-panel-locked-label">Vote submitted</span>
                     </div>
-                    <button
-                      className="vote-panel-browse-btn"
-                      onClick={() => {
-                        if (submittedPick?.entryNumber) navigate(`/browse/entry/${submittedPick.entryNumber}`);
-                        onClose();
-                      }}
-                    >
-                      View →
-                    </button>
+                    <div className="vote-panel-locked-actions">
+                      <button
+                        className="vote-panel-clear-btn"
+                        onClick={() => changeSpecialAward(award.id)}
+                      >
+                        Change
+                      </button>
+                      <button
+                        className="vote-panel-browse-btn"
+                        onClick={() => {
+                          if (submittedPick?.entryNumber) navigate(`/browse/entry/${submittedPick.entryNumber}`);
+                          onClose();
+                        }}
+                      >
+                        View →
+                      </button>
+                    </div>
                   </div>
                 ) : draft ? (
                   <div className="vote-panel-draft">

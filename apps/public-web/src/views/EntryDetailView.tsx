@@ -190,7 +190,7 @@ export function EntryDetailView() {
     return (
       <div className="public-content">
         <Alert variant="danger">{error}</Alert>
-        <button className="back-link" onClick={() => navigate(-1)}>← Back</button>
+        <Link to="/browse" className="back-link">← Back to browse</Link>
       </div>
     );
   }
@@ -201,7 +201,7 @@ export function EntryDetailView() {
 
   return (
     <div className="public-content">
-      <button className="back-link" onClick={() => navigate(-1)}>← Back</button>
+      <Link to="/browse" className="back-link">← Back to browse</Link>
       <VehicleProfileCard
         vehicle={vehicle}
         showVoting={false}

@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { requireAdmin, requireStaff } from "../auth.js";
 import { eventId } from "../config.js";
-import { normalizeQrCode, qrCodeLookupCandidates } from "../utils.js";
+import { normalizeQrCode } from "../utils.js";
 
 export async function registerQrCardRoutes(app: FastifyInstance) {
   app.get("/qr-cards", async (request) => {
@@ -39,9 +39,12 @@ export async function registerQrCardRoutes(app: FastifyInstance) {
       select: { visibleCode: true },
     });
     const highestNumber = existingCards.reduce((highest, card) => {
-      const match = /^(?:C-)?(\d+)$/.exec(card.visibleCode);
-      return match ? Math.max(highest, Number(match[1])) : highest;
+      const match = /^\d{4}$/.exec(card.visibleCode);
+      return match ? Math.max(highest, Number(match[0])) : highest;
     }, 0);
+    if (highestNumber + body.quantity > 9999) {
+      throw app.httpErrors.badRequest("QR card numbers are limited to four digits");
+    }
     const printedAt = new Date();
     const qrCards = Array.from({ length: body.quantity }, (_, index) => ({
       eventId,
@@ -63,11 +66,10 @@ export async function registerQrCardRoutes(app: FastifyInstance) {
     await requireStaff(app, request);
     const params = z.object({ code: z.string().trim().min(1) }).parse(request.params);
     const code = normalizeQrCode(params.code);
-    const visibleCodes = qrCodeLookupCandidates(code);
     const qrCard = await prisma.qrCard.findFirst({
       where: {
         eventId,
-        OR: [{ visibleCode: { in: visibleCodes } }, { publicToken: code }],
+        OR: [{ visibleCode: code }, { publicToken: code }],
       },
       include: {
         vehicleEntry: {
@@ -89,7 +91,6 @@ export async function registerQrCardRoutes(app: FastifyInstance) {
       })
       .parse(request.body);
     const code = normalizeQrCode(body.code);
-    const visibleCodes = qrCodeLookupCandidates(code);
 
     const result = await prisma.$transaction(async (tx) => {
       const vehicle = await tx.vehicleEntry.findFirst({
@@ -102,7 +103,7 @@ export async function registerQrCardRoutes(app: FastifyInstance) {
       const qrCard = await tx.qrCard.findFirst({
         where: {
           eventId,
-          OR: [{ visibleCode: { in: visibleCodes } }, { publicToken: code }],
+          OR: [{ visibleCode: code }, { publicToken: code }],
         },
       });
 

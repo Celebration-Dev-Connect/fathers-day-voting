@@ -19,12 +19,3 @@ export function normalizeQrCode(value: string) {
     return trimmed.replace(/\/$/, "");
   }
 }
-
-export function qrCodeLookupCandidates(value: string) {
-  const normalized = normalizeQrCode(value);
-  const match = /^(?:C-)?(\d+)$/i.exec(normalized);
-  if (!match) return [normalized];
-
-  const number = Number(match[1]);
-  return [number.toString().padStart(4, "0"), `C-${number.toString().padStart(3, "0")}`];
-}

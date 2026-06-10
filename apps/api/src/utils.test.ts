@@ -1,17 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { qrCodeLookupCandidates } from "./utils.js";
+import { normalizeQrCode } from "./utils.js";
 
-describe("qrCodeLookupCandidates", () => {
-  it("maps a printed four-digit number to the legacy visible code", () => {
-    assert.deepEqual(qrCodeLookupCandidates("0001"), ["0001", "C-001"]);
+describe("normalizeQrCode", () => {
+  it("keeps a four-digit card number unchanged", () => {
+    assert.equal(normalizeQrCode("0001"), "0001");
   });
 
-  it("maps a legacy visible code to the numeric card number", () => {
-    assert.deepEqual(qrCodeLookupCandidates("C-001"), ["0001", "C-001"]);
-  });
-
-  it("keeps scanned tokens unchanged", () => {
-    assert.deepEqual(qrCodeLookupCandidates("fd2026-token"), ["fd2026-token"]);
+  it("extracts a scanned public token from its URL", () => {
+    assert.equal(normalizeQrCode("https://example.com/v/fd2026-token"), "fd2026-token");
   });
 });

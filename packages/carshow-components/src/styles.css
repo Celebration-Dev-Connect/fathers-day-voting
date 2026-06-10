@@ -1263,7 +1263,7 @@ textarea:focus {
 .qr-print-card {
   min-height: 320px;
   background: var(--pure-white);
-  border: 2px solid var(--on-surface);
+  border: 2px solid #000;
   border-radius: 8px;
   padding: 14px;
   display: grid;

@@ -1,8 +1,10 @@
 import { Prisma, QrCardStatus, StaffRole, VehicleStatus, prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
+import sharp from "sharp";
 import { z } from "zod";
 import { requireStaff } from "../auth.js";
-import { eventId } from "../config.js";
+import { config, eventId } from "../config.js";
+import type { PhotoStorage } from "../media/storage/index.js";
 import { registrationSchema } from "../schemas/registration.js";
 import { ownerIdentityKey } from "../services/ownerIdentity.js";
 import { normalizeSearch } from "../utils.js";
@@ -25,6 +27,21 @@ type CsvRegistrationRow = {
   color: string;
   photoLink: string;
   signature: string;
+};
+
+type RegistrationRouteDeps = {
+  storage: PhotoStorage;
+};
+
+type ImportPhotoTarget = {
+  entryNumber: number;
+  vehicleEntryId: string;
+  photoLink: string;
+};
+
+type ImportedPhotoFailure = {
+  entryNumber: number;
+  reason: string;
 };
 
 async function nextEntryNumber() {
@@ -176,6 +193,288 @@ function importNotesForCsvRow(row: CsvRegistrationRow) {
     .join("\n");
 }
 
+function mergeCookies(jar: Map<string, string>, setCookieHeaders: string[]) {
+  for (const cookie of setCookieHeaders) {
+    const [pair] = cookie.split(";", 1);
+    const separator = pair.indexOf("=");
+    if (separator <= 0) continue;
+    const name = pair.slice(0, separator).trim();
+    const value = pair.slice(separator + 1).trim();
+    if (!name) continue;
+    jar.set(name, value);
+  }
+}
+
+function readSetCookieHeaders(response: Response) {
+  const headersWithSetCookie = response.headers as Headers & { getSetCookie?: () => string[] };
+  if (typeof headersWithSetCookie.getSetCookie === "function") return headersWithSetCookie.getSetCookie();
+  const setCookie = response.headers.get("set-cookie");
+  return setCookie ? [setCookie] : [];
+}
+
+function cookieHeader(jar: Map<string, string>) {
+  return Array.from(jar.entries())
+    .map(([name, value]) => `${name}=${value}`)
+    .join("; ");
+}
+
+function followRedirectLocation(response: Response, fromUrl: string) {
+  const location = response.headers.get("location");
+  if (!location) return null;
+  return new URL(location, fromUrl).toString();
+}
+
+async function getWithCookies(url: string, jar: Map<string, string>, timeoutMs = 20_000) {
+  let currentUrl = url;
+  for (let redirectCount = 0; redirectCount < 6; redirectCount += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const response = await fetch(currentUrl, {
+      method: "GET",
+      headers: cookieHeader(jar) ? { Cookie: cookieHeader(jar) } : {},
+      redirect: "manual",
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
+
+    mergeCookies(jar, readSetCookieHeaders(response));
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+    const nextUrl = followRedirectLocation(response, currentUrl);
+    if (!nextUrl) return response;
+    currentUrl = nextUrl;
+  }
+
+  throw new Error("Too many redirects while downloading photo");
+}
+
+async function loginWebGuide(app: FastifyInstance) {
+  const username = config.webGuide.username;
+  const password = config.webGuide.password;
+  if (!username || !password) return null;
+
+  const jar = new Map<string, string>();
+  const baseUrl = config.webGuide.baseUrl;
+  const loginUrl = `${baseUrl}/webguide/login`;
+
+  const openLoginPage = await getWithCookies(loginUrl, jar);
+  if (!openLoginPage.ok) {
+    throw app.httpErrors.badGateway(`Could not open WebGuide login page (HTTP ${openLoginPage.status})`);
+  }
+
+  const formData = new URLSearchParams({
+    email: username,
+    password,
+    submit: "Log In",
+  });
+
+  const loginResponse = await fetch(loginUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      ...(cookieHeader(jar) ? { Cookie: cookieHeader(jar) } : {}),
+    },
+    body: formData.toString(),
+    redirect: "manual",
+  });
+  mergeCookies(jar, readSetCookieHeaders(loginResponse));
+  if (![200, 301, 302, 303].includes(loginResponse.status)) {
+    throw app.httpErrors.badGateway(`WebGuide login failed (HTTP ${loginResponse.status})`);
+  }
+
+  const redirected = followRedirectLocation(loginResponse, loginUrl);
+  if (redirected) {
+    const redirectedResponse = await getWithCookies(redirected, jar);
+    if (!redirectedResponse.ok) {
+      throw app.httpErrors.badGateway(`WebGuide login redirect failed (HTTP ${redirectedResponse.status})`);
+    }
+  }
+
+  return { jar, allowedHost: new URL(baseUrl).host };
+}
+
+function detectImageType(bytes: Buffer) {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return null;
+}
+
+function normalizeImageContentType(contentType: string | null, bytes: Buffer) {
+  const parsed = contentType?.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (parsed.startsWith("image/")) return parsed;
+  return detectImageType(bytes) ?? null;
+}
+
+async function downloadWebGuidePhoto(
+  app: FastifyInstance,
+  session: { jar: Map<string, string>; allowedHost: string },
+  target: ImportPhotoTarget,
+) {
+  let url: URL;
+  try {
+    url = new URL(target.photoLink);
+  } catch {
+    throw app.httpErrors.badRequest(`Entry ${target.entryNumber} has an invalid photo URL`);
+  }
+
+  if (url.protocol !== "https:" || url.host !== session.allowedHost) {
+    throw app.httpErrors.badRequest(
+      `Entry ${target.entryNumber} photo link must use https://${session.allowedHost}/form_file_download/...`,
+    );
+  }
+
+  const response = await getWithCookies(url.toString(), session.jar);
+  if (!response.ok) {
+    throw app.httpErrors.badGateway(`Entry ${target.entryNumber} photo download failed (HTTP ${response.status})`);
+  }
+
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (!bytes.length) throw app.httpErrors.badGateway(`Entry ${target.entryNumber} photo download returned no content`);
+  if (bytes.length > config.photos.maxBytes) {
+    throw app.httpErrors.payloadTooLarge(`Entry ${target.entryNumber} photo exceeds ${config.photos.maxBytes} bytes`);
+  }
+
+  const contentType = normalizeImageContentType(response.headers.get("content-type"), bytes);
+  if (!contentType) {
+    throw app.httpErrors.badGateway(`Entry ${target.entryNumber} photo URL did not return an image`);
+  }
+
+  return { bytes, contentType };
+}
+
+async function createApprovedPrimaryPhoto(
+  app: FastifyInstance,
+  deps: RegistrationRouteDeps,
+  staffId: string,
+  target: ImportPhotoTarget,
+  image: { bytes: Buffer; contentType: string },
+) {
+  const activeCount = await prisma.vehiclePhoto.count({
+    where: {
+      vehicleEntryId: target.vehicleEntryId,
+      moderationStatus: { in: ["PENDING", "PROCESSING", "HUMAN_REVIEW", "APPROVED"] },
+    },
+  });
+  if (activeCount >= config.photos.perVehicleCap) {
+    throw app.httpErrors.conflict(
+      `Entry ${target.entryNumber} already has the maximum number of photos (${config.photos.perVehicleCap})`,
+    );
+  }
+
+  let createdPhoto: { id: string } | null = null;
+  let finalStorageKey: string | null = null;
+  let webStorageKey: string | null = null;
+  let mediumStorageKey: string | null = null;
+  let thumbStorageKey: string | null = null;
+
+  try {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const last = await prisma.vehiclePhoto.findFirst({
+        where: { vehicleEntryId: target.vehicleEntryId },
+        orderBy: { sortOrder: "desc" },
+        select: { sortOrder: true },
+      });
+      try {
+        createdPhoto = await prisma.vehiclePhoto.create({
+          data: {
+            vehicleEntryId: target.vehicleEntryId,
+            sortOrder: (last?.sortOrder ?? 0) + 1,
+            contentType: image.contentType,
+            moderationStatus: "APPROVED",
+            uploadedBy: `staff:${staffId}`,
+            source: "STAFF",
+            processedAt: new Date(),
+          },
+          select: { id: true },
+        });
+        break;
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" && attempt < 2) continue;
+        throw error;
+      }
+    }
+
+    if (!createdPhoto) throw app.httpErrors.conflict(`Entry ${target.entryNumber} photo slot could not be allocated`);
+
+    await deps.storage.putPending(createdPhoto.id, image.bytes, image.contentType);
+
+    const [webVariant, mediumVariant, thumbVariant] = await Promise.all([
+      sharp(image.bytes).rotate().resize({ width: 1200, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer(),
+      sharp(image.bytes).rotate().resize(384, 288, { fit: "cover" }).webp({ quality: 82 }).toBuffer(),
+      sharp(image.bytes).rotate().resize(128, 128, { fit: "cover" }).webp({ quality: 80 }).toBuffer(),
+    ]);
+
+    const [{ storageKey: webKey }, { storageKey: mediumKey }, { storageKey: thumbKey }, { storageKey: publicKey }] =
+      await Promise.all([
+        deps.storage.putPublicVariant(createdPhoto.id, "web", webVariant, "image/webp"),
+        deps.storage.putPublicVariant(createdPhoto.id, "medium", mediumVariant, "image/webp"),
+        deps.storage.putPublicVariant(createdPhoto.id, "thumb", thumbVariant, "image/webp"),
+        deps.storage.moveToPublic(createdPhoto.id),
+      ]);
+
+    finalStorageKey = publicKey;
+    webStorageKey = webKey;
+    mediumStorageKey = mediumKey;
+    thumbStorageKey = thumbKey;
+
+    await prisma.$transaction([
+      prisma.vehiclePhoto.update({
+        where: { id: createdPhoto.id },
+        data: {
+          storageKey: finalStorageKey,
+          url: deps.storage.publicUrl(finalStorageKey),
+          webUrl: deps.storage.publicUrl(webStorageKey),
+          mediumUrl: deps.storage.publicUrl(mediumStorageKey),
+          thumbUrl: deps.storage.publicUrl(thumbStorageKey),
+          moderationStatus: "APPROVED",
+          processedAt: new Date(),
+        },
+      }),
+      prisma.vehicleEntry.update({
+        where: { id: target.vehicleEntryId },
+        data: { primaryPhotoId: createdPhoto.id },
+      }),
+    ]);
+  } catch (error) {
+    if (createdPhoto?.id) {
+      await prisma.vehiclePhoto.delete({ where: { id: createdPhoto.id } }).catch(() => {});
+      await deps.storage.deletePending(createdPhoto.id).catch(() => {});
+      await deps.storage.deleteStorageKey(`public/${createdPhoto.id}`).catch(() => {});
+      await deps.storage.deleteStorageKey(`public/${createdPhoto.id}-web`).catch(() => {});
+      await deps.storage.deleteStorageKey(`public/${createdPhoto.id}-medium`).catch(() => {});
+      await deps.storage.deleteStorageKey(`public/${createdPhoto.id}-thumb`).catch(() => {});
+      if (finalStorageKey) await deps.storage.deleteStorageKey(finalStorageKey).catch(() => {});
+      if (webStorageKey) await deps.storage.deleteStorageKey(webStorageKey).catch(() => {});
+      if (mediumStorageKey) await deps.storage.deleteStorageKey(mediumStorageKey).catch(() => {});
+      if (thumbStorageKey) await deps.storage.deleteStorageKey(thumbStorageKey).catch(() => {});
+    }
+    throw error;
+  }
+}
+
 function registrationResponse(registration: RegistrationPayload) {
   const photos = [...registration.photos].sort((a, b) => {
     if (a.id === registration.primaryPhotoId) return -1;
@@ -200,7 +499,7 @@ function registrationResponse(registration: RegistrationPayload) {
   };
 }
 
-export async function registerRegistrationRoutes(app: FastifyInstance) {
+export async function registerRegistrationRoutes(app: FastifyInstance, deps: RegistrationRouteDeps) {
   app.get("/registrations/metrics", async (request) => {
     await requireStaff(app, request);
 
@@ -469,6 +768,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
 
       let created = 0;
       let updated = 0;
+      const photoTargets: ImportPhotoTarget[] = [];
       const previousOwnerIds = new Set<string>();
       const existingOwners = await tx.owner.findMany({
         where: { vehicleEntries: { some: { eventId } } },
@@ -537,17 +837,34 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
             registeredByStaffId: staff.id,
           };
 
+          let vehicleEntryId: string;
+
           if (existing) {
-            await tx.vehicleEntry.update({ where: { id: existing.id }, data: vehicleData });
+            const updatedEntry = await tx.vehicleEntry.update({
+              where: { id: existing.id },
+              data: vehicleData,
+              select: { id: true },
+            });
+            vehicleEntryId = updatedEntry.id;
             updated += 1;
           } else {
-            await tx.vehicleEntry.create({
+            const createdEntry = await tx.vehicleEntry.create({
               data: {
                 eventId,
                 ...vehicleData,
               },
+              select: { id: true },
             });
+            vehicleEntryId = createdEntry.id;
             created += 1;
+          }
+
+          if (row.photoLink) {
+            photoTargets.push({
+              entryNumber: row.entryNumber,
+              vehicleEntryId,
+              photoLink: row.photoLink,
+            });
           }
         }
       }
@@ -557,16 +874,67 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
         if (remainingVehicles === 0) await tx.owner.delete({ where: { id: ownerId } });
       }
 
-      return { created, updated, replacedSeeded: seedVehicleCount };
+      return { created, updated, replacedSeeded: seedVehicleCount, photoTargets };
     });
 
+    const photoFailures: ImportedPhotoFailure[] = [];
+    let photosImported = 0;
+    if (result.photoTargets.length > 0) {
+      const hasWebGuideCreds = Boolean(config.webGuide.username && config.webGuide.password);
+      if (!hasWebGuideCreds) {
+        result.photoTargets.forEach((target) => {
+          photoFailures.push({
+            entryNumber: target.entryNumber,
+            reason: "WEBGUIDE_USERNAME/WEBGUIDE_PASSWORD are not configured",
+          });
+        });
+      } else {
+        let session: Awaited<ReturnType<typeof loginWebGuide>>;
+        try {
+          session = await loginWebGuide(app);
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : "WebGuide login failed";
+          result.photoTargets.forEach((target) => {
+            photoFailures.push({ entryNumber: target.entryNumber, reason });
+          });
+          session = null;
+        }
+
+        if (session) {
+          for (const target of result.photoTargets) {
+            try {
+              const image = await downloadWebGuidePhoto(app, session, target);
+              await createApprovedPrimaryPhoto(app, deps, staff.id, target, image);
+              photosImported += 1;
+            } catch (error) {
+              const reason = error instanceof Error ? error.message : "Photo import failed";
+              photoFailures.push({ entryNumber: target.entryNumber, reason });
+              app.log.warn({ err: error, entryNumber: target.entryNumber }, "could not import CSV photo");
+            }
+          }
+        }
+      }
+    }
+
+    const photoFailuresPreview = photoFailures.slice(0, 20);
+    const photoFailureSuffix = photoFailures.length > photoFailuresPreview.length ? " (first 20 shown)" : "";
+    const photoSummary = result.photoTargets.length
+      ? ` Photos: ${photosImported}/${result.photoTargets.length} imported${photoFailures.length ? `, ${photoFailures.length} failed${photoFailureSuffix}.` : "."}`
+      : "";
+
     return reply.code(202).send({
-      ...result,
+      created: result.created,
+      updated: result.updated,
+      replacedSeeded: result.replacedSeeded,
       imported: rows.length,
+      photosAttempted: result.photoTargets.length,
+      photosImported,
+      photosFailed: photoFailures.length,
+      photoFailures: photoFailuresPreview,
       message:
         result.replacedSeeded > 0
-          ? `Imported ${rows.length} registrations and removed ${result.replacedSeeded} seeded demo vehicles.`
-          : `Imported ${rows.length} registrations.`,
+          ? `Imported ${rows.length} registrations and removed ${result.replacedSeeded} seeded demo vehicles.${photoSummary}`
+          : `Imported ${rows.length} registrations.${photoSummary}`,
     });
   });
 

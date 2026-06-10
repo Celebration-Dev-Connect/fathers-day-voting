@@ -72,7 +72,7 @@ export async function buildApp({ storage, moderator, textModerator }: AppDeps) {
   await registerCategoryRoutes(app);
   await registerVotingRoutes(app);
   await registerJudgingRoutes(app);
-  await registerRegistrationRoutes(app);
+  await registerRegistrationRoutes(app, { storage });
   await registerQrCardRoutes(app);
   await registerOwnerRoutes(app, { textModerator });
   await registerPhotosRoutes(app, { storage, worker });

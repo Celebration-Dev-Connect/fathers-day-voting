@@ -2,8 +2,61 @@ import { AlertTriangle, Check, Plus, Upload, X } from "lucide-react";
 import { Alert, Button, PageHeader, RegistrationRow, SearchBox } from "@carshow/carshow-components";
 import type { Category, Registration } from "@carshow/carshow-components";
 import { useRef, useState } from "react";
-import { importRegistrationsCsv, previewRegistrationsCsv, type RegistrationCsvPreviewRow } from "../api";
+import { ApiError, importRegistrationsCsv, previewRegistrationsCsv, type RegistrationCsvPreviewRow } from "../api";
 import { RegistrationEditor } from "../organisms/RegistrationEditor";
+
+type CsvImportIssue = {
+  entryNumber?: number;
+  reason: string;
+};
+
+type CsvImportDetails = {
+  photosAttempted: number;
+  photosImported: number;
+  photosFailed: number;
+  issues: CsvImportIssue[];
+};
+
+async function copyLinesToClipboard(lines: string[]) {
+  const text = lines.join("\n");
+  await navigator.clipboard.writeText(text);
+}
+
+function extractCsvIssues(error: unknown): string[] {
+  if (!(error instanceof ApiError)) return [];
+  const details = error.details;
+  if (!details || typeof details !== "object") return [];
+
+  const list: string[] = [];
+  const asRecord = details as Record<string, unknown>;
+
+  const photoFailures = asRecord.photoFailures;
+  if (Array.isArray(photoFailures)) {
+    for (const failure of photoFailures) {
+      if (!failure || typeof failure !== "object") continue;
+      const entryNumber = (failure as Record<string, unknown>).entryNumber;
+      const reason = (failure as Record<string, unknown>).reason;
+      if (typeof reason === "string") {
+        list.push(typeof entryNumber === "number" ? `Entry ${entryNumber}: ${reason}` : reason);
+      }
+    }
+  }
+
+  const issues = asRecord.issues;
+  if (Array.isArray(issues)) {
+    for (const issue of issues) {
+      if (!issue || typeof issue !== "object") continue;
+      const path = (issue as Record<string, unknown>).path;
+      const message = (issue as Record<string, unknown>).message;
+      if (typeof message === "string") {
+        const prefix = Array.isArray(path) && path.length ? `${path.join(".")}: ` : "";
+        list.push(`${prefix}${message}`);
+      }
+    }
+  }
+
+  return list;
+}
 
 export function RegistrationsView({
   categories,
@@ -26,6 +79,9 @@ export function RegistrationsView({
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
+  const [importDetails, setImportDetails] = useState<CsvImportDetails | null>(null);
+  const [importErrorDetails, setImportErrorDetails] = useState<string[]>([]);
+  const [copyFeedback, setCopyFeedback] = useState("");
   const [showImportGuide, setShowImportGuide] = useState(false);
   const [importCsvText, setImportCsvText] = useState("");
   const [previewRows, setPreviewRows] = useState<RegistrationCsvPreviewRow[]>([]);
@@ -43,6 +99,9 @@ export function RegistrationsView({
     setImporting(true);
     setImportMessage("");
     setImportError("");
+    setImportErrorDetails([]);
+    setImportDetails(null);
+    setCopyFeedback("");
     try {
       const csvText = await file.text();
       const result = await previewRegistrationsCsv(csvText);
@@ -60,6 +119,7 @@ export function RegistrationsView({
       );
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "Could not preview CSV");
+      setImportErrorDetails(extractCsvIssues(error));
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -78,6 +138,9 @@ export function RegistrationsView({
     if (!importCsvText || previewRows.some((row) => !categoryAssignments[String(row.entryNumber)])) return;
     setImporting(true);
     setImportError("");
+    setImportErrorDetails([]);
+    setImportDetails(null);
+    setCopyFeedback("");
     try {
       const result = await importRegistrationsCsv(importCsvText, categoryAssignments, ownerGroupAssignments);
       closePreview();
@@ -85,8 +148,18 @@ export function RegistrationsView({
       onSelect(null);
       onRefresh();
       setImportMessage(result.message);
+      setImportDetails({
+        photosAttempted: result.photosAttempted,
+        photosImported: result.photosImported,
+        photosFailed: result.photosFailed,
+        issues: result.photoFailures.map((failure) => ({
+          entryNumber: failure.entryNumber,
+          reason: failure.reason,
+        })),
+      });
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "Could not import CSV");
+      setImportErrorDetails(extractCsvIssues(error));
     } finally {
       setImporting(false);
     }
@@ -125,7 +198,66 @@ export function RegistrationsView({
           }
         />
         {importMessage ? <Alert variant="success">{importMessage}</Alert> : null}
+        {importDetails && (importDetails.photosAttempted > 0 || importDetails.issues.length > 0) ? (
+          <Alert variant={importDetails.photosFailed > 0 ? "danger" : "success"}>
+            <strong>Imported photo links</strong>
+            <div>
+              {importDetails.photosImported} of {importDetails.photosAttempted} were imported and set as primary.
+            </div>
+            {importDetails.issues.length ? (
+              <>
+                <div className="header-actions">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      void copyLinesToClipboard(
+                        importDetails.issues.map((issue) =>
+                          issue.entryNumber ? `Entry ${issue.entryNumber}: ${issue.reason}` : issue.reason,
+                        ),
+                      )
+                        .then(() => setCopyFeedback("Photo errors copied"))
+                        .catch(() => setCopyFeedback("Could not copy photo errors"));
+                    }}
+                  >
+                    Copy errors
+                  </Button>
+                </div>
+                <ul>
+                  {importDetails.issues.map((issue, index) => (
+                    <li key={`${issue.entryNumber ?? "issue"}-${index}`}>
+                      {issue.entryNumber ? `Entry ${issue.entryNumber}: ` : ""}
+                      {issue.reason}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </Alert>
+        ) : null}
         {importError ? <Alert variant="danger">{importError}</Alert> : null}
+        {importErrorDetails.length ? (
+          <Alert variant="danger">
+            <strong>CSV import details</strong>
+            <div className="header-actions">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void copyLinesToClipboard(importErrorDetails)
+                    .then(() => setCopyFeedback("CSV errors copied"))
+                    .catch(() => setCopyFeedback("Could not copy CSV errors"));
+                }}
+              >
+                Copy errors
+              </Button>
+            </div>
+            <ul>
+              {importErrorDetails.map((detail, index) => (
+                <li key={`${detail}-${index}`}>{detail}</li>
+              ))}
+            </ul>
+          </Alert>
+        ) : null}
+        {copyFeedback ? <Alert variant="info">{copyFeedback}</Alert> : null}
         {showImportGuide && !previewRows.length ? (
           <CsvImportGuide
             categories={categories}

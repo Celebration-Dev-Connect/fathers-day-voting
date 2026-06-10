@@ -18,6 +18,18 @@ import { API_URL } from "./config";
 
 const tokenKey = "carshow-admin-token";
 
+export class ApiError extends Error {
+  readonly status: number;
+  readonly details: unknown;
+
+  constructor(message: string, status: number, details: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.details = details;
+  }
+}
+
 export function getToken() {
   return window.localStorage.getItem(tokenKey);
 }
@@ -45,7 +57,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.message ?? body.error ?? `Request failed with ${response.status}`);
+    throw new ApiError(body.message ?? body.error ?? `Request failed with ${response.status}`, response.status, body);
   }
 
   return response.json() as Promise<T>;
@@ -201,6 +213,10 @@ export async function importRegistrationsCsv(
     created: number;
     updated: number;
     replacedSeeded: number;
+    photosAttempted: number;
+    photosImported: number;
+    photosFailed: number;
+    photoFailures: Array<{ entryNumber: number; reason: string }>;
     message: string;
   }>("/registrations/import-csv", {
     method: "POST",

@@ -30,6 +30,7 @@ export function RegistrationsView({
   const [importCsvText, setImportCsvText] = useState("");
   const [previewRows, setPreviewRows] = useState<RegistrationCsvPreviewRow[]>([]);
   const [categoryAssignments, setCategoryAssignments] = useState<Record<string, string>>({});
+  const [ownerGroupAssignments, setOwnerGroupAssignments] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function selectRegistration(registration: Registration) {
@@ -54,6 +55,9 @@ export function RegistrationsView({
             .map((row) => [String(row.entryNumber), row.matchedCategoryIds[0]]),
         ),
       );
+      setOwnerGroupAssignments(
+        Object.fromEntries(result.rows.map((row) => [String(row.entryNumber), row.suggestedOwnerGroup])),
+      );
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "Could not preview CSV");
     } finally {
@@ -67,6 +71,7 @@ export function RegistrationsView({
     setImportCsvText("");
     setPreviewRows([]);
     setCategoryAssignments({});
+    setOwnerGroupAssignments({});
   }
 
   async function confirmImport() {
@@ -74,7 +79,7 @@ export function RegistrationsView({
     setImporting(true);
     setImportError("");
     try {
-      const result = await importRegistrationsCsv(importCsvText, categoryAssignments);
+      const result = await importRegistrationsCsv(importCsvText, categoryAssignments, ownerGroupAssignments);
       closePreview();
       setShowNewEditor(false);
       onSelect(null);
@@ -133,9 +138,16 @@ export function RegistrationsView({
             categories={categories}
             rows={previewRows}
             assignments={categoryAssignments}
+            ownerGroupAssignments={ownerGroupAssignments}
             importing={importing}
             onAssign={(entryNumber, categoryId) =>
               setCategoryAssignments((current) => ({ ...current, [String(entryNumber)]: categoryId }))
+            }
+            onToggleSeparateOwner={(row, separate) =>
+              setOwnerGroupAssignments((current) => ({
+                ...current,
+                [String(row.entryNumber)]: separate ? `entry:${row.entryNumber}` : row.suggestedOwnerGroup,
+              }))
             }
             onCancel={closePreview}
             onConfirm={() => void confirmImport()}
@@ -241,6 +253,13 @@ function CsvImportGuide({
           </p>
         </div>
         <div>
+          <strong>How owners are grouped</strong>
+          <p>
+            Rows are linked to one owner only when both normalized email and phone match. Names are never used for
+            matching. Multi-vehicle groups appear in the preview and can be split before import.
+          </p>
+        </div>
+        <div>
           <strong>Current matching rules</strong>
           {mappedCategories.length ? (
             <div className="csv-rule-summary">
@@ -266,16 +285,20 @@ function CsvImportPreview({
   categories,
   rows,
   assignments,
+  ownerGroupAssignments,
   importing,
   onAssign,
+  onToggleSeparateOwner,
   onCancel,
   onConfirm,
 }: {
   categories: Category[];
   rows: RegistrationCsvPreviewRow[];
   assignments: Record<string, string>;
+  ownerGroupAssignments: Record<string, string>;
   importing: boolean;
   onAssign: (entryNumber: number, categoryId: string) => void;
+  onToggleSeparateOwner: (row: RegistrationCsvPreviewRow, separate: boolean) => void;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -305,6 +328,7 @@ function CsvImportPreview({
             <tr>
               <th>Entry</th>
               <th>Vehicle</th>
+              <th>Owner grouping</th>
               <th>CSV Identifier</th>
               <th>Category</th>
             </tr>
@@ -318,6 +342,30 @@ function CsvImportPreview({
                   <td>
                     <strong>{row.vehicleName}</strong>
                     <span>{row.ownerName}</span>
+                  </td>
+                  <td>
+                    <strong>{row.ownerName}</strong>
+                    <span>{row.ownerEmail || "No email"} · {row.ownerPhone}</span>
+                    {row.existingOwner ? (
+                      <span>
+                        Will join {row.existingOwner.name} ({row.existingOwner.vehicleCount} existing vehicle
+                        {row.existingOwner.vehicleCount === 1 ? "" : "s"})
+                      </span>
+                    ) : row.suggestedOwnerGroupSize > 1 ? (
+                      <span>Grouped with {row.suggestedOwnerGroupSize - 1} other CSV vehicle(s)</span>
+                    ) : null}
+                    {row.suggestedOwnerGroupSize > 1 || row.existingOwner ? (
+                      <label className="csv-owner-split">
+                        <input
+                          type="checkbox"
+                          checked={ownerGroupAssignments[String(row.entryNumber)] === `entry:${row.entryNumber}`}
+                          onChange={(event) => onToggleSeparateOwner(row, event.target.checked)}
+                        />
+                        Keep as separate owner
+                      </label>
+                    ) : (
+                      <span>New separate owner</span>
+                    )}
                   </td>
                   <td>
                     <strong>{row.vehicleType}</strong>

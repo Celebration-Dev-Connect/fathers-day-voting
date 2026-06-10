@@ -257,12 +257,17 @@ textarea:focus {
   min-width: 160px;
 }
 
+.qr-cards-view .header-actions {
+  align-items: flex-end;
+}
+
 .qr-quantity-field {
   display: grid;
   gap: 2px;
   color: var(--muted-grey);
   font-size: 10px;
   font-weight: 800;
+  line-height: 1;
   text-transform: uppercase;
 }
 
@@ -495,6 +500,65 @@ textarea:focus {
 .checkbox-row input {
   min-height: 24px;
   width: 24px;
+}
+
+.existing-owner-picker {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-grey);
+  border-radius: 8px;
+  background: var(--light-grey);
+}
+
+.existing-owner-picker h3 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  text-transform: uppercase;
+}
+
+.existing-owner-search,
+.existing-owner-selected {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.existing-owner-selected {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 12px;
+  border: 1px solid var(--border-grey);
+  border-radius: 6px;
+  background: var(--pure-white);
+}
+
+.existing-owner-selected span,
+.existing-owner-results span {
+  display: block;
+  color: var(--muted-grey);
+  font-size: 12px;
+}
+
+.existing-owner-results {
+  display: grid;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.existing-owner-results button {
+  padding: 12px;
+  border: 1px solid var(--border-grey);
+  border-radius: 6px;
+  background: var(--pure-white);
+  color: var(--on-surface);
+  text-align: left;
+}
+
+.existing-owner-results button:hover {
+  border-color: var(--primary);
 }
 
 .action-strip {
@@ -1199,46 +1263,26 @@ textarea:focus {
 .qr-print-card {
   min-height: 320px;
   background: var(--pure-white);
-  border: 2px solid var(--border-grey);
-  border-top: 6px solid var(--primary);
+  border: 2px solid var(--on-surface);
   border-radius: 8px;
   padding: 14px;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   gap: 12px;
   page-break-inside: avoid;
 }
 
-.qr-print-card.assigned {
-  border-top-color: var(--success);
-}
-
-.qr-print-heading,
-.qr-print-footer {
+.qr-print-heading {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.qr-print-heading strong,
-.qr-print-heading span,
-.qr-print-footer span,
-.qr-print-footer small {
-  display: block;
-}
-
-.qr-print-heading strong {
-  font-size: 13px;
-  line-height: 1.1;
-  text-transform: uppercase;
-}
-
-.qr-print-heading span,
-.qr-print-footer small {
-  color: var(--muted-grey);
-  font-size: 11px;
-  line-height: 1.35;
-  word-break: break-word;
+.qr-print-logo {
+  width: 73px;
+  height: auto;
+  object-fit: contain;
 }
 
 .qr-print-heading b {
@@ -1257,17 +1301,6 @@ textarea:focus {
 
 .qr-placeholder {
   background: var(--light-grey);
-}
-
-.qr-print-footer {
-  align-items: end;
-}
-
-.qr-print-footer span {
-  color: var(--primary);
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
 }
 
 .category-grid {
@@ -1410,6 +1443,23 @@ textarea:focus {
 
 .csv-category-select select {
   min-width: 180px;
+}
+
+.csv-owner-split {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.csv-owner-split input {
+  width: 18px;
+  min-height: 18px;
 }
 
 .category-card {
@@ -1842,6 +1892,11 @@ textarea:focus {
     grid-template-columns: 1fr 1fr;
   }
 
+  .existing-owner-search,
+  .existing-owner-selected {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     position: static;
     min-height: 0;
@@ -2033,9 +2088,14 @@ textarea:focus {
   .print-page {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
     gap: 0.18in;
-    height: 9.75in;
+    width: 100%;
+    /* Leave room for browser print headers/footers within US Letter's 11in height. */
+    height: 9.35in;
+    overflow: hidden;
+    break-inside: avoid;
+    page-break-inside: avoid;
     break-after: page;
     page-break-after: always;
   }
@@ -2047,7 +2107,8 @@ textarea:focus {
 
   .qr-print-card {
     min-height: 0;
-    height: 100%;
+    height: auto;
+    max-height: 100%;
     box-shadow: none;
     border-radius: 8px;
     padding: 0.14in;
@@ -2059,29 +2120,16 @@ textarea:focus {
 
   .qr-print-card img,
   .qr-placeholder {
-    width: 2.3in;
+    width: 2in;
     max-width: 100%;
   }
 
-  .qr-print-footer {
-    min-height: 0.24in;
-  }
-
-  .qr-print-heading strong {
-    font-size: 12pt;
-  }
-
-  .qr-print-heading span,
-  .qr-print-footer small {
-    font-size: 8pt;
+  .qr-print-logo {
+    width: 0.63in;
   }
 
   .qr-print-heading b {
     font-size: 22pt;
-  }
-
-  .qr-print-footer span {
-    font-size: 8pt;
   }
 }
 

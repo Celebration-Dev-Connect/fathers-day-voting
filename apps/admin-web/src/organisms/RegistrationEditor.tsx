@@ -1,15 +1,18 @@
-import { Camera, CheckCircle2, ImagePlus, Loader2, Save, Star, Trash2 } from "lucide-react";
+import { Camera, CheckCircle2, ImagePlus, Loader2, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
 import { Alert, Button, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
 import type { Category, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   checkInRegistration,
   createRegistration,
+  createRegistrationForOwner,
   deleteRegistrationPhoto,
   getRegistration,
+  listOwners,
   setRegistrationPrimaryPhoto,
   updateRegistration,
   uploadRegistrationPhoto,
+  type OwnerSummary,
 } from "../api";
 import { QrAssignment } from "./QrAssignment";
 
@@ -59,6 +62,10 @@ export function RegistrationEditor({
   const [saving, setSaving] = useState(false);
   const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [ownerSearch, setOwnerSearch] = useState("");
+  const [ownerCandidates, setOwnerCandidates] = useState<OwnerSummary[]>([]);
+  const [selectedOwner, setSelectedOwner] = useState<OwnerSummary | null>(null);
+  const [searchingOwners, setSearchingOwners] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -92,7 +99,9 @@ export function RegistrationEditor({
     try {
       const result = registration
         ? await updateRegistration(registration.id, payload)
-        : await createRegistration(payload);
+        : selectedOwner
+          ? await createRegistrationForOwner(payload, selectedOwner.id)
+          : await createRegistration(payload);
       onSaved(result.registration);
       setMessage("Registration saved.");
     } catch (saveError) {
@@ -100,6 +109,42 @@ export function RegistrationEditor({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function searchExistingOwners() {
+    setSearchingOwners(true);
+    setError("");
+    try {
+      const result = await listOwners(ownerSearch);
+      setOwnerCandidates(result.owners);
+    } catch (searchError) {
+      setError(searchError instanceof Error ? searchError.message : "Owner search failed");
+    } finally {
+      setSearchingOwners(false);
+    }
+  }
+
+  function chooseExistingOwner(owner: OwnerSummary) {
+    setSelectedOwner(owner);
+    setOwnerCandidates([]);
+    setOwnerSearch("");
+    setPayload((current) => ({
+      ...current,
+      owner: {
+        firstName: owner.firstName,
+        lastName: owner.lastName,
+        phone: owner.phone,
+        email: owner.email ?? "",
+        publicName: owner.publicName ?? "",
+        publicNameOptIn: owner.publicNameOptIn,
+        waiverAccepted: owner.waiverAccepted,
+      },
+    }));
+  }
+
+  function clearExistingOwner() {
+    setSelectedOwner(null);
+    setPayload((current) => ({ ...current, owner: emptyPayload.owner }));
   }
 
   async function checkIn() {
@@ -195,14 +240,73 @@ export function RegistrationEditor({
         </Alert>
       ) : null}
 
+      {!registration ? (
+        <section className="existing-owner-picker">
+          <div>
+            <p className="eyebrow">Vehicle Owner</p>
+            <h3>{selectedOwner ? "Adding vehicle to existing owner" : "Create new owner or find existing"}</h3>
+          </div>
+          {selectedOwner ? (
+            <div className="existing-owner-selected">
+              <UserRound size={20} />
+              <div>
+                <strong>{selectedOwner.firstName} {selectedOwner.lastName}</strong>
+                <span>{selectedOwner.phone} · {selectedOwner.email || "No email"}</span>
+                <span>
+                  {selectedOwner.vehicleEntries.length} existing vehicle
+                  {selectedOwner.vehicleEntries.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <Button type="button" variant="secondary" onClick={clearExistingOwner}>
+                <X size={18} />
+                Use new owner
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="existing-owner-search">
+                <input
+                  value={ownerSearch}
+                  placeholder="Search by name, phone, or email"
+                  onChange={(event) => setOwnerSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void searchExistingOwners();
+                    }
+                  }}
+                />
+                <Button type="button" variant="secondary" disabled={searchingOwners} onClick={() => void searchExistingOwners()}>
+                  <Search size={18} />
+                  {searchingOwners ? "Searching" : "Find owner"}
+                </Button>
+              </div>
+              {ownerCandidates.length ? (
+                <div className="existing-owner-results">
+                  {ownerCandidates.map((owner) => (
+                    <button type="button" key={owner.id} onClick={() => chooseExistingOwner(owner)}>
+                      <strong>{owner.firstName} {owner.lastName}</strong>
+                      <span>{owner.phone} · {owner.email || "No email"}</span>
+                      <span>
+                        {owner.vehicleEntries.map((vehicle) => `#${vehicle.entryNumber} ${vehicle.year} ${vehicle.make} ${vehicle.model}`).join(", ")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
+        </section>
+      ) : null}
+
       <div className="form-grid">
         <label>
           First name *
-          <input value={payload.owner.firstName} onChange={(event) => updateOwner("firstName", event.target.value)} />
+          <input disabled={Boolean(selectedOwner)} value={payload.owner.firstName} onChange={(event) => updateOwner("firstName", event.target.value)} />
         </label>
         <label>
           Last name *
-          <input value={payload.owner.lastName} onChange={(event) => updateOwner("lastName", event.target.value)} />
+          <input disabled={Boolean(selectedOwner)} value={payload.owner.lastName} onChange={(event) => updateOwner("lastName", event.target.value)} />
         </label>
         <label>
           Phone *
@@ -212,18 +316,20 @@ export function RegistrationEditor({
             maxLength={12}
             pattern="\d{3}-\d{3}-\d{4}"
             placeholder="XXX-XXX-XXXX"
+            disabled={Boolean(selectedOwner)}
             onChange={(event) => updateOwner("phone", formatPhone(event.target.value))}
           />
         </label>
         <label>
           Email
-          <input value={payload.owner.email} onChange={(event) => updateOwner("email", event.target.value)} />
+          <input disabled={Boolean(selectedOwner)} value={payload.owner.email} onChange={(event) => updateOwner("email", event.target.value)} />
         </label>
       </div>
 
       <label className="checkbox-row">
         <input
           type="checkbox"
+          disabled={Boolean(selectedOwner)}
           checked={payload.owner.waiverAccepted}
           onChange={(event) => updateOwner("waiverAccepted", event.target.checked)}
         />

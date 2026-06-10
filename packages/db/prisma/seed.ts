@@ -165,7 +165,7 @@ async function main() {
   }
 
   for (let index = 1; index <= 150; index += 1) {
-    const visibleCode = `C-${index.toString().padStart(3, "0")}`;
+    const visibleCode = index.toString().padStart(4, "0");
     await prisma.qrCard.upsert({
       where: {
         eventId_visibleCode: {

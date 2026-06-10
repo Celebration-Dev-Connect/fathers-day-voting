@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireStaff } from "../auth.js";
 import { eventId } from "../config.js";
 import { registrationSchema } from "../schemas/registration.js";
+import { ownerIdentityKey } from "../services/ownerIdentity.js";
 import { normalizeSearch } from "../utils.js";
 
 type RegistrationPayload = Prisma.VehicleEntryGetPayload<{
@@ -38,6 +39,19 @@ async function nextEntryNumber() {
 
 function accessCodeForEntry(entryNumber: number) {
   return (entryNumber % 100000).toString().padStart(5, "0");
+}
+
+function ownerGroupForRow(row: CsvRegistrationRow) {
+  return ownerIdentityKey(row.email, row.phone);
+}
+
+function selectedOwnerGroup(row: CsvRegistrationRow, assignments: Record<string, string>) {
+  const suggested = ownerGroupForRow(row);
+  const selected = assignments[String(row.entryNumber)] ?? suggested;
+  if (selected !== suggested && selected !== `entry:${row.entryNumber}`) {
+    throw new Error(`Entry ${row.entryNumber} has an invalid owner grouping`);
+  }
+  return selected;
 }
 
 function parseCsv(text: string) {
@@ -248,9 +262,41 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
     return { registrations: registrations.map(registrationResponse) };
   });
 
+  app.get("/owners", async (request) => {
+    await requireStaff(app, request);
+    const query = z.object({ search: z.string().optional() }).parse(request.query);
+    const search = normalizeSearch(query.search);
+    const owners = await prisma.owner.findMany({
+      where: {
+        vehicleEntries: { some: { eventId } },
+        ...(search
+          ? {
+              OR: [
+                { firstName: { contains: search, mode: "insensitive" } },
+                { lastName: { contains: search, mode: "insensitive" } },
+                { phone: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      include: {
+        vehicleEntries: {
+          where: { eventId },
+          orderBy: { entryNumber: "asc" },
+          select: { id: true, entryNumber: true, year: true, make: true, model: true },
+        },
+      },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      take: 25,
+    });
+
+    return { owners };
+  });
+
   app.post("/registrations", async (request) => {
     const staff = await requireStaff(app, request);
-    const body = registrationSchema.parse(request.body);
+    const body = registrationSchema.extend({ ownerId: z.string().trim().min(1).optional() }).parse(request.body);
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
@@ -272,12 +318,15 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
 
     const entryNumber = await nextEntryNumber();
     const registration = await prisma.$transaction(async (tx) => {
-      const owner = await tx.owner.create({
-        data: {
-          ...body.owner,
-          email: body.owner.email || null,
-        },
-      });
+      const owner = body.ownerId
+        ? await tx.owner.findFirst({ where: { id: body.ownerId, vehicleEntries: { some: { eventId } } } })
+        : await tx.owner.create({
+            data: {
+              ...body.owner,
+              email: body.owner.email || null,
+            },
+          });
+      if (!owner) throw app.httpErrors.badRequest("Selected owner was not found");
 
       return tx.vehicleEntry.create({
         data: {
@@ -317,13 +366,43 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
       where: { eventId },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     });
+    const ownerGroupSizes = new Map<string, number>();
+    for (const row of rows) {
+      const key = ownerGroupForRow(row);
+      ownerGroupSizes.set(key, (ownerGroupSizes.get(key) ?? 0) + 1);
+    }
+    const existingOwners = await prisma.owner.findMany({
+      where: { vehicleEntries: { some: { eventId } } },
+      include: {
+        vehicleEntries: {
+          where: { eventId },
+          select: { id: true },
+        },
+      },
+    });
+    const existingOwnerByGroup = new Map(
+      existingOwners.map((owner) => [ownerIdentityKey(owner.email ?? "", owner.phone), owner]),
+    );
 
     return {
       rows: rows.map((row) => {
         const matches = matchingCategoriesForCsvRow(row, categories);
+        const suggestedOwnerGroup = ownerGroupForRow(row);
+        const existingOwner = existingOwnerByGroup.get(suggestedOwnerGroup);
         return {
           entryNumber: row.entryNumber,
           ownerName: `${row.firstName} ${row.lastName}`.trim(),
+          ownerEmail: row.email,
+          ownerPhone: row.phone,
+          suggestedOwnerGroup,
+          suggestedOwnerGroupSize: ownerGroupSizes.get(suggestedOwnerGroup) ?? 1,
+          existingOwner: existingOwner
+            ? {
+                id: existingOwner.id,
+                name: `${existingOwner.firstName} ${existingOwner.lastName}`.trim(),
+                vehicleCount: existingOwner.vehicleEntries.length,
+              }
+            : null,
           vehicleType: row.vehicleType,
           year: row.year,
           vehicleName: `${row.year} ${row.make} ${row.model}`.trim(),
@@ -341,6 +420,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
       .object({
         csvText: z.string().min(1),
         categoryAssignments: z.record(z.string(), z.string()),
+        ownerGroupAssignments: z.record(z.string(), z.string()).default({}),
       })
       .parse(request.body);
     const rows = parseCsvOrBadRequest(app, body.csvText);
@@ -374,6 +454,11 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
           internalNotes: importNotesForCsvRow(row),
         },
       });
+      try {
+        selectedOwnerGroup(row, body.ownerGroupAssignments);
+      } catch (error) {
+        throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid owner grouping");
+      }
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -384,50 +469,92 @@ export async function registerRegistrationRoutes(app: FastifyInstance) {
 
       let created = 0;
       let updated = 0;
+      const previousOwnerIds = new Set<string>();
+      const existingOwners = await tx.owner.findMany({
+        where: { vehicleEntries: { some: { eventId } } },
+      });
+      const existingOwnerByGroup = new Map(
+        existingOwners.map((owner) => [ownerIdentityKey(owner.email ?? "", owner.phone), owner]),
+      );
+      const rowsByOwnerGroup = new Map<string, CsvRegistrationRow[]>();
       for (const row of rows) {
-        const category = categoryById.get(body.categoryAssignments[String(row.entryNumber)]);
-        if (!category) throw app.httpErrors.badRequest(`Choose a category for entry ${row.entryNumber}`);
-        const existing = await tx.vehicleEntry.findUnique({
-          where: { eventId_entryNumber: { eventId, entryNumber: row.entryNumber } },
-          select: { id: true, ownerId: true },
-        });
-        const ownerData = {
-          firstName: row.firstName,
-          lastName: row.lastName,
-          phone: row.phone,
-          email: row.email || null,
-          publicName: `${row.firstName} ${row.lastName}`.trim(),
-          publicNameOptIn: true,
-          waiverAccepted: Boolean(row.signature),
-        };
-        const vehicleData = {
-          categoryId: category.id,
-          entryNumber: row.entryNumber,
-          year: row.year,
-          make: row.make,
-          model: row.model,
-          exteriorColor: row.color,
-          internalNotes: importNotesForCsvRow(row),
-          ownerAccessCode: accessCodeForEntry(row.entryNumber),
-          source: "ONLINE_IMPORT" as const,
-          registeredByStaffId: staff.id,
-        };
+        const group = selectedOwnerGroup(row, body.ownerGroupAssignments);
+        rowsByOwnerGroup.set(group, [...(rowsByOwnerGroup.get(group) ?? []), row]);
+      }
 
-        if (existing) {
-          await tx.owner.update({ where: { id: existing.ownerId }, data: ownerData });
-          await tx.vehicleEntry.update({ where: { id: existing.id }, data: vehicleData });
-          updated += 1;
-        } else {
-          const owner = await tx.owner.create({ data: ownerData });
-          await tx.vehicleEntry.create({
-            data: {
-              eventId,
-              ownerId: owner.id,
-              ...vehicleData,
-            },
-          });
-          created += 1;
+      for (const [group, ownerRows] of rowsByOwnerGroup) {
+        const firstRow = ownerRows[0];
+        const existingEntries = await tx.vehicleEntry.findMany({
+          where: { eventId, entryNumber: { in: ownerRows.map((row) => row.entryNumber) } },
+          select: { id: true, entryNumber: true, ownerId: true },
+        });
+        existingEntries.forEach((entry) => previousOwnerIds.add(entry.ownerId));
+        const existingByEntry = new Map(existingEntries.map((entry) => [entry.entryNumber, entry]));
+        const existingEntryOwner = existingEntries[0]
+          ? await tx.owner.findUnique({
+              where: { id: existingEntries[0].ownerId },
+              include: { vehicleEntries: { where: { eventId }, select: { id: true } } },
+            })
+          : null;
+        const ownerData = {
+          firstName: firstRow.firstName,
+          lastName: firstRow.lastName,
+          phone: firstRow.phone,
+          email: firstRow.email || null,
+          publicName: `${firstRow.firstName} ${firstRow.lastName}`.trim(),
+          publicNameOptIn: true,
+          waiverAccepted: ownerRows.some((row) => Boolean(row.signature)),
+        };
+        const existingEntryOwnerMatches =
+          existingEntryOwner &&
+          ownerIdentityKey(existingEntryOwner.email ?? "", existingEntryOwner.phone) === ownerGroupForRow(firstRow);
+        const existingGroupOwner = group.startsWith("entry:")
+          ? existingEntryOwnerMatches && existingEntryOwner.vehicleEntries.length === 1
+            ? existingEntryOwner
+            : null
+          : existingEntryOwnerMatches
+            ? existingEntryOwner
+            : existingOwnerByGroup.get(ownerGroupForRow(firstRow)) ?? null;
+        const owner = existingGroupOwner
+          ? await tx.owner.update({ where: { id: existingGroupOwner.id }, data: ownerData })
+          : await tx.owner.create({ data: ownerData });
+
+        for (const row of ownerRows) {
+          const category = categoryById.get(body.categoryAssignments[String(row.entryNumber)]);
+          if (!category) throw app.httpErrors.badRequest(`Choose a category for entry ${row.entryNumber}`);
+          const existing = existingByEntry.get(row.entryNumber);
+          const vehicleData = {
+            ownerId: owner.id,
+            categoryId: category.id,
+            entryNumber: row.entryNumber,
+            year: row.year,
+            make: row.make,
+            model: row.model,
+            exteriorColor: row.color,
+            internalNotes: importNotesForCsvRow(row),
+            ownerAccessCode: accessCodeForEntry(row.entryNumber),
+            source: "ONLINE_IMPORT" as const,
+            registeredByStaffId: staff.id,
+          };
+
+          if (existing) {
+            await tx.vehicleEntry.update({ where: { id: existing.id }, data: vehicleData });
+            updated += 1;
+          } else {
+            await tx.vehicleEntry.create({
+              data: {
+                eventId,
+                ...vehicleData,
+              },
+            });
+            created += 1;
+          }
         }
+      }
+
+      for (const ownerId of previousOwnerIds) {
+        const remainingVehicles = await tx.vehicleEntry.count({ where: { ownerId } });
+        if (remainingVehicles === 0) await tx.owner.delete({ where: { id: ownerId } });
       }
 
       return { created, updated, replacedSeeded: seedVehicleCount };

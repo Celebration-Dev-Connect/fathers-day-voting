@@ -1,6 +1,12 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
+import showLogo from "../assets/fathers-day-car-show-logo.png";
 import type { QrCard } from "../types.js";
+
+function printedCardNumber(visibleCode: string) {
+  const numericCode = visibleCode.replace(/\D/g, "");
+  return numericCode ? numericCode.padStart(4, "0") : visibleCode;
+}
 
 export function QrPrintCard({
   card,
@@ -11,7 +17,6 @@ export function QrPrintCard({
 }) {
   const [dataUrl, setDataUrl] = useState("");
   const qrUrl = `${publicAppUrl}/v/${card.publicToken}`;
-  const owner = card.vehicleEntry?.owner;
 
   useEffect(() => {
     let mounted = true;
@@ -33,23 +38,16 @@ export function QrPrintCard({
   }, [qrUrl]);
 
   return (
-    <article className={`qr-print-card ${card.status.toLowerCase()}`}>
+    <article className="qr-print-card">
       <div className="qr-print-heading">
-        <div>
-          <strong>Father's Day Car Show</strong>
-          <span>Celebration Church</span>
-        </div>
-        <b>{card.visibleCode}</b>
+        <img className="qr-print-logo" src={showLogo} alt="Father's Day Car Show" />
+        <b>{printedCardNumber(card.visibleCode)}</b>
       </div>
       {dataUrl ? (
         <img src={dataUrl} alt={`QR code ${card.visibleCode}`} />
       ) : (
         <div className="qr-placeholder" />
       )}
-      <div className="qr-print-footer">
-        <span>{card.status.replace("_", " ")}</span>
-        <small>{owner ? `${owner.firstName} ${owner.lastName}` : qrUrl}</small>
-      </div>
     </article>
   );
 }

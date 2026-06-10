@@ -137,6 +137,31 @@ export async function createRegistration(payload: RegistrationPayload) {
   });
 }
 
+export type OwnerSummary = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string | null;
+  publicName: string | null;
+  publicNameOptIn: boolean;
+  waiverAccepted: boolean;
+  vehicleEntries: Array<{ id: string; entryNumber: number; year: number; make: string; model: string }>;
+};
+
+export async function listOwners(search = "") {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  return request<{ owners: OwnerSummary[] }>(`/owners?${params.toString()}`);
+}
+
+export async function createRegistrationForOwner(payload: RegistrationPayload, ownerId: string) {
+  return request<{ registration: Registration }>("/registrations", {
+    method: "POST",
+    body: JSON.stringify({ ...payload, ownerId }),
+  });
+}
+
 export async function updateRegistration(id: string, payload: RegistrationPayload) {
   return request<{ registration: Registration }>(`/registrations/${id}`, {
     method: "PATCH",
@@ -147,6 +172,11 @@ export async function updateRegistration(id: string, payload: RegistrationPayloa
 export type RegistrationCsvPreviewRow = {
   entryNumber: number;
   ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  suggestedOwnerGroup: string;
+  suggestedOwnerGroupSize: number;
+  existingOwner: { id: string; name: string; vehicleCount: number } | null;
   vehicleType: string;
   year: number;
   vehicleName: string;
@@ -161,7 +191,11 @@ export async function previewRegistrationsCsv(csvText: string) {
   });
 }
 
-export async function importRegistrationsCsv(csvText: string, categoryAssignments: Record<string, string>) {
+export async function importRegistrationsCsv(
+  csvText: string,
+  categoryAssignments: Record<string, string>,
+  ownerGroupAssignments: Record<string, string>,
+) {
   return request<{
     imported: number;
     created: number;
@@ -170,7 +204,7 @@ export async function importRegistrationsCsv(csvText: string, categoryAssignment
     message: string;
   }>("/registrations/import-csv", {
     method: "POST",
-    body: JSON.stringify({ csvText, categoryAssignments }),
+    body: JSON.stringify({ csvText, categoryAssignments, ownerGroupAssignments }),
   });
 }
 

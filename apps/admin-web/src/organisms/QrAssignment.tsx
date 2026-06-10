@@ -96,7 +96,7 @@ export function QrAssignment({
       </div>
       <video ref={setVideoElement} className="qr-video" muted playsInline />
       <div className="qr-actions">
-        <input value={code} onChange={(event) => setCode(event.target.value)} placeholder="C-001 or token" />
+        <input value={code} onChange={(event) => setCode(event.target.value)} placeholder="0001 or scan QR" />
         <Button variant="secondary" onClick={startScan} disabled={scanning}>
           <QrCode size={20} />
           {scanning ? "Scanning..." : "Scan"}

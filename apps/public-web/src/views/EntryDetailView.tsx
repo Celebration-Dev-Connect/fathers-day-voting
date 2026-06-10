@@ -136,9 +136,6 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
               </span>
               <span className="special-awards-table-name">
                 {award.name}
-                {isThisCarSubmitted && (
-                  <span className="special-awards-table-voted-label"> ✓ Voted!</span>
-                )}
               </span>
               {errors[award.id] && (
                 <span className="special-awards-table-error">{errors[award.id]}</span>

@@ -1267,7 +1267,7 @@ textarea:focus {
   border-radius: 8px;
   padding: 14px;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 12px;
   page-break-inside: avoid;
 }
@@ -1280,7 +1280,7 @@ textarea:focus {
 }
 
 .qr-print-logo {
-  width: 73px;
+  width: 58px;
   height: auto;
   object-fit: contain;
 }
@@ -1289,6 +1289,13 @@ textarea:focus {
   font-size: 22px;
   line-height: 1;
   white-space: nowrap;
+}
+
+.qr-print-instruction {
+  color: #000;
+  font-size: 15px;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .qr-print-card img,
@@ -2125,11 +2132,15 @@ textarea:focus {
   }
 
   .qr-print-logo {
-    width: 0.63in;
+    width: 0.5in;
   }
 
   .qr-print-heading b {
     font-size: 22pt;
+  }
+
+  .qr-print-instruction {
+    font-size: 13pt;
   }
 }
 

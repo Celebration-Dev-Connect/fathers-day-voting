@@ -43,6 +43,7 @@ export function QrPrintCard({
         <img className="qr-print-logo" src={showLogo} alt="Father's Day Car Show" />
         <b>{printedCardNumber(card.visibleCode)}</b>
       </div>
+      <strong className="qr-print-instruction">Scan code to Vote for Entry</strong>
       {dataUrl ? (
         <img src={dataUrl} alt={`QR code ${card.visibleCode}`} />
       ) : (

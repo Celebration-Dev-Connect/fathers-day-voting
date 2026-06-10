@@ -63,6 +63,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "PCO_TEAM_NAME", value = var.pco_team_name },
       { name = "ADMIN_WEB_URL", value = var.admin_web_url },
       { name = "JUDGE_WEB_URL", value = var.judge_web_url },
+      { name = "CORS_ALLOWED_ORIGINS", value = var.cors_allowed_origins },
     ]
 
     secrets = [

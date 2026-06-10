@@ -154,6 +154,27 @@ variable "judge_web_url" {
   default     = ""
 }
 
+variable "cors_allowed_origins" {
+  description = <<-EOT
+    Comma-separated list of origins the API allows via CORS (e.g.
+    "https://visit.fathersdaycarshow.ca"). The SPAs are same-origin behind
+    CloudFront so this rarely matters in practice, but pinning it locks the API
+    to the known web origin in production. Leave empty to reflect any origin.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "alert_email" {
+  description = <<-EOT
+    Email address subscribed to the CloudWatch alarm SNS topic. Leave empty to
+    create the alarms without any notification subscription. After the first
+    apply, confirm the SNS subscription email AWS sends to this address.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "skip_cloudfront" {
   description = <<-EOT
     Skip CloudFront, OAC, and CF Functions entirely. The ACM certificate is still

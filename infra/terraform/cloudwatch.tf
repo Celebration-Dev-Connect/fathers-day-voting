@@ -19,6 +19,13 @@ resource "aws_sns_topic_subscription" "alerts_email" {
   endpoint  = var.alert_email
 }
 
+resource "aws_sns_topic_subscription" "alerts_sms" {
+  count     = var.alert_sms != "" ? 1 : 0
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "sms"
+  endpoint  = var.alert_sms
+}
+
 resource "aws_sns_topic" "alerts_us_east_1" {
   count    = var.skip_cloudfront ? 0 : 1
   provider = aws.us_east_1

@@ -175,6 +175,18 @@ variable "alert_email" {
   default     = ""
 }
 
+variable "alert_sms" {
+  description = <<-EOT
+    Phone number (E.164, e.g. "+15872972388") subscribed to the alarm SNS topic
+    for SMS. Leave empty to skip SMS. Note: new accounts are in the SNS SMS
+    sandbox — the destination number must be verified in the SNS console (Mobile
+    → Text messaging → Sandbox) or you must request production SMS access, or
+    messages won't be delivered. SMS is attached to the app-region topic only.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "skip_cloudfront" {
   description = <<-EOT
     Skip CloudFront, OAC, and CF Functions entirely. The ACM certificate is still

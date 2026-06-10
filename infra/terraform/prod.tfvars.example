@@ -47,6 +47,11 @@ cors_allowed_origins = "https://carshow.celebrationedmonton.com"
 # sends after the first apply, or no alerts are delivered.
 alert_email = ""
 
+# Optional SMS number (E.164) for the same alarms. New accounts are in the SNS
+# SMS sandbox: verify the number in the SNS console (Mobile → Text messaging →
+# Sandbox) or request production access, or SMS won't deliver.
+alert_sms = ""
+
 # ── Planning Center OAuth (fill these in prod.tfvars, never here) ──
 # pco_client_id     = ""
 # pco_client_secret = ""

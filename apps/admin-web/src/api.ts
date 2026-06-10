@@ -232,6 +232,10 @@ export async function listAudit(vehicleEntryId: string) {
   return request<{ auditLogs: AuditLog[] }>(`/qr-audit?${params.toString()}`);
 }
 
+export async function initializeEvent() {
+  return request<{ event: VotingSettings }>("/voting/initialize-event", { method: "POST" });
+}
+
 export async function getVotingSettings() {
   return request<{ event: VotingSettings }>("/voting/settings");
 }

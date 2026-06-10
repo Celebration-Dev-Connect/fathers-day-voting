@@ -15,12 +15,14 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
       name: "CarshowComponents",
-      fileName: "carshow-components",
       formats: ["es"],
     },
     rollupOptions: {
-      external: ["react", "react-dom", "react/jsx-runtime", "lucide-react"],
+      external: ["@zxing/browser", "lucide-react", "qrcode", "react", "react-dom", "react/jsx-runtime"],
       output: {
+        preserveModules: true,
+        preserveModulesRoot: "src",
+        entryFileNames: "[name].js",
         globals: {
           react: "React",
           "react-dom": "ReactDOM",

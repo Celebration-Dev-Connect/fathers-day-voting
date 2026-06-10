@@ -1,4 +1,3 @@
-import { BrowserMultiFormatReader } from "@zxing/browser";
 import { QrCode, RefreshCw } from "lucide-react";
 import { Alert, AuditRow, Button } from "@carshow/carshow-components";
 import type { AuditLog, Registration } from "@carshow/carshow-components";
@@ -61,6 +60,7 @@ export function QrAssignment({
     }
     setScanning(true);
     try {
+      const { BrowserMultiFormatReader } = await import("@zxing/browser");
       const reader = new BrowserMultiFormatReader();
       const result = await reader.decodeOnceFromVideoDevice(undefined, videoElement);
       const scannedCode = result.getText();

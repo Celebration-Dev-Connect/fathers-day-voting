@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
+import type { IScannerControls } from "@zxing/browser";
 
 function extractToken(decoded: string): string | null {
   try {
@@ -30,32 +30,39 @@ export function QrScanner({
   });
 
   useEffect(() => {
-    const reader = new BrowserMultiFormatReader();
     let done = false;
 
-    reader
-      .decodeFromVideoDevice(undefined, videoRef.current!, (result, _err, controls) => {
-        if (done) return;
-        if (result) {
-          const token = extractToken(result.getText());
-          if (token) {
-            done = true;
-            controls.stop();
-            onScanRef.current(token);
+    async function startScanner() {
+      const { BrowserMultiFormatReader } = await import("@zxing/browser");
+      if (done) return;
+
+      const reader = new BrowserMultiFormatReader();
+      const controls = await reader.decodeFromVideoDevice(
+        undefined,
+        videoRef.current!,
+        (result, _err, controls) => {
+          if (done) return;
+          if (result) {
+            const token = extractToken(result.getText());
+            if (token) {
+              done = true;
+              controls.stop();
+              onScanRef.current(token);
+            }
           }
-        }
-      })
-      .then((controls) => {
-        if (done) controls.stop();
-        else controlsRef.current = controls;
-      })
-      .catch((err: Error) => {
-        setError(
-          err.name === "NotAllowedError"
-            ? "Camera permission denied. Allow access in your browser settings."
-            : "Unable to start camera. Try using your phone's camera app instead."
-        );
-      });
+        },
+      );
+      if (done) controls.stop();
+      else controlsRef.current = controls;
+    }
+
+    void startScanner().catch((err: Error) => {
+      setError(
+        err.name === "NotAllowedError"
+          ? "Camera permission denied. Allow access in your browser settings."
+          : "Unable to start camera. Try using your phone's camera app instead.",
+      );
+    });
 
     return () => {
       done = true;

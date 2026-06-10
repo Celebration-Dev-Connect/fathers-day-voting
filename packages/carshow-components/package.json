@@ -3,11 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/carshow-components.js",
+  "sideEffects": [
+    "./src/styles.css"
+  ],
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/carshow-components.js",
+      "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
     "./styles.css": "./src/styles.css"

@@ -1,6 +1,6 @@
 import { AdminShell as AdminShellTemplate, Alert, LoginCard } from "@carshow/carshow-components";
 import type { Category, DashboardMetrics, Registration, SpecialAward, StaffUser } from "@carshow/carshow-components";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   clearToken,
   devLogin,
@@ -13,12 +13,23 @@ import {
 } from "./api";
 import { API_URL } from "./config";
 import { Sidebar } from "./organisms/Sidebar";
-import { CategoriesView } from "./views/CategoriesView";
 import { DashboardView } from "./views/DashboardView";
-import { QrCardsView } from "./views/QrCardsView";
-import { PhotoReviewView } from "./views/PhotoReviewView";
-import { RegistrationsView } from "./views/RegistrationsView";
-import { VotingView } from "./views/VotingView";
+
+const CategoriesView = lazy(() =>
+  import("./views/CategoriesView").then(({ CategoriesView }) => ({ default: CategoriesView })),
+);
+const PhotoReviewView = lazy(() =>
+  import("./views/PhotoReviewView").then(({ PhotoReviewView }) => ({ default: PhotoReviewView })),
+);
+const QrCardsView = lazy(() =>
+  import("./views/QrCardsView").then(({ QrCardsView }) => ({ default: QrCardsView })),
+);
+const RegistrationsView = lazy(() =>
+  import("./views/RegistrationsView").then(({ RegistrationsView }) => ({ default: RegistrationsView })),
+);
+const VotingView = lazy(() =>
+  import("./views/VotingView").then(({ VotingView }) => ({ default: VotingView })),
+);
 
 export type View = "dashboard" | "registrations" | "qr-cards" | "categories" | "photo-review" | "voting";
 
@@ -146,31 +157,33 @@ function AdminShellConnected({
       sidebar={<Sidebar staff={staff} view={view} onNavigate={setView} onLogout={onLogout} />}
     >
       {error ? <Alert variant="danger">{error}</Alert> : null}
-      {view === "dashboard" ? (
-        <DashboardView metrics={metrics} onRegister={() => setView("registrations")} />
-      ) : null}
-      {view === "registrations" ? (
-        <RegistrationsView
-          categories={categories}
-          registrations={registrations}
-          search={search}
-          selected={selected}
-          onSearch={setSearch}
-          onSelect={setSelected}
-          onRefresh={refresh}
-        />
-      ) : null}
-      {view === "qr-cards" ? <QrCardsView /> : null}
-      {view === "categories" ? (
-        <CategoriesView
-          staff={staff}
-          categories={categories}
-          specialAwards={specialAwards}
-          onRefresh={refresh}
-        />
-      ) : null}
-      {view === "photo-review" ? <PhotoReviewView /> : null}
-      {view === "voting" ? <VotingView staff={staff} /> : null}
+      <Suspense fallback={<div className="empty-state">Loading view...</div>}>
+        {view === "dashboard" ? (
+          <DashboardView metrics={metrics} onRegister={() => setView("registrations")} />
+        ) : null}
+        {view === "registrations" ? (
+          <RegistrationsView
+            categories={categories}
+            registrations={registrations}
+            search={search}
+            selected={selected}
+            onSearch={setSearch}
+            onSelect={setSelected}
+            onRefresh={refresh}
+          />
+        ) : null}
+        {view === "qr-cards" ? <QrCardsView /> : null}
+        {view === "categories" ? (
+          <CategoriesView
+            staff={staff}
+            categories={categories}
+            specialAwards={specialAwards}
+            onRefresh={refresh}
+          />
+        ) : null}
+        {view === "photo-review" ? <PhotoReviewView /> : null}
+        {view === "voting" ? <VotingView staff={staff} /> : null}
+      </Suspense>
     </AdminShellTemplate>
   );
 }

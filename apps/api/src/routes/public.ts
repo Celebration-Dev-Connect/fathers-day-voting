@@ -1,4 +1,4 @@
-import { Prisma, VehicleStatus, prisma } from "@carshow/db";
+import { PhotoModerationStatus, Prisma, VehicleStatus, prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { eventId } from "../config.js";
@@ -180,11 +180,40 @@ export async function registerPublicRoutes(app: FastifyInstance) {
   });
 
   app.get("/public/entries/:entryNumber", async (request) => {
-    const params = z.object({ entryNumber: z.coerce.number().int().positive() }).parse(request.params);
-    const vehicle = await prisma.vehicleEntry.findFirst({
-      where: { eventId, entryNumber: params.entryNumber, status: VehicleStatus.CHECKED_IN },
-      include: { owner: true, category: true, photos: { where: { moderationStatus: "APPROVED" }, orderBy: { sortOrder: "asc" } } },
+    const params = z.object({ entryNumber: z.string().trim().min(1) }).parse(request.params);
+    const digitsOnly = params.entryNumber.replace(/\D/g, "");
+    if (!digitsOnly) throw app.httpErrors.badRequest("Entry number must contain digits");
+
+    const parsedEntryNumber = Number(digitsOnly);
+    if (!Number.isInteger(parsedEntryNumber) || parsedEntryNumber <= 0) {
+      throw app.httpErrors.badRequest("Entry number must be a positive integer");
+    }
+
+    const include: Prisma.VehicleEntryInclude = {
+      owner: true,
+      category: true,
+      photos: { where: { moderationStatus: PhotoModerationStatus.APPROVED }, orderBy: { sortOrder: "asc" } },
+    };
+
+    let vehicle = await prisma.vehicleEntry.findFirst({
+      where: { eventId, entryNumber: parsedEntryNumber, status: VehicleStatus.CHECKED_IN },
+      include,
     });
+
+    if (!vehicle) {
+      const visibleCodeCandidates = Array.from(
+        new Set([digitsOnly, digitsOnly.padStart(4, "0"), digitsOnly.replace(/^0+/, "") || "0"]),
+      );
+      vehicle = await prisma.vehicleEntry.findFirst({
+        where: {
+          eventId,
+          status: VehicleStatus.CHECKED_IN,
+          qrCard: { visibleCode: { in: visibleCodeCandidates } },
+        },
+        include,
+      });
+    }
+
     if (!vehicle) throw app.httpErrors.notFound("Entry not found");
     return { vehicle: toPublicVehicle(vehicle) };
   });

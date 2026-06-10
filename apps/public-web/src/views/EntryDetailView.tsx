@@ -75,57 +75,78 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
 
   if (!votingOpen || cutoffPassed || !specialAwards.length) return null;
 
+  const votedCount = specialAwards.filter(
+    (award) => specialAwardSubmitted[award.id]?.vehicleId === vehicle.id,
+  ).length;
+
   return (
-    <section className="special-award-vote-sections">
-      <p className="eyebrow">Special Awards</p>
-      {specialAwards.map((award) => {
-        const draft = specialAwardDrafts[award.id];
-        const submittedPick = specialAwardSubmitted[award.id];
-        const isThisCarDraft = draft?.vehicleId === vehicle.id;
-        const isThisCarSubmitted = submittedPick?.vehicleId === vehicle.id;
+    <section className="special-awards-table">
+      <div className="special-awards-table-header">
+        <div>
+          <p className="special-awards-table-eyebrow">Special Awards</p>
+          <p className="special-awards-table-subtitle">Nominate this car for any category</p>
+        </div>
+        {votedCount > 0 && (
+          <span className="special-awards-table-count">
+            {votedCount} vote{votedCount !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+      <ul className="special-awards-table-list">
+        {specialAwards.map((award) => {
+          const draft = specialAwardDrafts[award.id];
+          const submittedPick = specialAwardSubmitted[award.id];
+          const isThisCarDraft = draft?.vehicleId === vehicle.id;
+          const isThisCarSubmitted = submittedPick?.vehicleId === vehicle.id;
 
-        function handleSelect() {
-          selectSpecialAward({
-            vehicleId: vehicle.id,
-            entryNumber: vehicle.entryNumber,
-            year: vehicle.year,
-            make: vehicle.make,
-            model: vehicle.model,
-            nickname: vehicle.nickname,
-            specialAwardId: award.id,
-            specialAwardName: award.name,
-          });
-          openPanel();
-        }
+          function handleSelect() {
+            selectSpecialAward({
+              vehicleId: vehicle.id,
+              entryNumber: vehicle.entryNumber,
+              year: vehicle.year,
+              make: vehicle.make,
+              model: vehicle.model,
+              nickname: vehicle.nickname,
+              specialAwardId: award.id,
+              specialAwardName: award.name,
+            });
+            openPanel();
+          }
 
-        return (
-          <div className="vote-section special-award-vote-section" key={award.id}>
-            <div>
-              <p className="vote-section-category">{award.name}</p>
-              {award.description ? <p className="special-award-description">{award.description}</p> : null}
-            </div>
-            {isThisCarSubmitted ? (
-              <div className="vote-section-voted">
-                <span className="vote-section-check">✓</span>
-                <span>You voted for this car!</span>
-              </div>
-            ) : submittedPick ? (
-              <p className="vote-section-other">You already voted for a different car.</p>
-            ) : isThisCarDraft ? (
-              <div className="vote-section-selected">
-                <span className="vote-section-selected-label">✓ Your current pick</span>
-                <button className="vote-section-open-btn" onClick={openPanel}>
-                  Open Ballot →
+          return (
+            <li
+              key={award.id}
+              className={`special-awards-table-row${isThisCarSubmitted ? " voted" : ""}${isThisCarDraft ? " drafted" : ""}`}
+            >
+              <span className={`special-awards-table-indicator${isThisCarSubmitted ? " checked" : ""}`}>
+                {isThisCarSubmitted && "✓"}
+              </span>
+              <span className="special-awards-table-name">
+                {award.name}
+                {isThisCarSubmitted && (
+                  <span className="special-awards-table-voted-label"> ✓ Voted!</span>
+                )}
+              </span>
+              {isThisCarSubmitted ? (
+                <button className="special-awards-table-btn voted" onClick={openPanel}>
+                  Voted ✓
                 </button>
-              </div>
-            ) : (
-              <button className="vote-section-pick-btn" onClick={handleSelect}>
-                Vote for {award.name}
-              </button>
-            )}
-          </div>
-        );
-      })}
+              ) : isThisCarDraft ? (
+                <button className="special-awards-table-btn drafted" onClick={openPanel}>
+                  Ballot →
+                </button>
+              ) : (
+                <button className="special-awards-table-btn" onClick={handleSelect}>
+                  Vote
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="special-awards-table-footer">
+        You can vote for this car in multiple categories
+      </p>
     </section>
   );
 }

@@ -36,7 +36,7 @@ function toPublicVehicle(
     primaryPhotoId: vehicle.primaryPhotoId ?? null,
     photos: photos.map((p) => ({
       id: p.id,
-      url: p.webUrl ?? p.mediumUrl ?? null,
+      url: p.webUrl ?? p.url ?? null,
       mediumUrl: p.mediumUrl ?? null,
       thumbUrl: p.thumbUrl ?? null,
       altText: p.altText ?? null,

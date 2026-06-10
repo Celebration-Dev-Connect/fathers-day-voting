@@ -21,6 +21,25 @@ const eventControlsSelect = {
 };
 
 export async function registerVotingRoutes(app: FastifyInstance) {
+  app.post("/voting/initialize-event", async (request) => {
+    await requireAdmin(app, request);
+    const event = await prisma.event.upsert({
+      where: { id: eventId },
+      update: {},
+      create: {
+        id: eventId,
+        name: "Father's Day Car Show / Show & Shine",
+        eventDate: new Date("2026-06-21T16:00:00.000Z"),
+        venueName: "Celebration Church",
+        venueAddress: "7215 Argyll Road, Edmonton, AB",
+        registrationOpen: true,
+        peopleChoiceCutoff: new Date("2026-06-21T21:00:00.000Z"),
+      },
+      select: eventControlsSelect,
+    });
+    return { event };
+  });
+
   app.get("/voting/settings", async (request) => {
     await requireStaff(app, request);
     const event = await prisma.event.findUnique({

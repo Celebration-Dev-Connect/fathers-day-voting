@@ -16,6 +16,7 @@ import {
   getJudgeCompletion,
   getVotingSettings,
   getVotingTallies,
+  initializeEvent,
   updateCategoryWinners,
   updateVotingSettings,
 } from "../api";
@@ -37,6 +38,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [eventMissing, setEventMissing] = useState(false);
   const [selectedWinner, setSelectedWinner] = useState<Registration | null>(null);
   const [manualCategory, setManualCategory] = useState<CategoryVotingTally | null>(null);
   const [showJudgingGuide, setShowJudgingGuide] = useState(false);
@@ -45,6 +47,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
   async function refreshVoting() {
     setLoading(true);
     setError("");
+    setEventMissing(false);
     try {
       const [settingsResult, tallyResult, completionResult] = await Promise.all([
         getVotingSettings(),
@@ -57,9 +60,31 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
       setSpecialAwards(tallyResult.specialAwards);
       setJudgeCompletion(completionResult.categories);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Could not load voting results");
+      const msg = loadError instanceof Error ? loadError.message : "";
+      if (msg.toLowerCase().includes("event not found")) {
+        setEventMissing(true);
+      } else {
+        setError(msg || "Could not load voting results");
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleInitializeEvent() {
+    setSaving(true);
+    setError("");
+    try {
+      const result = await initializeEvent();
+      setSettings(result.event);
+      setCutoff(toDateTimeLocalValue(result.event.peopleChoiceCutoff));
+      setEventMissing(false);
+      await refreshVoting();
+      setMessage("Event created. You can now configure voting settings.");
+    } catch (initError) {
+      setError(initError instanceof Error ? initError.message : "Could not create event");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -143,6 +168,20 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
       {message ? <Alert variant="success">{message}</Alert> : null}
       {error ? <Alert variant="danger">{error}</Alert> : null}
       {!canManage ? <Alert>Registrar accounts can view voting tallies but cannot edit settings.</Alert> : null}
+
+      {eventMissing ? (
+        <div className="empty-state">
+          <p>No event record found. Create the event to enable registration and voting.</p>
+          {canManage ? (
+            <Button onClick={handleInitializeEvent} disabled={saving}>
+              {saving ? "Creating…" : "Create Event"}
+            </Button>
+          ) : (
+            <p className="muted-copy">Ask an admin to initialize the event.</p>
+          )}
+        </div>
+      ) : null}
+
       {settings ? <EventStatusBanner settings={settings} /> : null}
 
       <VotingControls

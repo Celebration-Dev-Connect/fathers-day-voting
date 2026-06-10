@@ -50,6 +50,11 @@ const envSchema = z
     planningCenterTeamName: z.string().default("carshow"),
     adminWebUrl: z.string().url().optional(),
     judgeWebUrl: z.string().url().optional(),
+    // Comma-separated list of allowed CORS origins. When unset, the API reflects
+    // any origin (fine in dev where SPAs run on different localhost ports, and
+    // harmless in prod where SPAs are same-origin behind one CloudFront domain).
+    // Set it in prod to lock the API to the known web origin(s).
+    corsAllowedOrigins: z.string().optional(),
   })
   .superRefine((value, ctx) => {
     if (isProduction && !value.jwtSecret) {
@@ -92,6 +97,7 @@ const parsed = envSchema.safeParse({
   planningCenterTeamName: process.env.PCO_TEAM_NAME,
   adminWebUrl: process.env.ADMIN_WEB_URL,
   judgeWebUrl: process.env.JUDGE_WEB_URL,
+  corsAllowedOrigins: process.env.CORS_ALLOWED_ORIGINS,
 });
 
 if (!parsed.success) {
@@ -142,6 +148,9 @@ export const config = {
   },
   adminWebUrl: env.adminWebUrl,
   judgeWebUrl: env.judgeWebUrl,
+  corsAllowedOrigins: env.corsAllowedOrigins
+    ? env.corsAllowedOrigins.split(",").map((origin) => origin.trim()).filter(Boolean)
+    : null,
 } as const;
 
 export type AppConfig = typeof config;

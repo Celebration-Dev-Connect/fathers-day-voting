@@ -257,7 +257,21 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
 
   app.post(
     "/v/:publicToken/photos",
-    { config: { rateLimit: { max: 12, timeWindow: "1 minute" } } },
+    {
+      config: {
+        rateLimit: {
+          max: 12,
+          timeWindow: "1 minute",
+          // Key by the vehicle's public token, not IP — every visitor at the
+          // venue shares one NAT IP, so an IP key would cap uploads for the whole
+          // event. This gives each car its own per-minute upload budget.
+          keyGenerator: (req) => {
+            const p = req.params as Record<string, unknown> | undefined;
+            return typeof p?.publicToken === "string" ? `pt:${p.publicToken}` : req.ip;
+          },
+        },
+      },
+    },
     async (request, reply) => {
       const params = z.object({ publicToken: z.string().trim().min(1) }).parse(request.params);
       const qrCard = await prisma.qrCard.findFirst({
@@ -273,7 +287,21 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
 
   app.post(
     "/owner/vehicles/:id/photos",
-    { config: { rateLimit: { max: 20, timeWindow: "15 minutes" } } },
+    {
+      config: {
+        rateLimit: {
+          max: 20,
+          timeWindow: "15 minutes",
+          // Key by the vehicle id, not IP — owners on the shared venue WiFi would
+          // otherwise collapse to one budget. Per-vehicle keeps each owner's
+          // uploads independent.
+          keyGenerator: (req) => {
+            const p = req.params as Record<string, unknown> | undefined;
+            return typeof p?.id === "string" ? `veh:${p.id}` : req.ip;
+          },
+        },
+      },
+    },
     async (request, reply) => {
       const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
       const { vehicle } = await requireOwnerVehicle(app, request, params.id);

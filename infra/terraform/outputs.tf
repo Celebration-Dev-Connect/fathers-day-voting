@@ -59,3 +59,8 @@ output "public_web_bucket" {
   description = "Deploy public-web SPA: aws s3 sync apps/public-web/dist/ s3://<value>/ --delete"
   value       = aws_s3_bucket.public_web.bucket
 }
+
+output "dashboard_url" {
+  description = "CloudWatch dashboard for event-day monitoring."
+  value       = "https://${var.region}.console.aws.amazon.com/cloudwatch/home?region=${var.region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main.dashboard_name}"
+}

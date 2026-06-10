@@ -154,6 +154,39 @@ variable "judge_web_url" {
   default     = ""
 }
 
+variable "cors_allowed_origins" {
+  description = <<-EOT
+    Comma-separated list of origins the API allows via CORS (e.g.
+    "https://visit.fathersdaycarshow.ca"). The SPAs are same-origin behind
+    CloudFront so this rarely matters in practice, but pinning it locks the API
+    to the known web origin in production. Leave empty to reflect any origin.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "alert_email" {
+  description = <<-EOT
+    Email address subscribed to the CloudWatch alarm SNS topic. Leave empty to
+    create the alarms without any notification subscription. After the first
+    apply, confirm the SNS subscription email AWS sends to this address.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "alert_sms" {
+  description = <<-EOT
+    Phone number (E.164, e.g. "+15872972388") subscribed to the alarm SNS topic
+    for SMS. Leave empty to skip SMS. Note: new accounts are in the SNS SMS
+    sandbox — the destination number must be verified in the SNS console (Mobile
+    → Text messaging → Sandbox) or you must request production SMS access, or
+    messages won't be delivered. SMS is attached to the app-region topic only.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "skip_cloudfront" {
   description = <<-EOT
     Skip CloudFront, OAC, and CF Functions entirely. The ACM certificate is still

@@ -31,7 +31,12 @@ export type AppDeps = {
 export async function buildApp({ storage, moderator, textModerator }: AppDeps) {
   const app = Fastify({ logger: true, trustProxy: true });
 
-  await app.register(cors, { origin: true, credentials: true });
+  // When an explicit allowlist is configured (prod), restrict to it; otherwise
+  // reflect any origin (dev SPAs on localhost ports; prod SPAs are same-origin).
+  await app.register(cors, {
+    origin: config.corsAllowedOrigins ?? true,
+    credentials: true,
+  });
   await app.register(sensible);
   await app.register(cookie);
   await app.register(jwt, { secret: config.jwtSecret });

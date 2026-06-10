@@ -36,6 +36,36 @@ enable_dev_login  = false
 run_seed          = false
 teardown_friendly = false
 
+# Lock the API's CORS to the known web origin. The SPAs are same-origin behind
+# CloudFront so this rarely matters, but pinning it is cheap defense in depth.
+# If launching on the *.cloudfront.net URL (cloudfront_custom_domain=false),
+# leave this empty until the custom domain is live.
+cors_allowed_origins = "https://carshow.celebrationedmonton.com"
+
+# Email subscribed to CloudWatch alarms (ALB 5xx, unhealthy tasks, RDS/ECS
+# saturation, CloudFront 5xx). You must click the SNS confirmation email AWS
+# sends after the first apply, or no alerts are delivered.
+alert_email = ""
+
+# Optional SMS number (E.164) for the same alarms. New accounts are in the SNS
+# SMS sandbox: verify the number in the SNS console (Mobile → Text messaging →
+# Sandbox) or request production access, or SMS won't deliver.
+alert_sms = ""
+
+# ── Planning Center OAuth (fill these in prod.tfvars, never here) ──
+# pco_client_id     = ""
+# pco_client_secret = ""
+# pco_callback_url  = "https://carshow.celebrationedmonton.com/api/auth/planning-center/callback"
+# pco_team_name     = "carshow"
+# admin_web_url     = "https://carshow.celebrationedmonton.com/admin"
+# judge_web_url     = "https://carshow.celebrationedmonton.com/judge"
+
+# ── Launching without the custom domain yet? ──
+# Uncomment to serve fully on the AWS *.cloudfront.net URL with no DNS/ACM
+# dependency. Update pco_callback_url / *_web_url / cors_allowed_origins to that
+# URL, and flip back once the domain's CNAME + ACM validation records are added.
+# cloudfront_custom_domain = false
+
 # Bootstrap order (handled automatically by ./infra/deploy.sh):
 #   1. terraform apply -target=aws_ecr_repository.api
 #   2. docker build + push to ECR with a commit SHA tag

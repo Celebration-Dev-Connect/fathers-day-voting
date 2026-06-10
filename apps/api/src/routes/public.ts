@@ -5,10 +5,6 @@ import { eventId } from "../config.js";
 
 const PAGE_SIZE = 12;
 
-// Hero photo result cached for 60 seconds to avoid repeated ORDER BY RANDOM() full-sorts.
-let heroPhotoCache: { photos: Array<{ url: string; altText: string | null; year: number; make: string; model: string; nickname: string | null }>; cachedAt: number } | null = null;
-const HERO_CACHE_TTL_MS = 60_000;
-
 function toPublicVehicle(
   vehicle: Prisma.VehicleEntryGetPayload<{
     include: { owner: true; category: true; photos: true };
@@ -40,7 +36,7 @@ function toPublicVehicle(
     primaryPhotoId: vehicle.primaryPhotoId ?? null,
     photos: photos.map((p) => ({
       id: p.id,
-      url: p.url,
+      url: p.webUrl ?? p.mediumUrl ?? null,
       mediumUrl: p.mediumUrl ?? null,
       thumbUrl: p.thumbUrl ?? null,
       altText: p.altText ?? null,
@@ -51,28 +47,6 @@ function toPublicVehicle(
 }
 
 export async function registerPublicRoutes(app: FastifyInstance) {
-  app.get("/public/hero-photos", async () => {
-    if (heroPhotoCache && Date.now() - heroPhotoCache.cachedAt < HERO_CACHE_TTL_MS) {
-      return { photos: heroPhotoCache.photos };
-    }
-    const photos = await prisma.$queryRaw<
-      Array<{ url: string; altText: string | null; year: number; make: string; model: string; nickname: string | null }>
-    >`
-      SELECT p.url, p."altText", e.year, e.make, e.model, e.nickname
-      FROM "VehiclePhoto" p
-      JOIN "VehicleEntry" e ON e.id = p."vehicleEntryId"
-      WHERE e."eventId" = ${eventId}
-        AND e.status = 'CHECKED_IN'
-        AND p."moderationStatus" = 'APPROVED'
-        AND p.url IS NOT NULL
-        AND p."sortOrder" = 1
-      ORDER BY RANDOM()
-      LIMIT 10
-    `;
-    heroPhotoCache = { photos, cachedAt: Date.now() };
-    return { photos };
-  });
-
   app.get("/public/event", async () => {
     const event = await prisma.event.findUnique({
       where: { id: eventId },

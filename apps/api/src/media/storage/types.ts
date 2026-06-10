@@ -15,7 +15,7 @@ export interface PhotoStorage {
    */
   putPublicVariant(
     id: string,
-    suffix: "medium" | "thumb",
+    suffix: "web" | "medium" | "thumb",
     bytes: Buffer,
     contentType: string,
   ): Promise<{ storageKey: string }>;

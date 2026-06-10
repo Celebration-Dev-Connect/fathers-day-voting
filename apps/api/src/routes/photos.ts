@@ -84,7 +84,7 @@ async function createPendingPhoto(
 }
 
 async function deletePhotoObjects(app: FastifyInstance, deps: PhotosDeps, photoId: string, storageKey: string | null) {
-  const keys = [storageKey, `public/${photoId}`, `public/${photoId}-medium`, `public/${photoId}-thumb`].filter(
+  const keys = [storageKey, `public/${photoId}`, `public/${photoId}-web`, `public/${photoId}-medium`, `public/${photoId}-thumb`].filter(
     (key): key is string => Boolean(key),
   );
   await Promise.all(
@@ -135,7 +135,7 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
     return {
       photos: photos.map((photo) => ({
         id: photo.id,
-        url: photo.url,
+        url: photo.webUrl ?? photo.mediumUrl ?? null,
         mediumUrl: photo.mediumUrl,
         thumbUrl: photo.thumbUrl,
         contentType: photo.contentType,

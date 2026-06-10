@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVoting } from "../context/VotingContext";
 
@@ -6,61 +6,24 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
   const {
     categories,
     specialAwards,
-    drafts,
     submitted,
-    specialAwardDrafts,
     specialAwardSubmitted,
-    submitVote,
-    submitSpecialAward,
-    clearSelection,
-    clearSpecialAwardSelection,
+    changeVote,
+    changeSpecialAward,
   } = useVoting();
-  const [submitting, setSubmitting] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
 
-  async function handleSubmit(categoryId: string) {
-    setSubmitting(categoryId);
-    setErrors((prev) => { const n = { ...prev }; delete n[categoryId]; return n; });
-    try {
-      await submitVote(categoryId);
-    } catch (err) {
-      setErrors((prev) => ({
-        ...prev,
-        [categoryId]: err instanceof Error ? err.message : "Failed to submit",
-      }));
-    } finally {
-      setSubmitting(null);
-    }
-  }
-
-  async function handleSpecialAwardSubmit(specialAwardId: string) {
-    setSubmitting(specialAwardId);
-    setErrors((previous) => {
-      const next = { ...previous };
-      delete next[specialAwardId];
-      return next;
-    });
-    try {
-      await submitSpecialAward(specialAwardId);
-    } catch (error) {
-      setErrors((previous) => ({
-        ...previous,
-        [specialAwardId]: error instanceof Error ? error.message : "Failed to submit",
-      }));
-    } finally {
-      setSubmitting(null);
-    }
-  }
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   function browse(slug: string) {
     navigate(`/browse/${slug}`);
     onClose();
   }
 
-  const pendingCount =
-    categories.filter((category) => drafts[category.id] && !submitted[category.id]).length +
-    specialAwards.filter((award) => specialAwardDrafts[award.id] && !specialAwardSubmitted[award.id]).length;
   const submittedCount = Object.keys(submitted).length + Object.keys(specialAwardSubmitted).length;
   const totalItems = categories.length + specialAwards.length;
 
@@ -73,25 +36,17 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
             <h2 className="vote-panel-title">Your Ballot</h2>
             <p className="vote-panel-sub">
               {submittedCount > 0
-                ? `${submittedCount} of ${totalItems} votes locked in`
-                : "Select category and special award picks, then submit here"}
+                ? `${submittedCount} of ${totalItems} votes submitted`
+                : "Browse cars and tap Vote to record your picks"}
             </p>
           </div>
           <button className="vote-panel-close" onClick={onClose} aria-label="Close ballot">✕</button>
         </div>
 
-        {pendingCount > 0 && (
-          <p className="vote-panel-hint">
-            You have {pendingCount} pending pick{pendingCount > 1 ? "s" : ""} — submit each to lock in your vote.
-          </p>
-        )}
-
         <ul className="vote-panel-list">
           {categories.map((cat) => {
-            const draft = drafts[cat.id];
             const submittedPick = submitted[cat.id];
             const isSubmitted = Boolean(submittedPick);
-            const isSubmitting = submitting === cat.id;
 
             return (
               <li key={cat.id} className={`vote-panel-item${isSubmitted ? " submitted" : ""}`}>
@@ -101,39 +56,22 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
                   <div className="vote-panel-locked">
                     <div className="vote-panel-locked-left">
                       <span className="vote-panel-check">✓</span>
-                      <span className="vote-panel-locked-label">Vote locked in!</span>
+                      <span className="vote-panel-locked-label">Vote submitted</span>
                     </div>
-                    <button
-                      className="vote-panel-browse-btn"
-                      onClick={() => { if (submittedPick?.entryNumber) navigate(`/browse/entry/${submittedPick.entryNumber}`); onClose(); }}
-                    >
-                      View →
-                    </button>
-                  </div>
-                ) : draft ? (
-                  <div className="vote-panel-draft">
-                    <p className="vote-panel-pick">
-                      <span className="vote-panel-entry">#{draft.entryNumber}</span>
-                      {" "}{draft.year} {draft.make} {draft.model}
-                      {draft.nickname ? ` — "${draft.nickname}"` : ""}
-                    </p>
-                    <div className="vote-panel-row">
-                      <button
-                        className="vote-panel-submit-btn"
-                        onClick={() => handleSubmit(cat.id)}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Submitting…" : "Submit Vote"}
-                      </button>
+                    <div className="vote-panel-locked-actions">
                       <button
                         className="vote-panel-clear-btn"
-                        onClick={() => clearSelection(cat.id)}
-                        disabled={isSubmitting}
+                        onClick={() => changeVote(cat.id)}
                       >
-                        Clear
+                        Change
+                      </button>
+                      <button
+                        className="vote-panel-browse-btn"
+                        onClick={() => { if (submittedPick?.entryNumber) navigate(`/browse/entry/${submittedPick.entryNumber}`); onClose(); }}
+                      >
+                        View →
                       </button>
                     </div>
-                    {errors[cat.id] && <p className="vote-panel-error">{errors[cat.id]}</p>}
                   </div>
                 ) : (
                   <div className="vote-panel-empty">
@@ -147,56 +85,36 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
             );
           })}
           {specialAwards.map((award) => {
-            const draft = specialAwardDrafts[award.id];
             const submittedPick = specialAwardSubmitted[award.id];
             const isSubmitted = Boolean(submittedPick);
-            const isSubmitting = submitting === award.id;
 
             return (
               <li key={award.id} className={`vote-panel-item special-award${isSubmitted ? " submitted" : ""}`}>
                 <p className="vote-panel-category">{award.name}</p>
-                <span className="vote-panel-item-kind">Special Award · All categories</span>
 
                 {isSubmitted ? (
                   <div className="vote-panel-locked">
                     <div className="vote-panel-locked-left">
                       <span className="vote-panel-check">✓</span>
-                      <span className="vote-panel-locked-label">Vote locked in!</span>
+                      <span className="vote-panel-locked-label">Vote submitted</span>
                     </div>
-                    <button
-                      className="vote-panel-browse-btn"
-                      onClick={() => {
-                        if (submittedPick?.entryNumber) navigate(`/browse/entry/${submittedPick.entryNumber}`);
-                        onClose();
-                      }}
-                    >
-                      View →
-                    </button>
-                  </div>
-                ) : draft ? (
-                  <div className="vote-panel-draft">
-                    <p className="vote-panel-pick">
-                      <span className="vote-panel-entry">#{draft.entryNumber}</span>{" "}
-                      {draft.year} {draft.make} {draft.model}
-                      {draft.nickname ? ` — "${draft.nickname}"` : ""}
-                    </p>
-                    <div className="vote-panel-row">
-                      <button
-                        className="vote-panel-submit-btn"
-                        onClick={() => handleSpecialAwardSubmit(award.id)}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Submitting…" : "Submit Vote"}
-                      </button>
+                    <div className="vote-panel-locked-actions">
                       <button
                         className="vote-panel-clear-btn"
-                        onClick={() => clearSpecialAwardSelection(award.id)}
-                        disabled={isSubmitting}
+                        onClick={() => changeSpecialAward(award.id)}
                       >
-                        Clear
+                        Change
+                      </button>
+                      <button
+                        className="vote-panel-browse-btn"
+                        onClick={() => {
+                          if (submittedPick?.entryNumber) navigate(`/browse/entry/${submittedPick.entryNumber}`);
+                          onClose();
+                        }}
+                      >
+                        View →
                       </button>
                     </div>
-                    {errors[award.id] && <p className="vote-panel-error">{errors[award.id]}</p>}
                   </div>
                 ) : (
                   <div className="vote-panel-empty">

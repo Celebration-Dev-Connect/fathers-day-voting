@@ -27,6 +27,7 @@ ecs_max_size   = 5
 rds_instance_class    = "db.t3.medium"
 rds_allocated_storage = 20
 rds_backup_retention  = 1
+db_connection_limit   = 20     # 2 tasks × 20 = 40 conns steady; 5 × 20 = 100 at max scale
 
 # ── Production posture ──
 # Planning Center OAuth (no local login), no auto-seed, and protected data

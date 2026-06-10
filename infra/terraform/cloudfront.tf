@@ -39,6 +39,30 @@ data "aws_cloudfront_cache_policy" "optimized" {
   name = "Managed-CachingOptimized"
 }
 
+# Short-TTL cache policy for public read-only API endpoints.
+# 30s TTL with query strings in the cache key so paginated endpoints
+# (?page=N) cache each page separately. Used for /api/public/event and
+# /api/public/categories/*/entries.
+resource "aws_cloudfront_cache_policy" "api_short" {
+  count       = var.skip_cloudfront ? 0 : 1
+  name        = "${var.project}-${var.environment}-api-short-ttl"
+  default_ttl = 30
+  max_ttl     = 30
+  min_ttl     = 0
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    cookies_config {
+      cookie_behavior = "none"
+    }
+    headers_config {
+      header_behavior = "none"
+    }
+    query_strings_config {
+      query_string_behavior = "all"
+    }
+  }
+}
+
 # Forwards all viewer headers and query strings except Host.
 # Required for App Runner: forwarding the client Host header causes App Runner
 # to reject requests because the hostname won't match its own service URL.
@@ -157,7 +181,11 @@ resource "aws_cloudfront_function" "spa_routing" {
 resource "aws_cloudfront_distribution" "main" {
   count       = var.skip_cloudfront ? 0 : 1
   enabled     = true
-  aliases     = [var.domain]
+  # When using a custom domain (test/prod), attach the alias so the distribution
+  # answers on that domain. When cloudfront_custom_domain = false (perf), omit
+  # aliases entirely — the distribution is reachable only via its AWS-assigned
+  # *.cloudfront.net domain, which uses CloudFront's built-in certificate.
+  aliases     = var.cloudfront_custom_domain ? [var.domain] : []
   comment     = "${var.project} ${var.environment}"
   price_class = "PriceClass_100"
 
@@ -202,7 +230,44 @@ resource "aws_cloudfront_distribution" "main" {
     origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
   }
 
-  # Behavior 1 (priority 1): /api/* → App Runner
+  # Behavior 1 (priority 1): /api/public/event → cached 30s
+  # Must sit above the /api/* catch-all so CloudFront applies caching here
+  # instead of the CachingDisabled policy that covers the rest of the API.
+  # The strip_api_prefix function still runs so Fargate receives /public/event.
+  ordered_cache_behavior {
+    path_pattern             = "/api/public/event"
+    target_origin_id         = "api"
+    viewer_protocol_policy   = "redirect-to-https"
+    allowed_methods          = ["GET", "HEAD"]
+    cached_methods           = ["GET", "HEAD"]
+    cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+    }
+  }
+
+  # Behavior 2 (priority 2): /api/public/categories/*/entries → cached 30s
+  # The * wildcard matches the category slug. Query strings (e.g. ?page=2) are
+  # included in the cache key via the api_short policy so pages cache separately.
+  ordered_cache_behavior {
+    path_pattern             = "/api/public/categories/*/entries"
+    target_origin_id         = "api"
+    viewer_protocol_policy   = "redirect-to-https"
+    allowed_methods          = ["GET", "HEAD"]
+    cached_methods           = ["GET", "HEAD"]
+    cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+    }
+  }
+
+  # Behavior 3 (priority 3): /api/* → Fargate (all other API routes, no caching)
   ordered_cache_behavior {
     path_pattern             = "/api/*"
     target_origin_id         = "api"
@@ -284,12 +349,17 @@ resource "aws_cloudfront_distribution" "main" {
   }
 
   viewer_certificate {
-    # When managing DNS, depend on the validation resource so CloudFront only
-    # builds once the certificate is issued. Otherwise use the cert directly
-    # (external DNS: the cert must already be validated).
-    acm_certificate_arn      = local.manage_dns ? aws_acm_certificate_validation.main[0].certificate_arn : aws_acm_certificate.main.arn
-    ssl_support_method       = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2021"
+    # cloudfront_custom_domain = true (test/prod): use the ACM cert for the
+    # custom domain alias. When Route 53 manages DNS, depend on the validation
+    # resource so the cert is issued before CloudFront builds. Otherwise
+    # reference the cert directly (external DNS, must already be validated).
+    #
+    # cloudfront_custom_domain = false (perf): use the distribution's built-in
+    # *.cloudfront.net certificate — no ACM cert or domain validation needed.
+    cloudfront_default_certificate = var.cloudfront_custom_domain ? false : true
+    acm_certificate_arn            = var.cloudfront_custom_domain ? (local.manage_dns ? aws_acm_certificate_validation.main[0].certificate_arn : aws_acm_certificate.main.arn) : null
+    ssl_support_method             = var.cloudfront_custom_domain ? "sni-only" : null
+    minimum_protocol_version       = var.cloudfront_custom_domain ? "TLSv1.2_2021" : null
   }
 
   tags = {

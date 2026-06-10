@@ -193,8 +193,8 @@ resource "aws_appautoscaling_target" "api" {
   depends_on = [aws_ecs_service.api]
 }
 
-resource "aws_appautoscaling_policy" "api_cpu" {
-  name               = "${var.project}-${var.environment}-api-cpu"
+resource "aws_appautoscaling_policy" "api_requests" {
+  name               = "${var.project}-${var.environment}-api-requests"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.api.resource_id
   scalable_dimension = aws_appautoscaling_target.api.scalable_dimension
@@ -202,8 +202,13 @@ resource "aws_appautoscaling_policy" "api_cpu" {
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+      predefined_metric_type = "ALBRequestCountPerTarget"
+      # Format: <alb-arn-suffix>/<tg-arn-suffix>
+      resource_label = "${aws_lb.api.arn_suffix}/${aws_lb_target_group.api.arn_suffix}"
     }
-    target_value = 70
+    # Scale out when any task is receiving more than 1,000 req/min (~17 req/s).
+    # This fires on actual inbound load rather than CPU, which stays low for
+    # I/O-bound workloads (DB waits don't burn CPU).
+    target_value = 1000
   }
 }

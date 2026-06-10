@@ -78,7 +78,7 @@ function ownerVehicleResponse(vehicle: OwnerVehiclePayload) {
     },
     photos: photos.map((photo) => ({
       id: photo.id,
-      url: photo.url,
+      url: photo.webUrl ?? photo.url ?? null,
       altText: photo.altText ?? null,
       sortOrder: photo.sortOrder,
       isPrimary: photo.id === vehicle.primaryPhotoId,

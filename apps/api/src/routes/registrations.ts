@@ -189,7 +189,7 @@ function registrationResponse(registration: RegistrationPayload) {
     photos: photos.map((photo) => ({
       id: photo.id,
       vehicleEntryId: photo.vehicleEntryId,
-      url: photo.url,
+      url: photo.webUrl ?? photo.url ?? null,
       altText: photo.altText,
       sortOrder: photo.sortOrder,
       isPrimary: photo.id === registration.primaryPhotoId,

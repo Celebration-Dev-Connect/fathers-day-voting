@@ -73,12 +73,15 @@ export class PhotoModerationWorker {
 
       if (result.decision === "APPROVED") {
 
-        const [mediumBytes, thumbBytes] = await Promise.all([
+        const [webBytes, mediumBytes, thumbBytes] = await Promise.all([
+          // Web variant: max 1200px wide, preserve aspect ratio, <600 KB in practice.
+          sharp(originalBytes).rotate().resize({ width: 1200, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer(),
           sharp(originalBytes).rotate().resize(384, 288, { fit: "cover" }).webp({ quality: 82 }).toBuffer(),
           sharp(originalBytes).rotate().resize(128, 128, { fit: "cover" }).webp({ quality: 80 }).toBuffer(),
         ]);
 
-        const [{ storageKey: mediumKey }, { storageKey: thumbKey }, { storageKey }] = await Promise.all([
+        const [{ storageKey: webKey }, { storageKey: mediumKey }, { storageKey: thumbKey }, { storageKey }] = await Promise.all([
+          this.storage.putPublicVariant(photoId, "web", webBytes, "image/webp"),
           this.storage.putPublicVariant(photoId, "medium", mediumBytes, "image/webp"),
           this.storage.putPublicVariant(photoId, "thumb", thumbBytes, "image/webp"),
           this.storage.moveToPublic(photoId),
@@ -90,6 +93,7 @@ export class PhotoModerationWorker {
             moderationStatus: "APPROVED",
             storageKey,
             url: this.storage.publicUrl(storageKey),
+            webUrl: this.storage.publicUrl(webKey),
             mediumUrl: this.storage.publicUrl(mediumKey),
             thumbUrl: this.storage.publicUrl(thumbKey),
             moderationLabels: labels,

@@ -8,29 +8,34 @@ import { PhotoUploadModal } from "../components/PhotoUploadModal";
 import { useVoting } from "../context/VotingContext";
 
 function VoteSection({ vehicle }: { vehicle: PublicVehicle }) {
-  const { votingOpen, cutoffPassed, drafts, submitted, select, openPanel } = useVoting();
+  const { votingOpen, cutoffPassed, submitted, submitVoteDirect, openPanel } = useVoting();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   if (!votingOpen || cutoffPassed) return null;
 
-  const categoryId = vehicle.category.id;
-  const draft = drafts[categoryId];
-  const submittedPick = submitted[categoryId];
-  const isThisCategorySubmitted = Boolean(submittedPick);
-  const isThisCarDraft = draft?.vehicleId === vehicle.id;
+  const submittedPick = submitted[vehicle.category.id];
   const isThisCarSubmitted = submittedPick?.vehicleId === vehicle.id;
 
-  function handleSelect() {
-    select({
-      vehicleId: vehicle.id,
-      entryNumber: vehicle.entryNumber,
-      year: vehicle.year,
-      make: vehicle.make,
-      model: vehicle.model,
-      nickname: vehicle.nickname,
-      categoryId: vehicle.category.id,
-      categoryName: vehicle.category.name,
-    });
-    openPanel();
+  async function handleVote() {
+    setSubmitting(true);
+    setError("");
+    try {
+      await submitVoteDirect({
+        vehicleId: vehicle.id,
+        entryNumber: vehicle.entryNumber,
+        year: vehicle.year,
+        make: vehicle.make,
+        model: vehicle.model,
+        nickname: vehicle.nickname,
+        categoryId: vehicle.category.id,
+        categoryName: vehicle.category.name,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -41,22 +46,19 @@ function VoteSection({ vehicle }: { vehicle: PublicVehicle }) {
         <div className="vote-section-voted">
           <span className="vote-section-check">✓</span>
           <span>You voted for this car!</span>
+          <button className="vote-section-open-btn" onClick={openPanel}>Change →</button>
         </div>
-      ) : isThisCategorySubmitted ? (
-        <p className="vote-section-other">
-          You already voted in the {vehicle.category.name} category for a different car.
-        </p>
-      ) : isThisCarDraft ? (
-        <div className="vote-section-selected">
-          <span className="vote-section-selected-label">✓ Your current pick</span>
-          <button className="vote-section-open-btn" onClick={openPanel}>
-            Open Ballot →
-          </button>
-        </div>
-      ) : (
-        <button className="vote-section-pick-btn" onClick={handleSelect}>
-          Vote for this car
+      ) : submittedPick ? (
+        <button className="vote-section-change-btn" onClick={openPanel}>
+          Already voted · Change
         </button>
+      ) : (
+        <>
+          <button className="vote-section-pick-btn" onClick={handleVote} disabled={submitting}>
+            {submitting ? "Submitting…" : "Vote for this car"}
+          </button>
+          {error && <p className="vote-section-other">{error}</p>}
+        </>
       )}
     </div>
   );
@@ -67,66 +69,101 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
     votingOpen,
     cutoffPassed,
     specialAwards,
-    specialAwardDrafts,
     specialAwardSubmitted,
-    selectSpecialAward,
+    submitSpecialAwardDirect,
     openPanel,
   } = useVoting();
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   if (!votingOpen || cutoffPassed || !specialAwards.length) return null;
 
+  const votedCount = specialAwards.filter(
+    (award) => specialAwardSubmitted[award.id]?.vehicleId === vehicle.id,
+  ).length;
+
+  async function handleVote(awardId: string, awardName: string) {
+    setSubmitting(awardId);
+    setErrors((prev) => { const n = { ...prev }; delete n[awardId]; return n; });
+    try {
+      await submitSpecialAwardDirect({
+        vehicleId: vehicle.id,
+        entryNumber: vehicle.entryNumber,
+        year: vehicle.year,
+        make: vehicle.make,
+        model: vehicle.model,
+        nickname: vehicle.nickname,
+        specialAwardId: awardId,
+        specialAwardName: awardName,
+      });
+    } catch (err) {
+      setErrors((prev) => ({
+        ...prev,
+        [awardId]: err instanceof Error ? err.message : "Failed to submit",
+      }));
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
   return (
-    <section className="special-award-vote-sections">
-      <p className="eyebrow">Special Awards</p>
-      <h2>Vote across all categories</h2>
-      {specialAwards.map((award) => {
-        const draft = specialAwardDrafts[award.id];
-        const submittedPick = specialAwardSubmitted[award.id];
-        const isThisCarDraft = draft?.vehicleId === vehicle.id;
-        const isThisCarSubmitted = submittedPick?.vehicleId === vehicle.id;
+    <section className="special-awards-table">
+      <div className="special-awards-table-header">
+        <div>
+          <p className="special-awards-table-eyebrow">Special Awards</p>
+          <p className="special-awards-table-subtitle">Nominate this car for any category</p>
+        </div>
+        {votedCount > 0 && (
+          <span className="special-awards-table-count">
+            {votedCount} vote{votedCount !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+      <ul className="special-awards-table-list">
+        {specialAwards.map((award) => {
+          const submittedPick = specialAwardSubmitted[award.id];
+          const isThisCarSubmitted = submittedPick?.vehicleId === vehicle.id;
+          const isOtherCarSubmitted = Boolean(submittedPick) && !isThisCarSubmitted;
+          const isSubmitting = submitting === award.id;
 
-        function handleSelect() {
-          selectSpecialAward({
-            vehicleId: vehicle.id,
-            entryNumber: vehicle.entryNumber,
-            year: vehicle.year,
-            make: vehicle.make,
-            model: vehicle.model,
-            nickname: vehicle.nickname,
-            specialAwardId: award.id,
-            specialAwardName: award.name,
-          });
-          openPanel();
-        }
-
-        return (
-          <div className="vote-section special-award-vote-section" key={award.id}>
-            <div>
-              <p className="vote-section-category">{award.name}</p>
-              {award.description ? <p className="special-award-description">{award.description}</p> : null}
-            </div>
-            {isThisCarSubmitted ? (
-              <div className="vote-section-voted">
-                <span className="vote-section-check">✓</span>
-                <span>You voted for this car!</span>
-              </div>
-            ) : submittedPick ? (
-              <p className="vote-section-other">You already voted for a different car.</p>
-            ) : isThisCarDraft ? (
-              <div className="vote-section-selected">
-                <span className="vote-section-selected-label">✓ Your current pick</span>
-                <button className="vote-section-open-btn" onClick={openPanel}>
-                  Open Ballot →
+          return (
+            <li
+              key={award.id}
+              className={`special-awards-table-row${isThisCarSubmitted ? " voted" : ""}`}
+            >
+              <span className={`special-awards-table-indicator${isThisCarSubmitted ? " checked" : ""}`}>
+                {isThisCarSubmitted && "✓"}
+              </span>
+              <span className="special-awards-table-name">
+                {award.name}
+              </span>
+              {errors[award.id] && (
+                <span className="special-awards-table-error">{errors[award.id]}</span>
+              )}
+              {isThisCarSubmitted ? (
+                <button className="special-awards-table-btn voted" onClick={openPanel}>
+                  Voted ✓
                 </button>
-              </div>
-            ) : (
-              <button className="vote-section-pick-btn" onClick={handleSelect}>
-                Vote for {award.name}
-              </button>
-            )}
-          </div>
-        );
-      })}
+              ) : isOtherCarSubmitted ? (
+                <button className="special-awards-table-btn change" onClick={openPanel}>
+                  Change vote
+                </button>
+              ) : (
+                <button
+                  className="special-awards-table-btn"
+                  onClick={() => handleVote(award.id, award.name)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "…" : "Vote"}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="special-awards-table-footer">
+        You can vote for this car in multiple categories
+      </p>
     </section>
   );
 }
@@ -191,7 +228,7 @@ export function EntryDetailView() {
     return (
       <div className="public-content">
         <Alert variant="danger">{error}</Alert>
-        <button className="back-link" onClick={() => navigate(-1)}>← Back</button>
+        <Link to="/browse" className="back-link">← Back to browse</Link>
       </div>
     );
   }
@@ -202,7 +239,7 @@ export function EntryDetailView() {
 
   return (
     <div className="public-content">
-      <button className="back-link" onClick={() => navigate(-1)}>← Back</button>
+      <Link to="/browse" className="back-link">← Back to browse</Link>
       <VehicleProfileCard
         vehicle={vehicle}
         showVoting={false}

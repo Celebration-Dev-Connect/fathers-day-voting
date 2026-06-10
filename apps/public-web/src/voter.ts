@@ -129,3 +129,23 @@ export function markSpecialAwardSubmitted(pick: SpecialAwardPick): void {
   delete ballot.specialAwardDrafts[pick.specialAwardId];
   saveBallot(ballot);
 }
+
+export function moveSubmittedToDraft(categoryId: string): DraftPick | null {
+  const ballot = getBallot();
+  const pick = ballot.submitted[categoryId];
+  if (!pick) return null;
+  ballot.drafts[categoryId] = pick;
+  delete ballot.submitted[categoryId];
+  saveBallot(ballot);
+  return pick;
+}
+
+export function moveSpecialAwardSubmittedToDraft(specialAwardId: string): SpecialAwardPick | null {
+  const ballot = getBallot();
+  const pick = ballot.specialAwardSubmitted[specialAwardId];
+  if (!pick) return null;
+  ballot.specialAwardDrafts[specialAwardId] = pick;
+  delete ballot.specialAwardSubmitted[specialAwardId];
+  saveBallot(ballot);
+  return pick;
+}

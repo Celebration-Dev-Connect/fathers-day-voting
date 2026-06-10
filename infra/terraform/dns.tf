@@ -6,7 +6,7 @@
 # are skipped and you manage records manually (or don't need them at all).
 
 locals {
-  manage_dns = var.route53_zone_id != "" && !var.skip_cloudfront
+  manage_dns = var.route53_zone_id != "" && !var.skip_cloudfront && var.cloudfront_custom_domain
 }
 
 # Validation CNAME(s) for the ACM certificate.

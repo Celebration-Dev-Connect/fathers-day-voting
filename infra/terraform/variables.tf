@@ -156,13 +156,28 @@ variable "judge_web_url" {
 
 variable "skip_cloudfront" {
   description = <<-EOT
-    Skip CloudFront, OAC, and CF Functions. The ACM certificate is still created
-    but left unvalidated (harmless — it is never attached to anything). Use for
-    perf test stacks that target the ALB directly and don't need a public domain.
+    Skip CloudFront, OAC, and CF Functions entirely. The ACM certificate is still
+    created but left unvalidated (harmless — it is never attached to anything).
+    Use only when you want to bypass the CDN layer completely (e.g. a very cheap
+    test stack). For perf testing, prefer skip_cloudfront=false +
+    cloudfront_custom_domain=false so caching behaviors are exercised.
     Saves ~10–15 min of CloudFront provisioning time per deploy.
   EOT
   type        = bool
   default     = false
+}
+
+variable "cloudfront_custom_domain" {
+  description = <<-EOT
+    When true (default), CloudFront requires a custom domain alias and an ACM
+    certificate — the normal test/prod posture. When false, the distribution uses
+    its AWS-assigned *.cloudfront.net domain with the built-in CloudFront
+    certificate so no domain or DNS is needed. Use false for the perf stack so the
+    full CloudFront distribution (including cache behaviors) can be tested without
+    a custom domain or cert validation delay.
+  EOT
+  type        = bool
+  default     = true
 }
 
 variable "image_tag" {
@@ -174,4 +189,16 @@ variable "image_tag" {
   EOT
   type        = string
   default     = "latest"
+}
+
+variable "db_connection_limit" {
+  description = <<-EOT
+    Prisma connection pool size per Fargate task, appended to DATABASE_URL as
+    ?connection_limit=N. Leave null to use Prisma's default (num_cpus*2+1, ~3
+    for a 1-vCPU task). Set to 20 for prod/perf: 2 tasks × 20 = 40 connections
+    at steady state, 5 tasks × 20 = 100 at max scale — well within db.t3.medium
+    capacity (~451 max). Keep null for the test stack (single task, low traffic).
+  EOT
+  type        = number
+  default     = null
 }

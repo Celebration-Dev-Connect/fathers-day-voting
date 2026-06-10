@@ -20,8 +20,8 @@
 #   -y, --auto-approve     Pass --auto-approve to deploy.sh
 #   -h, --help             Show this help
 #
-# Total expected runtime: ~35–45 min (deploy ~15, tests ~10, destroy ~15).
-# Cost: ~$0.25–0.35 for a single run (2× Fargate 1024/2048, db.t3.medium, ALB).
+# Total expected runtime: ~50–60 min (deploy ~25-30 with CloudFront, tests ~10, destroy ~20).
+# Cost: ~$0.30–0.45 for a single run (2× Fargate 1024/2048, db.t3.medium, ALB, CloudFront).
 #
 set -euo pipefail
 
@@ -103,11 +103,26 @@ if ! $SKIP_DEPLOY; then
   ok "Deploy complete"
 fi
 
-# ── Read ALB URL ──────────────────────────────────────────────────────────────
-info "Reading ALB URL from Terraform output"
+# ── Read target URLs from Terraform output ────────────────────────────────────
+info "Reading target URLs from Terraform output"
 terraform -chdir="$TF_DIR" workspace select perf >/dev/null 2>&1
 API_URL="$(terraform -chdir="$TF_DIR" output -raw api_url)"
-ok "ALB URL: $API_URL"
+ok "ALB URL: $API_URL (used for setup/teardown curl commands)"
+
+# When CloudFront is deployed, route Artillery through it so the cache behaviors
+# under test are actually exercised. The /api base path appended here means
+# paths like /public/event become /api/public/event at the CloudFront edge —
+# the strip_api_prefix CF function strips /api before forwarding to Fargate, so
+# Fastify still receives the paths it registers. This is the same transformation
+# that happens for every browser hitting the public portal in production.
+CF_DOMAIN="$(terraform -chdir="$TF_DIR" output -raw cloudfront_domain 2>/dev/null || echo "")"
+if [[ -n "$CF_DOMAIN" ]]; then
+  ARTILLERY_TARGET="https://$CF_DOMAIN/api"
+  ok "CloudFront: https://$CF_DOMAIN  →  Artillery target: $ARTILLERY_TARGET"
+else
+  ARTILLERY_TARGET="$API_URL"
+  ok "No CloudFront deployed — Artillery will target ALB directly: $ARTILLERY_TARGET"
+fi
 
 # ── Wait for health ────────────────────────────────────────────────────────────
 bold ""
@@ -155,7 +170,7 @@ bold ""
 # run-perf.ts fetches fixtures then runs browse → vote → upload.
 # PERF_JWT is passed so fetch-fixtures uses the remote API path (no direct DB access).
 ( cd "$REPO_ROOT" \
-    && TARGET_URL="$API_URL" PERF_JWT="$PERF_JWT" \
+    && TARGET_URL="$ARTILLERY_TARGET" PERF_JWT="$PERF_JWT" \
        npm run perf --workspace @carshow/perf )
 
 ELAPSED=$(( SECONDS - START_TS ))

@@ -7,15 +7,6 @@ import type {
 } from "@carshow/carshow-components";
 import { API_URL } from "./config";
 
-export type HeroPhoto = {
-  url: string;
-  altText: string | null;
-  year: number;
-  make: string;
-  model: string;
-  nickname: string | null;
-};
-
 export type Pagination = {
   page: number;
   pageSize: number;
@@ -40,10 +31,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   return response.json() as Promise<T>;
-}
-
-export async function getHeroPhotos() {
-  return request<{ photos: HeroPhoto[] }>("/public/hero-photos");
 }
 
 export async function getPublicEvent() {

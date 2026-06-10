@@ -23,7 +23,7 @@ locals {
 
 resource "aws_secretsmanager_secret_version" "db_url" {
   secret_id     = aws_secretsmanager_secret.db_url.id
-  secret_string = "postgresql://${var.db_username}:${local.db_password_url_encoded}@${aws_db_instance.main.address}:5432/${var.project}?schema=public"
+  secret_string = "postgresql://${var.db_username}:${local.db_password_url_encoded}@${aws_db_instance.main.address}:5432/${var.project}?schema=public${var.db_connection_limit != null ? "&connection_limit=${var.db_connection_limit}" : ""}"
 }
 
 resource "aws_secretsmanager_secret" "jwt_secret" {

@@ -25,12 +25,7 @@ scenarios:
   - name: "Browse visitor flow"
     beforeScenario: "setVars"
     flow:
-      # Landing page — hero photos (60s in-memory cache, ORDER BY RANDOM() underneath)
-      - get:
-          url: "/public/hero-photos"
-      - think: 1
-
-      # Load category list
+      # Load event metadata + category list (landing page)
       - get:
           url: "/public/event"
       - think: 1

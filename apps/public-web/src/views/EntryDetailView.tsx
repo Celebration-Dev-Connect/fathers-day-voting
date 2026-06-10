@@ -67,17 +67,42 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
     votingOpen,
     cutoffPassed,
     specialAwards,
-    specialAwardDrafts,
     specialAwardSubmitted,
-    selectSpecialAward,
+    submitSpecialAwardDirect,
     openPanel,
   } = useVoting();
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   if (!votingOpen || cutoffPassed || !specialAwards.length) return null;
 
   const votedCount = specialAwards.filter(
     (award) => specialAwardSubmitted[award.id]?.vehicleId === vehicle.id,
   ).length;
+
+  async function handleVote(awardId: string, awardName: string) {
+    setSubmitting(awardId);
+    setErrors((prev) => { const n = { ...prev }; delete n[awardId]; return n; });
+    try {
+      await submitSpecialAwardDirect({
+        vehicleId: vehicle.id,
+        entryNumber: vehicle.entryNumber,
+        year: vehicle.year,
+        make: vehicle.make,
+        model: vehicle.model,
+        nickname: vehicle.nickname,
+        specialAwardId: awardId,
+        specialAwardName: awardName,
+      });
+    } catch (err) {
+      setErrors((prev) => ({
+        ...prev,
+        [awardId]: err instanceof Error ? err.message : "Failed to submit",
+      }));
+    } finally {
+      setSubmitting(null);
+    }
+  }
 
   return (
     <section className="special-awards-table">
@@ -94,29 +119,14 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
       </div>
       <ul className="special-awards-table-list">
         {specialAwards.map((award) => {
-          const draft = specialAwardDrafts[award.id];
           const submittedPick = specialAwardSubmitted[award.id];
-          const isThisCarDraft = draft?.vehicleId === vehicle.id;
           const isThisCarSubmitted = submittedPick?.vehicleId === vehicle.id;
-
-          function handleSelect() {
-            selectSpecialAward({
-              vehicleId: vehicle.id,
-              entryNumber: vehicle.entryNumber,
-              year: vehicle.year,
-              make: vehicle.make,
-              model: vehicle.model,
-              nickname: vehicle.nickname,
-              specialAwardId: award.id,
-              specialAwardName: award.name,
-            });
-            openPanel();
-          }
+          const isSubmitting = submitting === award.id;
 
           return (
             <li
               key={award.id}
-              className={`special-awards-table-row${isThisCarSubmitted ? " voted" : ""}${isThisCarDraft ? " drafted" : ""}`}
+              className={`special-awards-table-row${isThisCarSubmitted ? " voted" : ""}`}
             >
               <span className={`special-awards-table-indicator${isThisCarSubmitted ? " checked" : ""}`}>
                 {isThisCarSubmitted && "✓"}
@@ -127,17 +137,20 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
                   <span className="special-awards-table-voted-label"> ✓ Voted!</span>
                 )}
               </span>
+              {errors[award.id] && (
+                <span className="special-awards-table-error">{errors[award.id]}</span>
+              )}
               {isThisCarSubmitted ? (
                 <button className="special-awards-table-btn voted" onClick={openPanel}>
                   Voted ✓
                 </button>
-              ) : isThisCarDraft ? (
-                <button className="special-awards-table-btn drafted" onClick={openPanel}>
-                  Ballot →
-                </button>
               ) : (
-                <button className="special-awards-table-btn" onClick={handleSelect}>
-                  Vote
+                <button
+                  className="special-awards-table-btn"
+                  onClick={() => handleVote(award.id, award.name)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "…" : "Vote"}
                 </button>
               )}
             </li>

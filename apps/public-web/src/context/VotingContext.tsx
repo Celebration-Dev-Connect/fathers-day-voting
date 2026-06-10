@@ -35,6 +35,7 @@ export interface VotingContextValue {
   clearSpecialAwardSelection: (specialAwardId: string) => void;
   submitVote: (categoryId: string) => Promise<void>;
   submitSpecialAward: (specialAwardId: string) => Promise<void>;
+  submitSpecialAwardDirect: (pick: SpecialAwardPick) => Promise<void>;
   changeVote: (categoryId: string) => void;
   changeSpecialAward: (specialAwardId: string) => void;
   isPanelOpen: boolean;
@@ -153,6 +154,15 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
     [specialAwardDrafts, voterKey],
   );
 
+  const submitSpecialAwardDirect = useCallback(
+    async (pick: SpecialAwardPick) => {
+      await submitSpecialAwardVote(pick.vehicleId, pick.specialAwardId, voterKey);
+      markSpecialAwardSubmitted(pick);
+      setSpecialAwardSubmitted((current) => ({ ...current, [pick.specialAwardId]: pick }));
+    },
+    [voterKey],
+  );
+
   const changeVote = useCallback((categoryId: string) => {
     const pick = moveSubmittedToDraft(categoryId);
     if (!pick) return;
@@ -176,12 +186,12 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
       voterKey, votingOpen, cutoffPassed, categories, specialAwards,
       drafts, submitted, specialAwardDrafts, specialAwardSubmitted,
       select, selectSpecialAward, clearSelection, clearSpecialAwardSelection,
-      submitVote, submitSpecialAward, changeVote, changeSpecialAward,
+      submitVote, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
       isPanelOpen, openPanel, closePanel, togglePanel,
     }),
     [voterKey, votingOpen, cutoffPassed, categories, specialAwards, drafts, submitted,
       specialAwardDrafts, specialAwardSubmitted, select, selectSpecialAward, clearSelection,
-      clearSpecialAwardSelection, submitVote, submitSpecialAward, changeVote, changeSpecialAward,
+      clearSpecialAwardSelection, submitVote, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
       isPanelOpen, openPanel, closePanel, togglePanel],
   );
 

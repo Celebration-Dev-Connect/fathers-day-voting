@@ -8,12 +8,9 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
     specialAwards,
     drafts,
     submitted,
-    specialAwardDrafts,
     specialAwardSubmitted,
     submitVote,
-    submitSpecialAward,
     clearSelection,
-    clearSpecialAwardSelection,
     changeVote,
     changeSpecialAward,
   } = useVoting();
@@ -36,33 +33,12 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
     }
   }
 
-  async function handleSpecialAwardSubmit(specialAwardId: string) {
-    setSubmitting(specialAwardId);
-    setErrors((previous) => {
-      const next = { ...previous };
-      delete next[specialAwardId];
-      return next;
-    });
-    try {
-      await submitSpecialAward(specialAwardId);
-    } catch (error) {
-      setErrors((previous) => ({
-        ...previous,
-        [specialAwardId]: error instanceof Error ? error.message : "Failed to submit",
-      }));
-    } finally {
-      setSubmitting(null);
-    }
-  }
-
   function browse(slug: string) {
     navigate(`/browse/${slug}`);
     onClose();
   }
 
-  const pendingCount =
-    categories.filter((category) => drafts[category.id] && !submitted[category.id]).length +
-    specialAwards.filter((award) => specialAwardDrafts[award.id] && !specialAwardSubmitted[award.id]).length;
+  const pendingCount = categories.filter((category) => drafts[category.id] && !submitted[category.id]).length;
   const submittedCount = Object.keys(submitted).length + Object.keys(specialAwardSubmitted).length;
   const totalItems = categories.length + specialAwards.length;
 
@@ -157,10 +133,8 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
             );
           })}
           {specialAwards.map((award) => {
-            const draft = specialAwardDrafts[award.id];
             const submittedPick = specialAwardSubmitted[award.id];
             const isSubmitted = Boolean(submittedPick);
-            const isSubmitting = submitting === award.id;
 
             return (
               <li key={award.id} className={`vote-panel-item special-award${isSubmitted ? " submitted" : ""}`}>
@@ -189,31 +163,6 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
                         View →
                       </button>
                     </div>
-                  </div>
-                ) : draft ? (
-                  <div className="vote-panel-draft">
-                    <p className="vote-panel-pick">
-                      <span className="vote-panel-entry">#{draft.entryNumber}</span>{" "}
-                      {draft.year} {draft.make} {draft.model}
-                      {draft.nickname ? ` — "${draft.nickname}"` : ""}
-                    </p>
-                    <div className="vote-panel-row">
-                      <button
-                        className="vote-panel-submit-btn"
-                        onClick={() => handleSpecialAwardSubmit(award.id)}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Submitting…" : "Submit Vote"}
-                      </button>
-                      <button
-                        className="vote-panel-clear-btn"
-                        onClick={() => clearSpecialAwardSelection(award.id)}
-                        disabled={isSubmitting}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                    {errors[award.id] && <p className="vote-panel-error">{errors[award.id]}</p>}
                   </div>
                 ) : (
                   <div className="vote-panel-empty">

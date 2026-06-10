@@ -48,10 +48,14 @@ function VoteSection({ vehicle }: { vehicle: PublicVehicle }) {
           <span>You voted for this car!</span>
           <button className="vote-section-open-btn" onClick={openPanel}>Change →</button>
         </div>
+      ) : submittedPick ? (
+        <button className="vote-section-change-btn" onClick={openPanel}>
+          Already voted · Change
+        </button>
       ) : (
         <>
           <button className="vote-section-pick-btn" onClick={handleVote} disabled={submitting}>
-            {submitting ? "Submitting…" : submittedPick ? "Vote for this car instead" : "Vote for this car"}
+            {submitting ? "Submitting…" : "Vote for this car"}
           </button>
           {error && <p className="vote-section-other">{error}</p>}
         </>
@@ -119,6 +123,7 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
         {specialAwards.map((award) => {
           const submittedPick = specialAwardSubmitted[award.id];
           const isThisCarSubmitted = submittedPick?.vehicleId === vehicle.id;
+          const isOtherCarSubmitted = Boolean(submittedPick) && !isThisCarSubmitted;
           const isSubmitting = submitting === award.id;
 
           return (
@@ -141,6 +146,10 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
               {isThisCarSubmitted ? (
                 <button className="special-awards-table-btn voted" onClick={openPanel}>
                   Voted ✓
+                </button>
+              ) : isOtherCarSubmitted ? (
+                <button className="special-awards-table-btn change" onClick={openPanel}>
+                  Change vote
                 </button>
               ) : (
                 <button

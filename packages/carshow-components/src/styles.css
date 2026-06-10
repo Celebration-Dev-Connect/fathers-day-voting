@@ -2480,6 +2480,24 @@ textarea:focus {
   text-decoration: underline;
 }
 
+.vote-section-change-btn {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 4px;
+  border: 2px solid var(--border-grey);
+  background: transparent;
+  color: var(--muted-grey);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.vote-section-change-btn:hover {
+  border-color: var(--on-surface);
+  color: var(--on-surface);
+}
+
 .vote-section-voted {
   display: flex;
   align-items: center;
@@ -2660,6 +2678,17 @@ textarea:focus {
 
 .special-awards-table-btn.drafted:hover {
   background: #fff0f0;
+}
+
+.special-awards-table-btn.change {
+  background: transparent;
+  color: var(--muted-grey);
+  border-color: var(--border-grey);
+}
+
+.special-awards-table-btn.change:hover {
+  border-color: var(--on-surface);
+  color: var(--on-surface);
 }
 
 .special-awards-table-error {

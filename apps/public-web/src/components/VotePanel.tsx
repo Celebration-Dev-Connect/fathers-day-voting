@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVoting } from "../context/VotingContext";
 
@@ -6,16 +6,11 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
   const {
     categories,
     specialAwards,
-    drafts,
     submitted,
     specialAwardSubmitted,
-    submitVote,
-    clearSelection,
     changeVote,
     changeSpecialAward,
   } = useVoting();
-  const [submitting, setSubmitting] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,27 +19,11 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  async function handleSubmit(categoryId: string) {
-    setSubmitting(categoryId);
-    setErrors((prev) => { const n = { ...prev }; delete n[categoryId]; return n; });
-    try {
-      await submitVote(categoryId);
-    } catch (err) {
-      setErrors((prev) => ({
-        ...prev,
-        [categoryId]: err instanceof Error ? err.message : "Failed to submit",
-      }));
-    } finally {
-      setSubmitting(null);
-    }
-  }
-
   function browse(slug: string) {
     navigate(`/browse/${slug}`);
     onClose();
   }
 
-  const pendingCount = categories.filter((category) => drafts[category.id] && !submitted[category.id]).length;
   const submittedCount = Object.keys(submitted).length + Object.keys(specialAwardSubmitted).length;
   const totalItems = categories.length + specialAwards.length;
 
@@ -58,24 +37,16 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
             <p className="vote-panel-sub">
               {submittedCount > 0
                 ? `${submittedCount} of ${totalItems} votes submitted`
-                : "Select category and special award picks, then submit here"}
+                : "Browse cars and tap Vote to record your picks"}
             </p>
           </div>
           <button className="vote-panel-close" onClick={onClose} aria-label="Close ballot">✕</button>
         </div>
 
-        {pendingCount > 0 && (
-          <p className="vote-panel-hint">
-            You have {pendingCount} pending pick{pendingCount > 1 ? "s" : ""} — submit each to record your vote.
-          </p>
-        )}
-
         <ul className="vote-panel-list">
           {categories.map((cat) => {
-            const draft = drafts[cat.id];
             const submittedPick = submitted[cat.id];
             const isSubmitted = Boolean(submittedPick);
-            const isSubmitting = submitting === cat.id;
 
             return (
               <li key={cat.id} className={`vote-panel-item${isSubmitted ? " submitted" : ""}`}>
@@ -101,31 +72,6 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
                         View →
                       </button>
                     </div>
-                  </div>
-                ) : draft ? (
-                  <div className="vote-panel-draft">
-                    <p className="vote-panel-pick">
-                      <span className="vote-panel-entry">#{draft.entryNumber}</span>
-                      {" "}{draft.year} {draft.make} {draft.model}
-                      {draft.nickname ? ` — "${draft.nickname}"` : ""}
-                    </p>
-                    <div className="vote-panel-row">
-                      <button
-                        className="vote-panel-submit-btn"
-                        onClick={() => handleSubmit(cat.id)}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Submitting…" : "Submit Vote"}
-                      </button>
-                      <button
-                        className="vote-panel-clear-btn"
-                        onClick={() => clearSelection(cat.id)}
-                        disabled={isSubmitting}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                    {errors[cat.id] && <p className="vote-panel-error">{errors[cat.id]}</p>}
                   </div>
                 ) : (
                   <div className="vote-panel-empty">

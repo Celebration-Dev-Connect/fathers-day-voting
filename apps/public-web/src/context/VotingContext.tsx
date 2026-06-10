@@ -34,6 +34,7 @@ export interface VotingContextValue {
   clearSelection: (categoryId: string) => void;
   clearSpecialAwardSelection: (specialAwardId: string) => void;
   submitVote: (categoryId: string) => Promise<void>;
+  submitVoteDirect: (pick: DraftPick) => Promise<void>;
   submitSpecialAward: (specialAwardId: string) => Promise<void>;
   submitSpecialAwardDirect: (pick: SpecialAwardPick) => Promise<void>;
   changeVote: (categoryId: string) => void;
@@ -154,6 +155,15 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
     [specialAwardDrafts, voterKey],
   );
 
+  const submitVoteDirect = useCallback(
+    async (pick: DraftPick) => {
+      await submitBrowseVote(pick.vehicleId, voterKey);
+      markCategorySubmitted(pick);
+      setSubmitted((prev) => ({ ...prev, [pick.categoryId]: pick }));
+    },
+    [voterKey],
+  );
+
   const submitSpecialAwardDirect = useCallback(
     async (pick: SpecialAwardPick) => {
       await submitSpecialAwardVote(pick.vehicleId, pick.specialAwardId, voterKey);
@@ -186,12 +196,12 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
       voterKey, votingOpen, cutoffPassed, categories, specialAwards,
       drafts, submitted, specialAwardDrafts, specialAwardSubmitted,
       select, selectSpecialAward, clearSelection, clearSpecialAwardSelection,
-      submitVote, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
+      submitVote, submitVoteDirect, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
       isPanelOpen, openPanel, closePanel, togglePanel,
     }),
     [voterKey, votingOpen, cutoffPassed, categories, specialAwards, drafts, submitted,
       specialAwardDrafts, specialAwardSubmitted, select, selectSpecialAward, clearSelection,
-      clearSpecialAwardSelection, submitVote, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
+      clearSpecialAwardSelection, submitVote, submitVoteDirect, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
       isPanelOpen, openPanel, closePanel, togglePanel],
   );
 

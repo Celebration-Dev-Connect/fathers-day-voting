@@ -8,29 +8,34 @@ import { PhotoUploadModal } from "../components/PhotoUploadModal";
 import { useVoting } from "../context/VotingContext";
 
 function VoteSection({ vehicle }: { vehicle: PublicVehicle }) {
-  const { votingOpen, cutoffPassed, drafts, submitted, select, openPanel } = useVoting();
+  const { votingOpen, cutoffPassed, submitted, submitVoteDirect, openPanel } = useVoting();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   if (!votingOpen || cutoffPassed) return null;
 
-  const categoryId = vehicle.category.id;
-  const draft = drafts[categoryId];
-  const submittedPick = submitted[categoryId];
-  const isThisCategorySubmitted = Boolean(submittedPick);
-  const isThisCarDraft = draft?.vehicleId === vehicle.id;
+  const submittedPick = submitted[vehicle.category.id];
   const isThisCarSubmitted = submittedPick?.vehicleId === vehicle.id;
 
-  function handleSelect() {
-    select({
-      vehicleId: vehicle.id,
-      entryNumber: vehicle.entryNumber,
-      year: vehicle.year,
-      make: vehicle.make,
-      model: vehicle.model,
-      nickname: vehicle.nickname,
-      categoryId: vehicle.category.id,
-      categoryName: vehicle.category.name,
-    });
-    openPanel();
+  async function handleVote() {
+    setSubmitting(true);
+    setError("");
+    try {
+      await submitVoteDirect({
+        vehicleId: vehicle.id,
+        entryNumber: vehicle.entryNumber,
+        year: vehicle.year,
+        make: vehicle.make,
+        model: vehicle.model,
+        nickname: vehicle.nickname,
+        categoryId: vehicle.category.id,
+        categoryName: vehicle.category.name,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -41,22 +46,15 @@ function VoteSection({ vehicle }: { vehicle: PublicVehicle }) {
         <div className="vote-section-voted">
           <span className="vote-section-check">✓</span>
           <span>You voted for this car!</span>
-        </div>
-      ) : isThisCategorySubmitted ? (
-        <p className="vote-section-other">
-          You already voted in the {vehicle.category.name} category for a different car.
-        </p>
-      ) : isThisCarDraft ? (
-        <div className="vote-section-selected">
-          <span className="vote-section-selected-label">✓ Your current pick</span>
-          <button className="vote-section-open-btn" onClick={openPanel}>
-            Open Ballot →
-          </button>
+          <button className="vote-section-open-btn" onClick={openPanel}>Change →</button>
         </div>
       ) : (
-        <button className="vote-section-pick-btn" onClick={handleSelect}>
-          Vote for this car
-        </button>
+        <>
+          <button className="vote-section-pick-btn" onClick={handleVote} disabled={submitting}>
+            {submitting ? "Submitting…" : submittedPick ? "Vote for this car instead" : "Vote for this car"}
+          </button>
+          {error && <p className="vote-section-other">{error}</p>}
+        </>
       )}
     </div>
   );

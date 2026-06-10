@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVoting } from "../context/VotingContext";
 
@@ -17,6 +17,12 @@ export function VotePanel({ onClose }: { onClose: () => void }) {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   async function handleSubmit(categoryId: string) {
     setSubmitting(categoryId);

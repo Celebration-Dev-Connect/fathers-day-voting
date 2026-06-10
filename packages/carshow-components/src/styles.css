@@ -2222,6 +2222,8 @@ textarea:focus {
   padding: 0;
   overflow-y: auto;
   flex: 1;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .vote-panel-item {

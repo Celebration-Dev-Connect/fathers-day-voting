@@ -231,6 +231,14 @@ function cookieHeader(jar: Map<string, string>) {
     .join("; ");
 }
 
+function webGuideHeaders(jar: Map<string, string>) {
+  return {
+    "User-Agent": "Mozilla/5.0 (compatible; FathersDayCarShowImporter/1.0)",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/*;q=0.8,*/*;q=0.5",
+    ...(cookieHeader(jar) ? { Cookie: cookieHeader(jar) } : {}),
+  };
+}
+
 function followRedirectLocation(response: Response, fromUrl: string) {
   const location = response.headers.get("location");
   if (!location) return null;
@@ -244,7 +252,7 @@ async function getWithCookies(url: string, jar: Map<string, string>, timeoutMs =
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const response = await fetch(currentUrl, {
       method: "GET",
-      headers: cookieHeader(jar) ? { Cookie: cookieHeader(jar) } : {},
+      headers: webGuideHeaders(jar),
       redirect: "manual",
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
@@ -276,14 +284,16 @@ async function loginWebGuide(app: FastifyInstance) {
   const formData = new URLSearchParams({
     email: username,
     password,
-    submit: "Log In",
+    frm_remember: "1",
   });
 
   const loginResponse = await fetch(loginUrl, {
     method: "POST",
     headers: {
+      ...webGuideHeaders(jar),
       "Content-Type": "application/x-www-form-urlencoded",
-      ...(cookieHeader(jar) ? { Cookie: cookieHeader(jar) } : {}),
+      Origin: baseUrl,
+      Referer: loginUrl,
     },
     body: formData.toString(),
     redirect: "manual",
@@ -298,6 +308,9 @@ async function loginWebGuide(app: FastifyInstance) {
     const redirectedResponse = await getWithCookies(redirected, jar);
     if (!redirectedResponse.ok) {
       throw app.httpErrors.badGateway(`WebGuide login redirect failed (HTTP ${redirectedResponse.status})`);
+    }
+    if (new URL(redirectedResponse.url).pathname === "/webguide/login") {
+      throw app.httpErrors.badGateway("WebGuide login did not establish an authenticated session");
     }
   }
 
@@ -366,8 +379,10 @@ async function downloadWebGuidePhoto(
 
   const bytes = Buffer.from(await response.arrayBuffer());
   if (!bytes.length) throw app.httpErrors.badGateway(`Entry ${target.entryNumber} photo download returned no content`);
-  if (bytes.length > config.photos.maxBytes) {
-    throw app.httpErrors.payloadTooLarge(`Entry ${target.entryNumber} photo exceeds ${config.photos.maxBytes} bytes`);
+  if (bytes.length > WEBGUIDE_IMPORT_MAX_BYTES) {
+    throw app.httpErrors.payloadTooLarge(
+      `Entry ${target.entryNumber} WebGuide photo exceeds ${WEBGUIDE_IMPORT_MAX_BYTES} bytes`,
+    );
   }
 
   const contentType = normalizeImageContentType(response.headers.get("content-type"), bytes);
@@ -501,6 +516,7 @@ async function createApprovedPrimaryPhoto(
 
 const IMPORT_STALE_MS = 5 * 60 * 1000;
 const IMPORT_SWEEP_MS = 15_000;
+const WEBGUIDE_IMPORT_MAX_BYTES = 40 * 1024 * 1024;
 
 function importJobResponse(job: Awaited<ReturnType<typeof findImportJob>>) {
   if (!job) return null;

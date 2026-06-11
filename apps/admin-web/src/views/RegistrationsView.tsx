@@ -88,12 +88,16 @@ export function RegistrationsView({
   const [categoryAssignments, setCategoryAssignments] = useState<Record<string, string>>({});
   const [ownerGroupAssignments, setOwnerGroupAssignments] = useState<Record<string, string>>({});
   const [activeImport, setActiveImport] = useState<RegistrationImportJob | null>(null);
+  const [showImportProgress, setShowImportProgress] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (staff.role !== "ADMIN") return;
     getLatestRegistrationImport()
-      .then(({ job }) => setActiveImport(job))
+      .then(({ job }) => {
+        setActiveImport(job);
+        setShowImportProgress(Boolean(job && ["PENDING", "PROCESSING"].includes(job.status)));
+      })
       .catch(() => {});
   }, [staff.role]);
 
@@ -175,6 +179,7 @@ export function RegistrationsView({
       onRefresh();
       setImportMessage("Import started. You can leave this page while it continues.");
       setActiveImport(result.job);
+      setShowImportProgress(true);
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "Could not import CSV");
       setImportErrorDetails(extractCsvIssues(error));
@@ -207,6 +212,11 @@ export function RegistrationsView({
                 <Upload size={20} />
                 {importing ? "Importing" : "Import CSV"}
               </Button>
+              {activeImport && !showImportProgress ? (
+                <Button variant="secondary" onClick={() => setShowImportProgress(true)}>
+                  Import Status
+                </Button>
+              ) : null}
               <Button
                 onClick={() => {
                   onSelect(null);
@@ -244,10 +254,11 @@ export function RegistrationsView({
           </Alert>
         ) : null}
         {copyFeedback ? <Alert variant="info">{copyFeedback}</Alert> : null}
-        {activeImport ? (
+        {activeImport && showImportProgress ? (
           <RegistrationImportStatus
             job={activeImport}
             retrying={importing}
+            onClose={() => setShowImportProgress(false)}
             onRetry={() => {
               setImporting(true);
               retryFailedRegistrationImport(activeImport.id)
@@ -346,10 +357,12 @@ function importStatusLabel(status: RegistrationImportItemStatus) {
 function RegistrationImportStatus({
   job,
   retrying,
+  onClose,
   onRetry,
 }: {
   job: RegistrationImportJob;
   retrying: boolean;
+  onClose: () => void;
   onRetry: () => void;
 }) {
   const finishedRegistrations = job.counts.registrationsCompleted + job.counts.registrationsFailed;
@@ -360,63 +373,77 @@ function RegistrationImportStatus({
   const canRetry = hasFailures || job.status === "FAILED";
 
   return (
-    <section className="csv-preview import-status-panel">
-      <div className="csv-preview-header">
-        <div>
-          <p className="eyebrow">Import Status</p>
-          <h2>{job.sourceFileName || `${job.totalItems} registrations`}</h2>
-          <span>
-            {job.status.toLowerCase().replaceAll("_", " ")} · {percent}% complete
-          </span>
+    <div className="import-status-overlay" role="presentation" onClick={onClose}>
+      <section
+        className="csv-preview import-status-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Registration import status"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="csv-preview-header">
+          <div>
+            <p className="eyebrow">Import Status</p>
+            <h2>{job.sourceFileName || `${job.totalItems} registrations`}</h2>
+            <span>
+              {job.status.toLowerCase().replaceAll("_", " ")} · {percent}% complete
+            </span>
+          </div>
+          <div className="header-actions">
+            {canRetry && !["PENDING", "PROCESSING"].includes(job.status) ? (
+              <Button variant="secondary" disabled={retrying} onClick={onRetry}>
+                <RefreshCw size={18} />
+                Retry failed items
+              </Button>
+            ) : null}
+            <Button variant="secondary" onClick={onClose}>
+              <X size={18} />
+              Close
+            </Button>
+          </div>
         </div>
-        {canRetry && !["PENDING", "PROCESSING"].includes(job.status) ? (
-          <Button variant="secondary" disabled={retrying} onClick={onRetry}>
-            <RefreshCw size={18} />
-            Retry failed items
-          </Button>
-        ) : null}
-      </div>
-      <div className="import-progress-track" aria-label={`${percent}% complete`}>
-        <span style={{ width: `${percent}%` }} />
-      </div>
-      <div className="import-status-summary">
-        <span>Registrations: {job.counts.registrationsCompleted}/{job.totalItems}</span>
-        <span>Photos imported: {job.counts.photosCompleted}</span>
-        <span>Photos skipped: {job.counts.photosSkipped}</span>
-        <span>Failures: {job.counts.registrationsFailed + job.counts.photosFailed}</span>
-      </div>
-      {job.errorMessage ? <Alert variant="danger">{job.errorMessage}</Alert> : null}
-      <div className="csv-preview-table-wrap">
-        <table className="csv-preview-table">
-          <thead>
-            <tr>
-              <th>Entry</th>
-              <th>Registration</th>
-              <th>Photo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {job.items.map((item) => (
-              <tr key={item.id}>
-                <td>#{item.entryNumber}</td>
-                <td>
-                  <strong className={`import-item-status ${item.registrationStatus.toLowerCase()}`}>
-                    {importStatusLabel(item.registrationStatus)}
-                  </strong>
-                  <span>{item.registrationMessage || "Waiting"}</span>
-                </td>
-                <td>
-                  <strong className={`import-item-status ${item.photoStatus.toLowerCase()}`}>
-                    {importStatusLabel(item.photoStatus)}
-                  </strong>
-                  <span>{item.photoMessage || "Waiting"}</span>
-                </td>
+        <div className="import-progress-track" aria-label={`${percent}% complete`}>
+          <span style={{ width: `${percent}%` }} />
+        </div>
+        <div className="import-status-summary">
+          <span>Registrations: {job.counts.registrationsCompleted}/{job.totalItems}</span>
+          <span>Photos imported: {job.counts.photosCompleted}</span>
+          <span>Photos skipped: {job.counts.photosSkipped}</span>
+          <span>Failures: {job.counts.registrationsFailed + job.counts.photosFailed}</span>
+        </div>
+        {job.errorMessage ? <Alert variant="danger">{job.errorMessage}</Alert> : null}
+        <div className="csv-preview-table-wrap">
+          <table className="csv-preview-table">
+            <thead>
+              <tr>
+                <th>Entry</th>
+                <th>Registration</th>
+                <th>Photo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+            </thead>
+            <tbody>
+              {job.items.map((item) => (
+                <tr key={item.id}>
+                  <td>#{item.entryNumber}</td>
+                  <td>
+                    <strong className={`import-item-status ${item.registrationStatus.toLowerCase()}`}>
+                      {importStatusLabel(item.registrationStatus)}
+                    </strong>
+                    <span>{item.registrationMessage || "Waiting"}</span>
+                  </td>
+                  <td>
+                    <strong className={`import-item-status ${item.photoStatus.toLowerCase()}`}>
+                      {importStatusLabel(item.photoStatus)}
+                    </strong>
+                    <span>{item.photoMessage || "Waiting"}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   );
 }
 

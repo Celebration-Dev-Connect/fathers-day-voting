@@ -1438,8 +1438,26 @@ textarea:focus {
   text-transform: uppercase;
 }
 
+.import-status-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(25 28 33 / 62%);
+}
+
 .import-status-panel {
-  margin-bottom: 18px;
+  width: min(1080px, 100%);
+  max-height: min(860px, calc(100vh - 48px));
+  margin: 0;
+  overflow: hidden;
+  box-shadow: 0 24px 72px rgb(0 0 0 / 28%);
+}
+
+.import-status-panel .csv-preview-table-wrap {
+  max-height: min(600px, calc(100vh - 300px));
 }
 
 .import-progress-track {
@@ -1460,7 +1478,7 @@ textarea:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 24px;
-  padding: 14px 0;
+  padding: 14px 16px;
   font-size: 0.85rem;
   font-weight: 800;
   text-transform: uppercase;

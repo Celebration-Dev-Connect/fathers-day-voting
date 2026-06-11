@@ -40,6 +40,23 @@ async function validateImportRule(
   if (overlap) throw new Error(`This import rule overlaps with ${overlap.name}.`);
 }
 
+async function validateCategorySlug(name: string, excludeCategoryId?: string) {
+  const slug = slugify(name);
+  if (!slug) throw new Error("Category name must contain at least one letter or number.");
+
+  const existing = await prisma.category.findFirst({
+    where: {
+      eventId,
+      slug,
+      id: excludeCategoryId ? { not: excludeCategoryId } : undefined,
+    },
+    select: { name: true },
+  });
+  if (existing) {
+    throw new Error(`Another category already uses the public URL /browse/${slug}. Choose a different name.`);
+  }
+}
+
 export async function registerCategoryRoutes(app: FastifyInstance) {
   app.get("/categories", async (request) => {
     await requireStaff(app, request);
@@ -72,8 +89,9 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
       .parse(request.body);
     try {
       await validateImportRule(body);
+      await validateCategorySlug(body.name);
     } catch (error) {
-      throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid import rule");
+      throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid category");
     }
 
     const count = await prisma.category.count({ where: { eventId } });
@@ -118,8 +136,9 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
         },
         existing.id,
       );
+      if (body.name) await validateCategorySlug(body.name, existing.id);
     } catch (error) {
-      throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid import rule");
+      throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid category");
     }
 
     const category = await prisma.category.update({

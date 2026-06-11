@@ -96,6 +96,10 @@ export function CategoriesView({
             key={category.id}
             category={category}
             canEdit={staff.role === "ADMIN"}
+            onRename={async (categoryName) => {
+              await updateCategory(category.id, { name: categoryName });
+              onRefresh();
+            }}
             onToggleActive={async () => {
               await updateCategory(category.id, { active: !category.active });
               onRefresh();

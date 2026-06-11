@@ -1479,6 +1479,21 @@ textarea:focus {
   gap: 16px;
 }
 
+.category-card-details,
+.category-name-form {
+  display: grid;
+  gap: 8px;
+}
+
+.category-card-details {
+  min-width: 0;
+  flex: 1;
+}
+
+.category-name-form input {
+  width: min(100%, 360px);
+}
+
 .category-card strong,
 .category-card span {
   display: block;
@@ -2128,12 +2143,12 @@ textarea:focus {
 
   .qr-print-code,
   .qr-placeholder {
-    width: 2in;
+    width: 2.75in;
     max-width: 100%;
   }
 
   .qr-print-logo {
-    width: 0.25in;
+    width: 0.75in;
   }
 
   .qr-print-heading b {

@@ -1273,22 +1273,23 @@ textarea:focus {
 }
 
 .qr-print-heading {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .qr-print-logo {
-  width: 58px;
+  width: 29px;
   height: auto;
   object-fit: contain;
 }
 
 .qr-print-heading b {
-  font-size: 22px;
+  font-size: 26.4px;
   line-height: 1;
   white-space: nowrap;
+  justify-self: center;
+  text-align: center;
 }
 
 .qr-print-instruction {
@@ -1298,7 +1299,7 @@ textarea:focus {
   text-align: center;
 }
 
-.qr-print-card img,
+.qr-print-code,
 .qr-placeholder {
   width: min(100%, 190px);
   aspect-ratio: 1;
@@ -2125,18 +2126,18 @@ textarea:focus {
     page-break-inside: avoid;
   }
 
-  .qr-print-card img,
+  .qr-print-code,
   .qr-placeholder {
     width: 2in;
     max-width: 100%;
   }
 
   .qr-print-logo {
-    width: 0.5in;
+    width: 0.25in;
   }
 
   .qr-print-heading b {
-    font-size: 22pt;
+    font-size: 26.4pt;
   }
 
   .qr-print-instruction {

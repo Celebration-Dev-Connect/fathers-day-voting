@@ -45,7 +45,7 @@ export function QrPrintCard({
       </div>
       <strong className="qr-print-instruction">Scan code to Vote for Entry</strong>
       {dataUrl ? (
-        <img src={dataUrl} alt={`QR code ${card.visibleCode}`} />
+        <img className="qr-print-code" src={dataUrl} alt={`QR code ${card.visibleCode}`} />
       ) : (
         <div className="qr-placeholder" />
       )}

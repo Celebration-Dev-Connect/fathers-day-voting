@@ -71,6 +71,8 @@ resource "aws_ecs_task_definition" "api" {
       { name = "JWT_SECRET", valueFrom = aws_secretsmanager_secret.jwt_secret.arn },
       { name = "PLANNING_CENTER_CLIENT_ID", valueFrom = aws_secretsmanager_secret.pco_client_id.arn },
       { name = "PLANNING_CENTER_CLIENT_SECRET", valueFrom = aws_secretsmanager_secret.pco_client_secret.arn },
+      { name = "WEBGUIDE_USERNAME", valueFrom = aws_secretsmanager_secret.webguide_username.arn },
+      { name = "WEBGUIDE_PASSWORD", valueFrom = aws_secretsmanager_secret.webguide_password.arn },
     ]
 
     logConfiguration = {

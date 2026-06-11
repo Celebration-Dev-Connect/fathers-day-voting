@@ -18,7 +18,7 @@ locals {
   db_password_url_encoded = replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(
     random_password.db.result,
     "%", "%25"), "#", "%23"), "@", "%40"), "?", "%3F"), "[", "%5B"), "]", "%5D"),
-    "&", "%26"), "=", "%3D"), "+", "%2B"), "/", "%2F"), "!", "%21")
+  "&", "%26"), "=", "%3D"), "+", "%2B"), "/", "%2F"), "!", "%21")
 }
 
 resource "aws_secretsmanager_secret_version" "db_url" {
@@ -69,4 +69,34 @@ resource "aws_secretsmanager_secret" "pco_client_secret" {
 resource "aws_secretsmanager_secret_version" "pco_client_secret" {
   secret_id     = aws_secretsmanager_secret.pco_client_secret.id
   secret_string = var.pco_client_secret
+}
+
+resource "aws_secretsmanager_secret" "webguide_username" {
+  name                    = "${var.project}/${var.environment}/webguide-username"
+  recovery_window_in_days = 0
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "webguide_username" {
+  secret_id     = aws_secretsmanager_secret.webguide_username.id
+  secret_string = var.webguide_username
+}
+
+resource "aws_secretsmanager_secret" "webguide_password" {
+  name                    = "${var.project}/${var.environment}/webguide-password"
+  recovery_window_in_days = 0
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "webguide_password" {
+  secret_id     = aws_secretsmanager_secret.webguide_password.id
+  secret_string = var.webguide_password
 }

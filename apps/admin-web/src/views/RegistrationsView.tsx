@@ -381,7 +381,8 @@ function CsvImportGuide({
           <strong>What happens after upload</strong>
           <p>
             The preview marks each row as matched, unmatched, or conflicting. Any row without a clear match must be
-            assigned by an admin before the import can continue.
+            assigned by an admin before the import can continue. Existing owner and vehicle details are preserved.
+            A WebGuide photo is imported and set as primary only when that vehicle does not already have a photo.
           </p>
         </div>
         <div>

@@ -34,6 +34,8 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
       aws_secretsmanager_secret.jwt_secret.arn,
       aws_secretsmanager_secret.pco_client_id.arn,
       aws_secretsmanager_secret.pco_client_secret.arn,
+      aws_secretsmanager_secret.webguide_username.arn,
+      aws_secretsmanager_secret.webguide_password.arn,
     ]
   }
 }

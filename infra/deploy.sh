@@ -22,6 +22,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TF_DIR="$SCRIPT_DIR/terraform"
 
+# Load local deployment credentials without passing them as command arguments.
+# Terraform receives WebGuide credentials through sensitive TF_VAR values and
+# stores them in Secrets Manager for ECS injection.
+if [[ -f "$REPO_ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$REPO_ROOT/.env"
+  set +a
+fi
+if [[ -n "${AWS_SECRET:-}" && -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
+  export AWS_SECRET_ACCESS_KEY="$AWS_SECRET"
+fi
+export TF_VAR_webguide_username="${WEBGUIDE_USERNAME:-${WEBGUIDEUSERNAME:-}}"
+export TF_VAR_webguide_password="${WEBGUIDE_PASSWORD:-${WEBGUIDEPASSWORD:-}}"
+
 # ── Defaults ─────────────────────────────────────────────────────────────────
 ENVIRONMENT=""
 PROFILE=""

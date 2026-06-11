@@ -130,6 +130,20 @@ variable "pco_client_secret" {
   sensitive   = true
 }
 
+variable "webguide_username" {
+  description = "WebGuide username used to download vehicle photos referenced by registration CSV imports."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "webguide_password" {
+  description = "WebGuide password used to download vehicle photos referenced by registration CSV imports."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "pco_callback_url" {
   description = "Full public callback URL registered in the PCO OAuth app (e.g. https://example.com/api/auth/planning-center/callback)."
   type        = string

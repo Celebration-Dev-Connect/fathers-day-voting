@@ -60,6 +60,9 @@ alert_sms = ""
 # admin_web_url     = "https://carshow.celebrationedmonton.com/admin"
 # judge_web_url     = "https://carshow.celebrationedmonton.com/judge"
 
+# WebGuide photo-import credentials are loaded from the repo-root .env by
+# infra/deploy.sh and passed to Terraform as sensitive variables.
+
 # ── Launching without the custom domain yet? ──
 # Uncomment to serve fully on the AWS *.cloudfront.net URL with no DNS/ACM
 # dependency. Update pco_callback_url / *_web_url / cors_allowed_origins to that

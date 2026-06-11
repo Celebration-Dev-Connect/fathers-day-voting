@@ -44,6 +44,18 @@ type ImportedPhotoFailure = {
   reason: string;
 };
 
+type ExistingImportVehicle = {
+  id: string;
+  entryNumber: number;
+  ownerId: string;
+  primaryPhotoId: string | null;
+  photoCount: number;
+};
+
+export function shouldImportCsvPhoto(existing: ExistingImportVehicle | undefined, photoLink: string) {
+  return Boolean(photoLink) && (!existing || (!existing.primaryPhotoId && existing.photoCount === 0));
+}
+
 async function nextEntryNumber() {
   const latest = await prisma.vehicleEntry.findFirst({
     where: { eventId },
@@ -372,6 +384,12 @@ async function createApprovedPrimaryPhoto(
   target: ImportPhotoTarget,
   image: { bytes: Buffer; contentType: string },
 ) {
+  const vehicle = await prisma.vehicleEntry.findUnique({
+    where: { id: target.vehicleEntryId },
+    select: { primaryPhotoId: true, _count: { select: { photos: true } } },
+  });
+  if (!vehicle || vehicle.primaryPhotoId || vehicle._count.photos > 0) return false;
+
   const activeCount = await prisma.vehiclePhoto.count({
     where: {
       vehicleEntryId: target.vehicleEntryId,
@@ -439,25 +457,30 @@ async function createApprovedPrimaryPhoto(
     webStorageKey = webKey;
     mediumStorageKey = mediumKey;
     thumbStorageKey = thumbKey;
+    const createdPhotoId = createdPhoto.id;
 
-    await prisma.$transaction([
-      prisma.vehiclePhoto.update({
-        where: { id: createdPhoto.id },
+    await prisma.$transaction(async (tx) => {
+      await tx.vehiclePhoto.update({
+        where: { id: createdPhotoId },
         data: {
-          storageKey: finalStorageKey,
-          url: deps.storage.publicUrl(finalStorageKey),
-          webUrl: deps.storage.publicUrl(webStorageKey),
-          mediumUrl: deps.storage.publicUrl(mediumStorageKey),
-          thumbUrl: deps.storage.publicUrl(thumbStorageKey),
+          storageKey: publicKey,
+          url: deps.storage.publicUrl(publicKey),
+          webUrl: deps.storage.publicUrl(webKey),
+          mediumUrl: deps.storage.publicUrl(mediumKey),
+          thumbUrl: deps.storage.publicUrl(thumbKey),
           moderationStatus: "APPROVED",
           processedAt: new Date(),
         },
-      }),
-      prisma.vehicleEntry.update({
-        where: { id: target.vehicleEntryId },
-        data: { primaryPhotoId: createdPhoto.id },
-      }),
-    ]);
+      });
+      const primaryUpdate = await tx.vehicleEntry.updateMany({
+        where: { id: target.vehicleEntryId, primaryPhotoId: null },
+        data: { primaryPhotoId: createdPhotoId },
+      });
+      if (primaryUpdate.count !== 1) {
+        throw app.httpErrors.conflict(`Entry ${target.entryNumber} primary photo changed during import`);
+      }
+    });
+    return true;
   } catch (error) {
     if (createdPhoto?.id) {
       await prisma.vehiclePhoto.delete({ where: { id: createdPhoto.id } }).catch(() => {});
@@ -786,10 +809,27 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
         const firstRow = ownerRows[0];
         const existingEntries = await tx.vehicleEntry.findMany({
           where: { eventId, entryNumber: { in: ownerRows.map((row) => row.entryNumber) } },
-          select: { id: true, entryNumber: true, ownerId: true },
+          select: {
+            id: true,
+            entryNumber: true,
+            ownerId: true,
+            primaryPhotoId: true,
+            _count: { select: { photos: true } },
+          },
         });
         existingEntries.forEach((entry) => previousOwnerIds.add(entry.ownerId));
-        const existingByEntry = new Map(existingEntries.map((entry) => [entry.entryNumber, entry]));
+        const existingByEntry = new Map(
+          existingEntries.map((entry) => [
+            entry.entryNumber,
+            {
+              id: entry.id,
+              entryNumber: entry.entryNumber,
+              ownerId: entry.ownerId,
+              primaryPhotoId: entry.primaryPhotoId,
+              photoCount: entry._count.photos,
+            },
+          ]),
+        );
         const existingEntryOwner = existingEntries[0]
           ? await tx.owner.findUnique({
               where: { id: existingEntries[0].ownerId },
@@ -815,9 +855,11 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
           : existingEntryOwnerMatches
             ? existingEntryOwner
             : existingOwnerByGroup.get(ownerGroupForRow(firstRow)) ?? null;
-        const owner = existingGroupOwner
-          ? await tx.owner.update({ where: { id: existingGroupOwner.id }, data: ownerData })
-          : await tx.owner.create({ data: ownerData });
+        // CSV is an intake source, not the authority after an owner or staff member
+        // has edited a registration. Preserve existing owner details on re-import.
+        // If any row in this CSV owner group already exists, keep using that
+        // owner even when they have since edited the contact details from CSV.
+        const owner = existingEntryOwner ?? existingGroupOwner ?? (await tx.owner.create({ data: ownerData }));
 
         for (const row of ownerRows) {
           const category = categoryById.get(body.categoryAssignments[String(row.entryNumber)]);
@@ -840,12 +882,8 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
           let vehicleEntryId: string;
 
           if (existing) {
-            const updatedEntry = await tx.vehicleEntry.update({
-              where: { id: existing.id },
-              data: vehicleData,
-              select: { id: true },
-            });
-            vehicleEntryId = updatedEntry.id;
+            // Preserve all existing vehicle and ownership fields on re-import.
+            vehicleEntryId = existing.id;
             updated += 1;
           } else {
             const createdEntry = await tx.vehicleEntry.create({
@@ -859,7 +897,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
             created += 1;
           }
 
-          if (row.photoLink) {
+          if (shouldImportCsvPhoto(existing, row.photoLink)) {
             photoTargets.push({
               entryNumber: row.entryNumber,
               vehicleEntryId,
@@ -904,8 +942,8 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
           for (const target of result.photoTargets) {
             try {
               const image = await downloadWebGuidePhoto(app, session, target);
-              await createApprovedPrimaryPhoto(app, deps, staff.id, target, image);
-              photosImported += 1;
+              const imported = await createApprovedPrimaryPhoto(app, deps, staff.id, target, image);
+              if (imported) photosImported += 1;
             } catch (error) {
               const reason = error instanceof Error ? error.message : "Photo import failed";
               photoFailures.push({ entryNumber: target.entryNumber, reason });

@@ -1,7 +1,7 @@
-import { Plus, Save, Trash2 } from "lucide-react";
+import { Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { Alert, Button, CategoryCard, PageHeader } from "@carshow/carshow-components";
 import type { Category, SpecialAward, StaffUser } from "@carshow/carshow-components";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   createCategory,
   createSpecialAward,
@@ -159,6 +159,10 @@ export function CategoriesView({
               key={specialAward.id}
               specialAward={specialAward}
               canEdit={staff.role === "ADMIN"}
+              onRename={async (specialAwardName) => {
+                await updateSpecialAward(specialAward.id, { name: specialAwardName });
+                onRefresh();
+              }}
               onToggleActive={async () => {
                 await updateSpecialAward(specialAward.id, { active: !specialAward.active });
                 onRefresh();
@@ -255,26 +259,107 @@ function CategoryImportRule({
 function SpecialAwardCard({
   specialAward,
   canEdit,
+  onRename,
   onToggleActive,
   onDelete,
 }: {
   specialAward: SpecialAward;
   canEdit: boolean;
+  onRename: (name: string) => Promise<void>;
   onToggleActive: () => void;
   onDelete: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(specialAward.name);
+  const [saving, setSaving] = useState(false);
+  const [renameError, setRenameError] = useState("");
+
+  useEffect(() => {
+    if (!editing) setName(specialAward.name);
+  }, [editing, specialAward.name]);
+
+  function cancelEditing() {
+    setName(specialAward.name);
+    setRenameError("");
+    setEditing(false);
+  }
+
+  async function saveName(event: FormEvent) {
+    event.preventDefault();
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setRenameError("Special award name is required.");
+      return;
+    }
+    if (trimmedName === specialAward.name) {
+      cancelEditing();
+      return;
+    }
+
+    setSaving(true);
+    setRenameError("");
+    try {
+      await onRename(trimmedName);
+      setEditing(false);
+    } catch (error) {
+      setRenameError(error instanceof Error ? error.message : "Could not rename special award");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <article className="category-card">
-      <div>
-        <strong>{specialAward.name}</strong>
+      <div className="category-card-details">
+        {editing ? (
+          <form className="category-name-form" onSubmit={(event) => void saveName(event)}>
+            <input
+              autoFocus
+              value={name}
+              disabled={saving}
+              aria-label={`Special award name for ${specialAward.name}`}
+              onChange={(event) => setName(event.target.value)}
+            />
+            <div className="card-actions">
+              <Button type="submit" disabled={saving || !name.trim()}>
+                <Save size={18} />
+                {saving ? "Saving" : "Save"}
+              </Button>
+              <Button variant="secondary" disabled={saving} onClick={cancelEditing}>
+                <X size={18} />
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <strong>{specialAward.name}</strong>
+        )}
         {specialAward.description ? <span>{specialAward.description}</span> : null}
         <span>{specialAward._count?.votes ?? 0} votes</span>
+        {renameError ? <span className="form-error">{renameError}</span> : null}
       </div>
       <div className="card-actions">
-        <Button variant="secondary" disabled={!canEdit} onClick={onToggleActive}>
+        {canEdit ? (
+          <Button
+            variant="secondary"
+            disabled={editing || saving}
+            onClick={() => {
+              setRenameError("");
+              setEditing(true);
+            }}
+          >
+            <Pencil size={18} />
+            Edit
+          </Button>
+        ) : null}
+        <Button variant="secondary" disabled={!canEdit || editing || saving} onClick={onToggleActive}>
           {specialAward.active ? "Active" : "Inactive"}
         </Button>
-        <Button variant="secondary" disabled={!canEdit || Boolean(specialAward._count?.votes)} onClick={onDelete}>
+        <Button
+          variant="secondary"
+          disabled={!canEdit || editing || saving || Boolean(specialAward._count?.votes)}
+          onClick={onDelete}
+        >
           <Trash2 size={18} />
         </Button>
       </div>

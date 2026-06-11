@@ -1,4 +1,4 @@
-import { Car, ClipboardList, Images, LogOut, QrCode, Tags, Trophy } from "lucide-react";
+import { Car, CircleHelp, ClipboardList, Images, LogOut, QrCode, Tags, Trophy } from "lucide-react";
 import { SidebarNavButton, StaffCard } from "@carshow/carshow-components";
 import type { StaffUser } from "@carshow/carshow-components";
 import type { View } from "../App";
@@ -10,6 +10,7 @@ const viewLabels: Record<View, string> = {
   categories: "Categories",
   "photo-review": "Photo Review",
   voting: "Voting",
+  help: "Help Guide",
 };
 
 export function Sidebar({
@@ -71,6 +72,10 @@ export function Sidebar({
         <SidebarNavButton active={view === "voting"} onClick={() => onNavigate("voting")} aria-label="Voting">
           <Trophy size={22} />
           <span>Voting</span>
+        </SidebarNavButton>
+        <SidebarNavButton active={view === "help"} onClick={() => onNavigate("help")} aria-label="Help Guide">
+          <CircleHelp size={22} />
+          <span>Help</span>
         </SidebarNavButton>
       </nav>
       <StaffCard staff={staff} onLogout={onLogout} />

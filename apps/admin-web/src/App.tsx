@@ -30,8 +30,11 @@ const RegistrationsView = lazy(() =>
 const VotingView = lazy(() =>
   import("./views/VotingView").then(({ VotingView }) => ({ default: VotingView })),
 );
+const HelpView = lazy(() =>
+  import("./views/HelpView").then(({ HelpView }) => ({ default: HelpView })),
+);
 
-export type View = "dashboard" | "registrations" | "qr-cards" | "categories" | "photo-review" | "voting";
+export type View = "dashboard" | "registrations" | "qr-cards" | "categories" | "photo-review" | "voting" | "help";
 
 const DEV_LOGIN_OPTIONS = [
   { label: "Admin User", email: "admin@carshow.local" },
@@ -183,6 +186,7 @@ function AdminShellConnected({
         ) : null}
         {view === "photo-review" ? <PhotoReviewView /> : null}
         {view === "voting" ? <VotingView staff={staff} /> : null}
+        {view === "help" ? <HelpView staff={staff} onNavigate={setView} /> : null}
       </Suspense>
     </AdminShellTemplate>
   );

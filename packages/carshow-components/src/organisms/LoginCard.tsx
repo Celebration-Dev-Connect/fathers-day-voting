@@ -30,7 +30,7 @@ export function LoginCard({
   title,
   subtitle,
   brandMark,
-  loginOptions,
+  loginOptions = [],
   error,
   onLogin,
   planningCenterUrl,
@@ -38,9 +38,9 @@ export function LoginCard({
   title: string;
   subtitle: string;
   brandMark: string;
-  loginOptions: DevLoginOption[];
+  loginOptions?: DevLoginOption[];
   error: string;
-  onLogin: (email: string) => Promise<void>;
+  onLogin?: (email: string) => Promise<void>;
   planningCenterUrl?: string;
 }) {
   const [email, setEmail] = useState(loginOptions[0]?.email ?? "");
@@ -48,6 +48,7 @@ export function LoginCard({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (!onLogin) return;
     setSubmitting(true);
     await onLogin(email);
     setSubmitting(false);
@@ -68,7 +69,7 @@ export function LoginCard({
             </a>
           </div>
         ) : null}
-        {loginOptions.length > 0 ? (
+        {loginOptions.length > 0 && onLogin ? (
           <form onSubmit={submit} className="stack">
             <label>
               Dev staff account

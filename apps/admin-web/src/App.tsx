@@ -3,7 +3,6 @@ import type { Category, DashboardMetrics, Registration, SpecialAward, StaffUser 
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   clearToken,
-  devLogin,
   getDashboardMetrics,
   listCategories,
   listRegistrations,
@@ -35,12 +34,6 @@ const HelpView = lazy(() =>
 );
 
 export type View = "dashboard" | "registrations" | "qr-cards" | "categories" | "photo-review" | "voting" | "help";
-
-const DEV_LOGIN_OPTIONS = [
-  { label: "Admin User", email: "admin@carshow.local" },
-  { label: "Registrar One", email: "registrar1@carshow.local" },
-  { label: "Registrar Two", email: "registrar2@carshow.local" },
-];
 
 export function App() {
   const [staff, setStaff] = useState<StaffUser | null>(null);
@@ -76,19 +69,8 @@ export function App() {
         brandMark="CELEBRATION CHURCH"
         subtitle="Staff Registration Console"
         title="Father's Day Car Show"
-        loginOptions={DEV_LOGIN_OPTIONS}
         error={loginError}
         planningCenterUrl={`${API_URL}/auth/planning-center/start?app=admin`}
-        onLogin={async (email) => {
-          setLoginError("");
-          try {
-            const result = await devLogin(email);
-            setToken(result.token);
-            setStaff(result.staff);
-          } catch (error) {
-            setLoginError(error instanceof Error ? error.message : "Login failed");
-          }
-        }}
       />
     );
   }

@@ -118,6 +118,9 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     if (!staff?.devLogin || !staff.active) {
       throw app.httpErrors.unauthorized("Unknown dev staff user");
     }
+    if (staff.role === StaffRole.ADMIN || staff.role === StaffRole.REGISTRAR) {
+      throw app.httpErrors.unauthorized("Admin and registrar accounts must sign in through Planning Center");
+    }
 
     const token = app.jwt.sign({ staffUserId: staff.id, role: staff.role }, { expiresIn: "12h" });
 

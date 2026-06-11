@@ -63,13 +63,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function devLogin(email: string) {
-  return request<{ token: string; staff: StaffUser }>("/auth/dev-login", {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
-}
-
 export async function me() {
   return request<{ staff: StaffUser }>("/auth/me");
 }

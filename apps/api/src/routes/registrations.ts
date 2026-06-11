@@ -1,5 +1,5 @@
 import { Prisma, QrCardStatus, StaffRole, VehicleStatus, prisma } from "@carshow/db";
-import type { FastifyInstance } from "fastify";
+import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
 import { requireStaff } from "../auth.js";
@@ -31,6 +31,7 @@ type CsvRegistrationRow = {
 
 type RegistrationRouteDeps = {
   storage: PhotoStorage;
+  importWorker?: RegistrationImportWorker;
 };
 
 type ImportPhotoTarget = {
@@ -498,6 +499,329 @@ async function createApprovedPrimaryPhoto(
   }
 }
 
+const IMPORT_STALE_MS = 5 * 60 * 1000;
+const IMPORT_SWEEP_MS = 15_000;
+
+function importJobResponse(job: Awaited<ReturnType<typeof findImportJob>>) {
+  if (!job) return null;
+  const counts = {
+    registrationsCompleted: 0,
+    registrationsFailed: 0,
+    photosCompleted: 0,
+    photosFailed: 0,
+    photosSkipped: 0,
+  };
+  for (const item of job.items) {
+    if (item.registrationStatus === "COMPLETED") counts.registrationsCompleted += 1;
+    if (item.registrationStatus === "FAILED") counts.registrationsFailed += 1;
+    if (item.photoStatus === "COMPLETED") counts.photosCompleted += 1;
+    if (item.photoStatus === "FAILED") counts.photosFailed += 1;
+    if (item.photoStatus === "SKIPPED") counts.photosSkipped += 1;
+  }
+  return { ...job, counts };
+}
+
+function findImportJob(id: string) {
+  return prisma.registrationImportJob.findFirst({
+    where: { id, eventId },
+    include: { items: { orderBy: { entryNumber: "asc" } } },
+  });
+}
+
+async function processImportRegistrations(jobId: string, staffId: string) {
+  const job = await prisma.registrationImportJob.findUnique({
+    where: { id: jobId },
+    include: { items: { orderBy: { entryNumber: "asc" } } },
+  });
+  if (!job) return;
+  const items = job.items.filter((item) => item.registrationStatus === "PENDING");
+  if (!items.length) return;
+  const rows = items.map((item) => item.rowData as CsvRegistrationRow);
+  const categoryById = new Map(
+    (await prisma.category.findMany({ where: { eventId } })).map((category) => [category.id, category]),
+  );
+  const seedVehicleCount = await prisma.vehicleEntry.count({
+    where: { eventId, id: { startsWith: "seed-vehicle-" } },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    if (seedVehicleCount > 0) {
+      await tx.vehicleEntry.deleteMany({ where: { eventId, id: { startsWith: "seed-vehicle-" } } });
+      await tx.owner.deleteMany({ where: { id: { startsWith: "seed-owner-" }, vehicleEntries: { none: {} } } });
+    }
+    const existingOwners = await tx.owner.findMany({ where: { vehicleEntries: { some: { eventId } } } });
+    const existingOwnerByGroup = new Map(
+      existingOwners.map((owner) => [ownerIdentityKey(owner.email ?? "", owner.phone), owner]),
+    );
+    const itemsByOwnerGroup = new Map<string, typeof items>();
+    for (const item of items) {
+      itemsByOwnerGroup.set(item.ownerGroup, [...(itemsByOwnerGroup.get(item.ownerGroup) ?? []), item]);
+    }
+
+    for (const [group, ownerItems] of itemsByOwnerGroup) {
+      const ownerRows = ownerItems.map((item) => item.rowData as CsvRegistrationRow);
+      const firstRow = ownerRows[0];
+      const existingEntries = await tx.vehicleEntry.findMany({
+        where: { eventId, entryNumber: { in: ownerRows.map((row) => row.entryNumber) } },
+        select: {
+          id: true,
+          entryNumber: true,
+          ownerId: true,
+          primaryPhotoId: true,
+          _count: { select: { photos: true } },
+        },
+      });
+      const existingByEntry = new Map(
+        existingEntries.map((entry) => [
+          entry.entryNumber,
+          { ...entry, photoCount: entry._count.photos },
+        ]),
+      );
+      const existingEntryOwner = existingEntries[0]
+        ? await tx.owner.findUnique({
+            where: { id: existingEntries[0].ownerId },
+            include: { vehicleEntries: { where: { eventId }, select: { id: true } } },
+          })
+        : null;
+      const existingEntryOwnerMatches =
+        existingEntryOwner &&
+        ownerIdentityKey(existingEntryOwner.email ?? "", existingEntryOwner.phone) === ownerGroupForRow(firstRow);
+      const existingGroupOwner = group.startsWith("entry:")
+        ? existingEntryOwnerMatches && existingEntryOwner.vehicleEntries.length === 1
+          ? existingEntryOwner
+          : null
+        : existingEntryOwnerMatches
+          ? existingEntryOwner
+          : existingOwnerByGroup.get(ownerGroupForRow(firstRow)) ?? null;
+      const owner =
+        existingEntryOwner ??
+        existingGroupOwner ??
+        (await tx.owner.create({
+          data: {
+            firstName: firstRow.firstName,
+            lastName: firstRow.lastName,
+            phone: firstRow.phone,
+            email: firstRow.email || null,
+            publicName: `${firstRow.firstName} ${firstRow.lastName}`.trim(),
+            publicNameOptIn: true,
+            waiverAccepted: ownerRows.some((row) => Boolean(row.signature)),
+          },
+        }));
+
+      for (const item of ownerItems) {
+        const row = item.rowData as CsvRegistrationRow;
+        const category = categoryById.get(item.categoryId);
+        if (!category) throw new Error(`Category for entry ${row.entryNumber} no longer exists`);
+        const existing = existingByEntry.get(row.entryNumber);
+        const vehicle = existing
+          ? { id: existing.id, created: false }
+          : {
+              id: (
+                await tx.vehicleEntry.create({
+                  data: {
+                    eventId,
+                    ownerId: owner.id,
+                    categoryId: category.id,
+                    entryNumber: row.entryNumber,
+                    year: row.year,
+                    make: row.make,
+                    model: row.model,
+                    exteriorColor: row.color,
+                    internalNotes: importNotesForCsvRow(row),
+                    ownerAccessCode: accessCodeForEntry(row.entryNumber),
+                    source: "ONLINE_IMPORT",
+                    registeredByStaffId: staffId,
+                  },
+                  select: { id: true },
+                })
+              ).id,
+              created: true,
+            };
+        const importPhoto = shouldImportCsvPhoto(existing, row.photoLink);
+        await tx.registrationImportItem.update({
+          where: { id: item.id },
+          data: {
+            vehicleEntryId: vehicle.id,
+            registrationStatus: "COMPLETED",
+            registrationMessage: vehicle.created ? "Created registration" : "Existing registration preserved",
+            photoStatus: importPhoto ? "PENDING" : "SKIPPED",
+            photoMessage: importPhoto
+              ? "Waiting to import photo"
+              : row.photoLink
+                ? "Existing photo preserved"
+                : "No photo supplied",
+          },
+        });
+      }
+    }
+  });
+}
+
+export class RegistrationImportWorker {
+  private sweeper?: NodeJS.Timeout;
+  private readonly inFlight = new Set<string>();
+
+  constructor(
+    private readonly app: FastifyInstance,
+    private readonly storage: PhotoStorage,
+    private readonly log: FastifyBaseLogger,
+  ) {}
+
+  start() {
+    void this.sweep();
+    this.sweeper = setInterval(() => void this.sweep(), IMPORT_SWEEP_MS);
+    this.sweeper.unref?.();
+    this.log.info("registration import sweeper started");
+  }
+
+  stop() {
+    if (this.sweeper) clearInterval(this.sweeper);
+  }
+
+  enqueue(jobId: string) {
+    setImmediate(() => void this.process(jobId).catch((err) => this.log.error({ err, jobId }, "registration import failed")));
+  }
+
+  async process(jobId: string) {
+    if (this.inFlight.has(jobId) || !(await this.claim(jobId))) return;
+    this.inFlight.add(jobId);
+    try {
+      const job = await prisma.registrationImportJob.findUnique({ where: { id: jobId } });
+      if (!job) return;
+      await processImportRegistrations(jobId, job.createdByStaffId);
+      await this.processPhotos(jobId, job.createdByStaffId);
+      const failed = await prisma.registrationImportItem.count({
+        where: { jobId, OR: [{ registrationStatus: "FAILED" }, { photoStatus: "FAILED" }] },
+      });
+      await prisma.registrationImportJob.update({
+        where: { id: jobId },
+        data: {
+          status: failed ? "COMPLETED_WITH_ERRORS" : "COMPLETED",
+          completedAt: new Date(),
+          processingStartedAt: null,
+          errorMessage: null,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Import failed";
+      await prisma.registrationImportItem.updateMany({
+        where: { jobId, registrationStatus: { in: ["PENDING", "PROCESSING"] } },
+        data: { registrationStatus: "FAILED", registrationMessage: message },
+      });
+      await prisma.registrationImportJob.update({
+        where: { id: jobId },
+        data: { status: "FAILED", errorMessage: message, completedAt: new Date(), processingStartedAt: null },
+      });
+      throw error;
+    } finally {
+      this.inFlight.delete(jobId);
+    }
+  }
+
+  private async processPhotos(jobId: string, staffId: string) {
+    const staleBefore = new Date(Date.now() - IMPORT_STALE_MS);
+    await prisma.registrationImportItem.updateMany({
+      where: { jobId, photoStatus: "PROCESSING", processingStartedAt: { lt: staleBefore } },
+      data: { photoStatus: "PENDING", photoMessage: "Resuming interrupted photo import", processingStartedAt: null },
+    });
+    const hasWebGuideCreds = Boolean(config.webGuide.username && config.webGuide.password);
+    let session: Awaited<ReturnType<typeof loginWebGuide>> = null;
+    if (hasWebGuideCreds) {
+      try {
+        session = await loginWebGuide(this.app);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "WebGuide login failed";
+        await prisma.registrationImportItem.updateMany({
+          where: { jobId, photoStatus: "PENDING" },
+          data: { photoStatus: "FAILED", photoMessage: message, completedAt: new Date() },
+        });
+        return;
+      }
+    }
+    const items = await prisma.registrationImportItem.findMany({
+      where: { jobId, photoStatus: "PENDING" },
+      orderBy: { entryNumber: "asc" },
+    });
+    for (const item of items) {
+      const claimed = await prisma.registrationImportItem.updateMany({
+        where: { id: item.id, photoStatus: "PENDING" },
+        data: { photoStatus: "PROCESSING", processingStartedAt: new Date(), photoMessage: "Downloading photo" },
+      });
+      if (!claimed.count) continue;
+      await prisma.registrationImportJob.update({
+        where: { id: jobId },
+        data: { processingStartedAt: new Date() },
+      });
+      try {
+        if (!session) throw new Error("WebGuide credentials are not configured");
+        if (!item.vehicleEntryId) throw new Error("Registration was not created");
+        const row = item.rowData as CsvRegistrationRow;
+        const image = await downloadWebGuidePhoto(this.app, session, {
+          entryNumber: item.entryNumber,
+          vehicleEntryId: item.vehicleEntryId,
+          photoLink: row.photoLink,
+        });
+        const imported = await createApprovedPrimaryPhoto(
+          this.app,
+          { storage: this.storage },
+          staffId,
+          { entryNumber: item.entryNumber, vehicleEntryId: item.vehicleEntryId, photoLink: row.photoLink },
+          image,
+        );
+        await prisma.registrationImportItem.update({
+          where: { id: item.id },
+          data: {
+            photoStatus: imported ? "COMPLETED" : "SKIPPED",
+            photoMessage: imported ? "Photo imported and set as primary" : "Existing photo preserved",
+            processingStartedAt: null,
+            completedAt: new Date(),
+          },
+        });
+      } catch (error) {
+        await prisma.registrationImportItem.update({
+          where: { id: item.id },
+          data: {
+            photoStatus: "FAILED",
+            photoMessage: error instanceof Error ? error.message : "Photo import failed",
+            processingStartedAt: null,
+            completedAt: new Date(),
+          },
+        });
+      }
+    }
+  }
+
+  private async claim(jobId: string) {
+    const staleBefore = new Date(Date.now() - IMPORT_STALE_MS);
+    const claimed = await prisma.registrationImportJob.updateMany({
+      where: {
+        id: jobId,
+        OR: [
+          { status: "PENDING" },
+          { status: "PROCESSING", processingStartedAt: { lt: staleBefore } },
+        ],
+      },
+      data: { status: "PROCESSING", processingStartedAt: new Date(), completedAt: null },
+    });
+    return claimed.count > 0;
+  }
+
+  private async sweep() {
+    const staleBefore = new Date(Date.now() - IMPORT_STALE_MS);
+    const jobs = await prisma.registrationImportJob.findMany({
+      where: {
+        OR: [
+          { status: "PENDING" },
+          { status: "PROCESSING", processingStartedAt: { lt: staleBefore } },
+        ],
+      },
+      select: { id: true },
+      take: 3,
+    });
+    for (const job of jobs) await this.process(job.id);
+  }
+}
+
 function registrationResponse(registration: RegistrationPayload) {
   const photos = [...registration.photos].sort((a, b) => {
     if (a.id === registration.primaryPhotoId) return -1;
@@ -733,6 +1057,134 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
         };
       }),
     };
+  });
+
+  app.post("/registration-imports", async (request, reply) => {
+    const staff = await requireStaff(app, request);
+    if (staff.role !== StaffRole.ADMIN) throw app.httpErrors.forbidden("Only admins can import registrations");
+    const body = z
+      .object({
+        csvText: z.string().min(1),
+        categoryAssignments: z.record(z.string(), z.string()),
+        ownerGroupAssignments: z.record(z.string(), z.string()).default({}),
+        sourceFileName: z.string().trim().max(255).optional(),
+      })
+      .parse(request.body);
+    const rows = parseCsvOrBadRequest(app, body.csvText);
+    const categoryById = new Map(
+      (await prisma.category.findMany({ where: { eventId } })).map((category) => [category.id, category]),
+    );
+    if (!categoryById.size) throw app.httpErrors.badRequest("Create at least one category before importing");
+
+    const items = rows.map((row) => {
+      const categoryId = body.categoryAssignments[String(row.entryNumber)];
+      if (!categoryById.has(categoryId)) throw app.httpErrors.badRequest(`Choose a category for entry ${row.entryNumber}`);
+      registrationSchema.parse({
+        owner: {
+          firstName: row.firstName,
+          lastName: row.lastName,
+          phone: row.phone,
+          email: row.email,
+          publicName: `${row.firstName} ${row.lastName}`.trim(),
+          publicNameOptIn: true,
+          waiverAccepted: Boolean(row.signature),
+        },
+        vehicle: {
+          categoryId,
+          year: row.year,
+          make: row.make,
+          model: row.model,
+          exteriorColor: row.color,
+          internalNotes: importNotesForCsvRow(row),
+        },
+      });
+      let ownerGroup: string;
+      try {
+        ownerGroup = selectedOwnerGroup(row, body.ownerGroupAssignments);
+      } catch (error) {
+        throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid owner grouping");
+      }
+      return {
+        entryNumber: row.entryNumber,
+        rowData: row as unknown as Prisma.InputJsonValue,
+        categoryId,
+        ownerGroup,
+        photoStatus: row.photoLink ? ("PENDING" as const) : ("SKIPPED" as const),
+        photoMessage: row.photoLink ? "Waiting for registration" : "No photo supplied",
+      };
+    });
+
+    const job = await prisma.registrationImportJob.create({
+      data: {
+        eventId,
+        createdByStaffId: staff.id,
+        sourceFileName: body.sourceFileName,
+        totalItems: items.length,
+        items: { create: items },
+      },
+      include: { items: { orderBy: { entryNumber: "asc" } } },
+    });
+    deps.importWorker?.enqueue(job.id);
+    return reply.code(202).send({ job: importJobResponse(job) });
+  });
+
+  app.get("/registration-imports/latest", async (request) => {
+    const staff = await requireStaff(app, request);
+    if (staff.role !== StaffRole.ADMIN) throw app.httpErrors.forbidden("Only admins can view registration imports");
+    const latest = await prisma.registrationImportJob.findFirst({
+      where: { eventId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    return { job: latest ? importJobResponse(await findImportJob(latest.id)) : null };
+  });
+
+  app.get("/registration-imports/:id", async (request) => {
+    const staff = await requireStaff(app, request);
+    if (staff.role !== StaffRole.ADMIN) throw app.httpErrors.forbidden("Only admins can view registration imports");
+    const params = z.object({ id: z.string() }).parse(request.params);
+    const job = await findImportJob(params.id);
+    if (!job) throw app.httpErrors.notFound("Import job not found");
+    return { job: importJobResponse(job) };
+  });
+
+  app.post("/registration-imports/:id/retry-failed", async (request) => {
+    const staff = await requireStaff(app, request);
+    if (staff.role !== StaffRole.ADMIN) throw app.httpErrors.forbidden("Only admins can retry registration imports");
+    const params = z.object({ id: z.string() }).parse(request.params);
+    const job = await prisma.registrationImportJob.findFirst({ where: { id: params.id, eventId } });
+    if (!job) throw app.httpErrors.notFound("Import job not found");
+    const failedItems = await prisma.registrationImportItem.findMany({
+      where: { jobId: job.id, OR: [{ registrationStatus: "FAILED" }, { photoStatus: "FAILED" }] },
+    });
+    await prisma.$transaction([
+      ...failedItems.map((item) => {
+        const row = item.rowData as CsvRegistrationRow;
+        return prisma.registrationImportItem.update({
+          where: { id: item.id },
+          data:
+            item.registrationStatus === "FAILED"
+              ? {
+                  registrationStatus: "PENDING",
+                  registrationMessage: "Waiting to retry registration",
+                  photoStatus: row.photoLink ? "PENDING" : "SKIPPED",
+                  photoMessage: row.photoLink ? "Waiting for registration" : "No photo supplied",
+                  completedAt: null,
+                }
+              : {
+                  photoStatus: "PENDING",
+                  photoMessage: "Waiting to retry photo",
+                  completedAt: null,
+                },
+        });
+      }),
+      prisma.registrationImportJob.update({
+        where: { id: job.id },
+        data: { status: "PENDING", errorMessage: null, completedAt: null, processingStartedAt: null },
+      }),
+    ]);
+    deps.importWorker?.enqueue(job.id);
+    return { job: importJobResponse(await findImportJob(job.id)) };
   });
 
   app.post("/registrations/import-csv", async (request, reply) => {

@@ -196,6 +196,33 @@ export type RegistrationCsvPreviewRow = {
   status: "MATCHED" | "UNMATCHED" | "CONFLICT";
 };
 
+export type RegistrationImportItemStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "SKIPPED" | "FAILED";
+
+export type RegistrationImportJob = {
+  id: string;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "COMPLETED_WITH_ERRORS" | "FAILED";
+  sourceFileName: string | null;
+  totalItems: number;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  counts: {
+    registrationsCompleted: number;
+    registrationsFailed: number;
+    photosCompleted: number;
+    photosFailed: number;
+    photosSkipped: number;
+  };
+  items: Array<{
+    id: string;
+    entryNumber: number;
+    registrationStatus: RegistrationImportItemStatus;
+    photoStatus: RegistrationImportItemStatus;
+    registrationMessage: string | null;
+    photoMessage: string | null;
+  }>;
+};
+
 export async function previewRegistrationsCsv(csvText: string) {
   return request<{ rows: RegistrationCsvPreviewRow[] }>("/registrations/import-csv/preview", {
     method: "POST",
@@ -207,20 +234,25 @@ export async function importRegistrationsCsv(
   csvText: string,
   categoryAssignments: Record<string, string>,
   ownerGroupAssignments: Record<string, string>,
+  sourceFileName?: string,
 ) {
-  return request<{
-    imported: number;
-    created: number;
-    updated: number;
-    replacedSeeded: number;
-    photosAttempted: number;
-    photosImported: number;
-    photosFailed: number;
-    photoFailures: Array<{ entryNumber: number; reason: string }>;
-    message: string;
-  }>("/registrations/import-csv", {
+  return request<{ job: RegistrationImportJob }>("/registration-imports", {
     method: "POST",
-    body: JSON.stringify({ csvText, categoryAssignments, ownerGroupAssignments }),
+    body: JSON.stringify({ csvText, categoryAssignments, ownerGroupAssignments, sourceFileName }),
+  });
+}
+
+export async function getLatestRegistrationImport() {
+  return request<{ job: RegistrationImportJob | null }>("/registration-imports/latest");
+}
+
+export async function getRegistrationImport(id: string) {
+  return request<{ job: RegistrationImportJob }>(`/registration-imports/${encodeURIComponent(id)}`);
+}
+
+export async function retryFailedRegistrationImport(id: string) {
+  return request<{ job: RegistrationImportJob }>(`/registration-imports/${encodeURIComponent(id)}/retry-failed`, {
+    method: "POST",
   });
 }
 

@@ -1438,6 +1438,55 @@ textarea:focus {
   text-transform: uppercase;
 }
 
+.import-status-panel {
+  margin-bottom: 18px;
+}
+
+.import-progress-track {
+  height: 10px;
+  overflow: hidden;
+  background: #e4e4e4;
+  border-radius: 999px;
+}
+
+.import-progress-track span {
+  display: block;
+  height: 100%;
+  background: var(--red, #c8102e);
+  transition: width 240ms ease;
+}
+
+.import-status-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  padding: 14px 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.import-item-status {
+  display: block;
+  text-transform: capitalize;
+}
+
+.import-item-status.completed {
+  color: #147d43;
+}
+
+.import-item-status.failed {
+  color: var(--red, #c8102e);
+}
+
+.import-item-status.processing {
+  color: #9a6500;
+}
+
+.import-item-status.skipped {
+  color: #777;
+}
+
 .csv-row-unresolved {
   background: #fff8e7;
 }

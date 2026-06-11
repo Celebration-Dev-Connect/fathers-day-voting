@@ -14,6 +14,11 @@ SCHEMA="packages/db/prisma/schema.prisma"
 echo "[entrypoint] Applying database migrations..."
 "$PRISMA" migrate deploy --schema "$SCHEMA"
 
+if [ "${1:-}" = "cleanup-registrations" ]; then
+  echo "[entrypoint] Running one-time registration cleanup..."
+  exec node apps/api/dist/scripts/cleanupRegistrations.js
+fi
+
 if [ "$RUN_SEED" = "true" ]; then
   echo "[entrypoint] RUN_SEED=true — seeding database (idempotent upserts)..."
   "$TSX" packages/db/prisma/seed.ts

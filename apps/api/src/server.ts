@@ -21,7 +21,8 @@ if (config.moderation.driver === "rekognition") {
 const storage = createStorage();
 const moderator = createModerator();
 const textModerator = createTextModerator();
-const { app, worker } = await buildApp({ storage, moderator, textModerator });
+const { app, worker, importWorker } = await buildApp({ storage, moderator, textModerator });
 
 await app.listen({ port: config.port, host: config.host });
 worker.start();
+importWorker.start();

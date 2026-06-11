@@ -24,6 +24,22 @@ enum RegistrationSource {
   ONLINE_IMPORT
 }
 
+enum RegistrationImportJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+}
+
+enum RegistrationImportItemStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  SKIPPED
+  FAILED
+}
+
 enum QrCardStatus {
   PRINTED
   ASSIGNED
@@ -40,42 +56,44 @@ enum QrAuditAction {
 }
 
 model Event {
-  id                 String                   @id @default(cuid())
-  name               String
-  eventDate          DateTime
-  venueName          String
-  venueAddress       String
-  registrationOpen   Boolean                  @default(true)
-  votingOpen         Boolean                  @default(false)
-  peopleChoiceCutoff DateTime?
-  judgesVotingEnabled Boolean                  @default(true)
-  judgingOpen        Boolean                  @default(false)
-  resultsPublished   Boolean                  @default(false)
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
-  categories         Category[]
-  vehicleEntries     VehicleEntry[]
-  qrCards            QrCard[]
-  peopleChoiceVotes  PeopleChoiceVote[]
-  judgeCategoryPicks JudgeCategoryPick[]
-  winnerOverrides    CategoryWinnerOverride[]
-  specialAwards      SpecialAward[]
-  specialAwardVotes  SpecialAwardVote[]
+  id                     String                   @id @default(cuid())
+  name                   String
+  eventDate              DateTime
+  venueName              String
+  venueAddress           String
+  registrationOpen       Boolean                  @default(true)
+  votingOpen             Boolean                  @default(false)
+  peopleChoiceCutoff     DateTime?
+  judgesVotingEnabled    Boolean                  @default(true)
+  judgingOpen            Boolean                  @default(false)
+  resultsPublished       Boolean                  @default(false)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  categories             Category[]
+  vehicleEntries         VehicleEntry[]
+  qrCards                QrCard[]
+  peopleChoiceVotes      PeopleChoiceVote[]
+  judgeCategoryPicks     JudgeCategoryPick[]
+  winnerOverrides        CategoryWinnerOverride[]
+  specialAwards          SpecialAward[]
+  specialAwardVotes      SpecialAwardVote[]
+  registrationImportJobs RegistrationImportJob[]
 }
 
 model StaffUser {
-  id               String                   @id @default(cuid())
-  email            String                   @unique
-  displayName      String
-  role             StaffRole
-  planningCenterId String?                  @unique
-  devLogin         Boolean                  @default(false)
-  active           Boolean                  @default(true)
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
-  registrations    VehicleEntry[]           @relation("RegisteredBy")
-  auditLogs        QrAssignmentAuditLog[]   @relation("QrAuditStaff")
-  winnerOverrides  CategoryWinnerOverride[]
+  id                     String                   @id @default(cuid())
+  email                  String                   @unique
+  displayName            String
+  role                   StaffRole
+  planningCenterId       String?                  @unique
+  devLogin               Boolean                  @default(false)
+  active                 Boolean                  @default(true)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  registrations          VehicleEntry[]           @relation("RegisteredBy")
+  auditLogs              QrAssignmentAuditLog[]   @relation("QrAuditStaff")
+  winnerOverrides        CategoryWinnerOverride[]
+  registrationImportJobs RegistrationImportJob[]
 }
 
 model Category {
@@ -196,6 +214,49 @@ model VehiclePhoto {
   @@index([vehicleEntryId, moderationStatus, sortOrder])
   @@index([moderationStatus])
   @@index([moderationStatus, processingStartedAt])
+}
+
+model RegistrationImportJob {
+  id                  String                      @id @default(cuid())
+  eventId             String
+  createdByStaffId    String
+  status              RegistrationImportJobStatus @default(PENDING)
+  sourceFileName      String?
+  totalItems          Int
+  processingStartedAt DateTime?
+  completedAt         DateTime?
+  errorMessage        String?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  event               Event                       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdByStaff      StaffUser                   @relation(fields: [createdByStaffId], references: [id])
+  items               RegistrationImportItem[]
+
+  @@index([eventId, createdAt])
+  @@index([status, processingStartedAt])
+}
+
+model RegistrationImportItem {
+  id                  String                       @id @default(cuid())
+  jobId               String
+  entryNumber         Int
+  rowData             Json
+  categoryId          String
+  ownerGroup          String
+  vehicleEntryId      String?
+  registrationStatus  RegistrationImportItemStatus @default(PENDING)
+  photoStatus         RegistrationImportItemStatus @default(PENDING)
+  registrationMessage String?
+  photoMessage        String?
+  processingStartedAt DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  job                 RegistrationImportJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, entryNumber])
+  @@index([jobId, registrationStatus])
+  @@index([jobId, photoStatus])
 }
 
 model PeopleChoiceVote {

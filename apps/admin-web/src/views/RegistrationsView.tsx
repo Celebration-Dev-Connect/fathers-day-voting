@@ -1,21 +1,19 @@
-import { AlertTriangle, Check, Plus, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, Plus, RefreshCw, Upload, X } from "lucide-react";
 import { Alert, Button, PageHeader, RegistrationRow, SearchBox } from "@carshow/carshow-components";
-import type { Category, Registration } from "@carshow/carshow-components";
-import { useRef, useState } from "react";
-import { ApiError, importRegistrationsCsv, previewRegistrationsCsv, type RegistrationCsvPreviewRow } from "../api";
+import type { Category, Registration, StaffUser } from "@carshow/carshow-components";
+import { useEffect, useRef, useState } from "react";
+import {
+  ApiError,
+  getLatestRegistrationImport,
+  getRegistrationImport,
+  importRegistrationsCsv,
+  previewRegistrationsCsv,
+  retryFailedRegistrationImport,
+  type RegistrationCsvPreviewRow,
+  type RegistrationImportJob,
+  type RegistrationImportItemStatus,
+} from "../api";
 import { RegistrationEditor } from "../organisms/RegistrationEditor";
-
-type CsvImportIssue = {
-  entryNumber?: number;
-  reason: string;
-};
-
-type CsvImportDetails = {
-  photosAttempted: number;
-  photosImported: number;
-  photosFailed: number;
-  issues: CsvImportIssue[];
-};
 
 async function copyLinesToClipboard(lines: string[]) {
   const text = lines.join("\n");
@@ -59,6 +57,7 @@ function extractCsvIssues(error: unknown): string[] {
 }
 
 export function RegistrationsView({
+  staff,
   categories,
   registrations,
   search,
@@ -67,6 +66,7 @@ export function RegistrationsView({
   onSelect,
   onRefresh,
 }: {
+  staff: StaffUser;
   categories: Category[];
   registrations: Registration[];
   search: string;
@@ -79,15 +79,36 @@ export function RegistrationsView({
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
-  const [importDetails, setImportDetails] = useState<CsvImportDetails | null>(null);
   const [importErrorDetails, setImportErrorDetails] = useState<string[]>([]);
   const [copyFeedback, setCopyFeedback] = useState("");
   const [showImportGuide, setShowImportGuide] = useState(false);
   const [importCsvText, setImportCsvText] = useState("");
+  const [importFileName, setImportFileName] = useState("");
   const [previewRows, setPreviewRows] = useState<RegistrationCsvPreviewRow[]>([]);
   const [categoryAssignments, setCategoryAssignments] = useState<Record<string, string>>({});
   const [ownerGroupAssignments, setOwnerGroupAssignments] = useState<Record<string, string>>({});
+  const [activeImport, setActiveImport] = useState<RegistrationImportJob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (staff.role !== "ADMIN") return;
+    getLatestRegistrationImport()
+      .then(({ job }) => setActiveImport(job))
+      .catch(() => {});
+  }, [staff.role]);
+
+  useEffect(() => {
+    if (!activeImport || !["PENDING", "PROCESSING"].includes(activeImport.status)) return;
+    const interval = window.setInterval(() => {
+      getRegistrationImport(activeImport.id)
+        .then(({ job }) => {
+          setActiveImport(job);
+          if (!["PENDING", "PROCESSING"].includes(job.status)) onRefresh();
+        })
+        .catch((error) => setImportError(error instanceof Error ? error.message : "Could not refresh import status"));
+    }, 2500);
+    return () => window.clearInterval(interval);
+  }, [activeImport?.id, activeImport?.status, onRefresh]);
 
   function selectRegistration(registration: Registration) {
     setShowNewEditor(false);
@@ -100,12 +121,12 @@ export function RegistrationsView({
     setImportMessage("");
     setImportError("");
     setImportErrorDetails([]);
-    setImportDetails(null);
     setCopyFeedback("");
     try {
       const csvText = await file.text();
       const result = await previewRegistrationsCsv(csvText);
       setImportCsvText(csvText);
+      setImportFileName(file.name);
       setPreviewRows(result.rows);
       setCategoryAssignments(
         Object.fromEntries(
@@ -129,6 +150,7 @@ export function RegistrationsView({
   function closePreview() {
     setShowImportGuide(false);
     setImportCsvText("");
+    setImportFileName("");
     setPreviewRows([]);
     setCategoryAssignments({});
     setOwnerGroupAssignments({});
@@ -139,24 +161,20 @@ export function RegistrationsView({
     setImporting(true);
     setImportError("");
     setImportErrorDetails([]);
-    setImportDetails(null);
     setCopyFeedback("");
     try {
-      const result = await importRegistrationsCsv(importCsvText, categoryAssignments, ownerGroupAssignments);
+      const result = await importRegistrationsCsv(
+        importCsvText,
+        categoryAssignments,
+        ownerGroupAssignments,
+        importFileName,
+      );
       closePreview();
       setShowNewEditor(false);
       onSelect(null);
       onRefresh();
-      setImportMessage(result.message);
-      setImportDetails({
-        photosAttempted: result.photosAttempted,
-        photosImported: result.photosImported,
-        photosFailed: result.photosFailed,
-        issues: result.photoFailures.map((failure) => ({
-          entryNumber: failure.entryNumber,
-          reason: failure.reason,
-        })),
-      });
+      setImportMessage("Import started. You can leave this page while it continues.");
+      setActiveImport(result.job);
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "Could not import CSV");
       setImportErrorDetails(extractCsvIssues(error));
@@ -181,7 +199,11 @@ export function RegistrationsView({
                 className="visually-hidden"
                 onChange={(event) => void previewCsv(event.target.files?.[0] ?? null)}
               />
-              <Button variant="secondary" disabled={importing} onClick={() => setShowImportGuide(true)}>
+              <Button
+                variant="secondary"
+                disabled={importing || staff.role !== "ADMIN"}
+                onClick={() => setShowImportGuide(true)}
+              >
                 <Upload size={20} />
                 {importing ? "Importing" : "Import CSV"}
               </Button>
@@ -198,42 +220,6 @@ export function RegistrationsView({
           }
         />
         {importMessage ? <Alert variant="success">{importMessage}</Alert> : null}
-        {importDetails && (importDetails.photosAttempted > 0 || importDetails.issues.length > 0) ? (
-          <Alert variant={importDetails.photosFailed > 0 ? "danger" : "success"}>
-            <strong>Imported photo links</strong>
-            <div>
-              {importDetails.photosImported} of {importDetails.photosAttempted} were imported and set as primary.
-            </div>
-            {importDetails.issues.length ? (
-              <>
-                <div className="header-actions">
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      void copyLinesToClipboard(
-                        importDetails.issues.map((issue) =>
-                          issue.entryNumber ? `Entry ${issue.entryNumber}: ${issue.reason}` : issue.reason,
-                        ),
-                      )
-                        .then(() => setCopyFeedback("Photo errors copied"))
-                        .catch(() => setCopyFeedback("Could not copy photo errors"));
-                    }}
-                  >
-                    Copy errors
-                  </Button>
-                </div>
-                <ul>
-                  {importDetails.issues.map((issue, index) => (
-                    <li key={`${issue.entryNumber ?? "issue"}-${index}`}>
-                      {issue.entryNumber ? `Entry ${issue.entryNumber}: ` : ""}
-                      {issue.reason}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </Alert>
-        ) : null}
         {importError ? <Alert variant="danger">{importError}</Alert> : null}
         {importErrorDetails.length ? (
           <Alert variant="danger">
@@ -258,6 +244,19 @@ export function RegistrationsView({
           </Alert>
         ) : null}
         {copyFeedback ? <Alert variant="info">{copyFeedback}</Alert> : null}
+        {activeImport ? (
+          <RegistrationImportStatus
+            job={activeImport}
+            retrying={importing}
+            onRetry={() => {
+              setImporting(true);
+              retryFailedRegistrationImport(activeImport.id)
+                .then(({ job }) => setActiveImport(job))
+                .catch((error) => setImportError(error instanceof Error ? error.message : "Could not retry import"))
+                .finally(() => setImporting(false));
+            }}
+          />
+        ) : null}
         {showImportGuide && !previewRows.length ? (
           <CsvImportGuide
             categories={categories}
@@ -335,6 +334,87 @@ export function RegistrationsView({
           ))}
           {!registrations.length ? <div className="empty-state">No registrations found.</div> : null}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function importStatusLabel(status: RegistrationImportItemStatus) {
+  return status.toLowerCase().replace("_", " ");
+}
+
+function RegistrationImportStatus({
+  job,
+  retrying,
+  onRetry,
+}: {
+  job: RegistrationImportJob;
+  retrying: boolean;
+  onRetry: () => void;
+}) {
+  const finishedRegistrations = job.counts.registrationsCompleted + job.counts.registrationsFailed;
+  const finishedPhotos = job.counts.photosCompleted + job.counts.photosFailed + job.counts.photosSkipped;
+  const totalSteps = job.totalItems * 2;
+  const percent = totalSteps ? Math.round(((finishedRegistrations + finishedPhotos) / totalSteps) * 100) : 0;
+  const hasFailures = job.counts.registrationsFailed > 0 || job.counts.photosFailed > 0;
+  const canRetry = hasFailures || job.status === "FAILED";
+
+  return (
+    <section className="csv-preview import-status-panel">
+      <div className="csv-preview-header">
+        <div>
+          <p className="eyebrow">Import Status</p>
+          <h2>{job.sourceFileName || `${job.totalItems} registrations`}</h2>
+          <span>
+            {job.status.toLowerCase().replaceAll("_", " ")} · {percent}% complete
+          </span>
+        </div>
+        {canRetry && !["PENDING", "PROCESSING"].includes(job.status) ? (
+          <Button variant="secondary" disabled={retrying} onClick={onRetry}>
+            <RefreshCw size={18} />
+            Retry failed items
+          </Button>
+        ) : null}
+      </div>
+      <div className="import-progress-track" aria-label={`${percent}% complete`}>
+        <span style={{ width: `${percent}%` }} />
+      </div>
+      <div className="import-status-summary">
+        <span>Registrations: {job.counts.registrationsCompleted}/{job.totalItems}</span>
+        <span>Photos imported: {job.counts.photosCompleted}</span>
+        <span>Photos skipped: {job.counts.photosSkipped}</span>
+        <span>Failures: {job.counts.registrationsFailed + job.counts.photosFailed}</span>
+      </div>
+      {job.errorMessage ? <Alert variant="danger">{job.errorMessage}</Alert> : null}
+      <div className="csv-preview-table-wrap">
+        <table className="csv-preview-table">
+          <thead>
+            <tr>
+              <th>Entry</th>
+              <th>Registration</th>
+              <th>Photo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {job.items.map((item) => (
+              <tr key={item.id}>
+                <td>#{item.entryNumber}</td>
+                <td>
+                  <strong className={`import-item-status ${item.registrationStatus.toLowerCase()}`}>
+                    {importStatusLabel(item.registrationStatus)}
+                  </strong>
+                  <span>{item.registrationMessage || "Waiting"}</span>
+                </td>
+                <td>
+                  <strong className={`import-item-status ${item.photoStatus.toLowerCase()}`}>
+                    {importStatusLabel(item.photoStatus)}
+                  </strong>
+                  <span>{item.photoMessage || "Waiting"}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );

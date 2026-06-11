@@ -19,7 +19,7 @@ import { registerOwnerRoutes } from "./routes/owner.js";
 import { registerPhotosRoutes } from "./routes/photos.js";
 import { registerPublicRoutes } from "./routes/public.js";
 import { registerQrCardRoutes } from "./routes/qrCards.js";
-import { registerRegistrationRoutes } from "./routes/registrations.js";
+import { RegistrationImportWorker, registerRegistrationRoutes } from "./routes/registrations.js";
 import { registerVotingRoutes } from "./routes/voting.js";
 
 export type AppDeps = {
@@ -64,6 +64,7 @@ export async function buildApp({ storage, moderator, textModerator }: AppDeps) {
   }
 
   const worker = new PhotoModerationWorker(storage, moderator, app.log);
+  const importWorker = new RegistrationImportWorker(app, storage, app.log);
 
   app.get("/health", async () => ({ ok: true }));
 
@@ -72,11 +73,11 @@ export async function buildApp({ storage, moderator, textModerator }: AppDeps) {
   await registerCategoryRoutes(app);
   await registerVotingRoutes(app);
   await registerJudgingRoutes(app);
-  await registerRegistrationRoutes(app, { storage });
+  await registerRegistrationRoutes(app, { storage, importWorker });
   await registerQrCardRoutes(app);
   await registerOwnerRoutes(app, { textModerator });
   await registerPhotosRoutes(app, { storage, worker });
   await registerPublicRoutes(app);
 
-  return { app, worker };
+  return { app, worker, importWorker };
 }

@@ -166,6 +166,7 @@ function AdminShellConnected({
         ) : null}
         {view === "registrations" ? (
           <RegistrationsView
+            staff={staff}
             categories={categories}
             registrations={registrations}
             search={search}

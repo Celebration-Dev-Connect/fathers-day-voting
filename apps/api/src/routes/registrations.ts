@@ -436,7 +436,7 @@ async function createApprovedPrimaryPhoto(
           data: {
             vehicleEntryId: target.vehicleEntryId,
             sortOrder: (last?.sortOrder ?? 0) + 1,
-            contentType: image.contentType,
+            contentType: "image/webp",
             moderationStatus: "APPROVED",
             uploadedBy: `staff:${staffId}`,
             source: "STAFF",
@@ -453,13 +453,16 @@ async function createApprovedPrimaryPhoto(
 
     if (!createdPhoto) throw app.httpErrors.conflict(`Entry ${target.entryNumber} photo slot could not be allocated`);
 
-    await deps.storage.putPending(createdPhoto.id, image.bytes, image.contentType);
-
-    const [webVariant, mediumVariant, thumbVariant] = await Promise.all([
+    const [primaryVariant, webVariant, mediumVariant, thumbVariant] = await Promise.all([
+      // Trusted WebGuide sources can be large phone-camera originals. Normalize
+      // and compress the promoted primary before it reaches public storage.
+      sharp(image.bytes).rotate().resize({ width: 2000, withoutEnlargement: true }).webp({ quality: 85 }).toBuffer(),
       sharp(image.bytes).rotate().resize({ width: 1200, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer(),
       sharp(image.bytes).rotate().resize(384, 288, { fit: "cover" }).webp({ quality: 82 }).toBuffer(),
       sharp(image.bytes).rotate().resize(128, 128, { fit: "cover" }).webp({ quality: 80 }).toBuffer(),
     ]);
+
+    await deps.storage.putPending(createdPhoto.id, primaryVariant, "image/webp");
 
     const [{ storageKey: webKey }, { storageKey: mediumKey }, { storageKey: thumbKey }, { storageKey: publicKey }] =
       await Promise.all([

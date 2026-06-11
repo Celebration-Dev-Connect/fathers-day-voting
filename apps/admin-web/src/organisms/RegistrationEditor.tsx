@@ -40,7 +40,7 @@ const emptyPayload: RegistrationPayload = {
 };
 
 function ownerAccessCodeFor(registration: Registration) {
-  return registration.ownerAccessCode || String(registration.entryNumber % 100000).padStart(5, "0");
+  return registration.ownerAccessCode;
 }
 
 export function RegistrationEditor({

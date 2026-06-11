@@ -24,6 +24,7 @@ export function RegistrationRow({
         <span>
           {registration.owner.firstName} {registration.owner.lastName}
         </span>
+        <span>{registration.category.name}</span>
       </div>
       <Badge variant="status" modifier={registration.status.toLowerCase()}>
         {registration.status.replace("_", " ")}

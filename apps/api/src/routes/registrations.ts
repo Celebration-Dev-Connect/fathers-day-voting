@@ -1,4 +1,5 @@
 import { Prisma, QrCardStatus, StaffRole, VehicleStatus, prisma } from "@carshow/db";
+import { randomInt } from "node:crypto";
 import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
@@ -67,8 +68,23 @@ async function nextEntryNumber() {
   return (latest?.entryNumber ?? 0) + 1;
 }
 
-function accessCodeForEntry(entryNumber: number) {
-  return (entryNumber % 100000).toString().padStart(5, "0");
+export function randomOwnerAccessCode(usedCodes: Set<string>) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const code = randomInt(0, 100_000).toString().padStart(5, "0");
+    if (!usedCodes.has(code)) {
+      usedCodes.add(code);
+      return code;
+    }
+  }
+  throw new Error("Could not allocate a unique owner access code");
+}
+
+async function usedOwnerAccessCodes() {
+  const entries = await prisma.vehicleEntry.findMany({
+    where: { eventId },
+    select: { ownerAccessCode: true },
+  });
+  return new Set(entries.map((entry) => entry.ownerAccessCode));
 }
 
 function ownerGroupForRow(row: CsvRegistrationRow) {
@@ -569,6 +585,11 @@ async function processImportRegistrations(jobId: string, staffId: string) {
       await tx.owner.deleteMany({ where: { id: { startsWith: "seed-owner-" }, vehicleEntries: { none: {} } } });
     }
     const existingOwners = await tx.owner.findMany({ where: { vehicleEntries: { some: { eventId } } } });
+    const accessCodes = new Set(
+      (await tx.vehicleEntry.findMany({ where: { eventId }, select: { ownerAccessCode: true } })).map(
+        (entry) => entry.ownerAccessCode,
+      ),
+    );
     const existingOwnerByGroup = new Map(
       existingOwners.map((owner) => [ownerIdentityKey(owner.email ?? "", owner.phone), owner]),
     );
@@ -647,7 +668,7 @@ async function processImportRegistrations(jobId: string, staffId: string) {
                     model: row.model,
                     exteriorColor: row.color,
                     internalNotes: importNotesForCsvRow(row),
-                    ownerAccessCode: accessCodeForEntry(row.entryNumber),
+                    ownerAccessCode: randomOwnerAccessCode(accessCodes),
                     source: "ONLINE_IMPORT",
                     registeredByStaffId: staffId,
                   },
@@ -982,6 +1003,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
     }
 
     const entryNumber = await nextEntryNumber();
+    const ownerAccessCode = randomOwnerAccessCode(await usedOwnerAccessCodes());
     const registration = await prisma.$transaction(async (tx) => {
       const owner = body.ownerId
         ? await tx.owner.findFirst({ where: { id: body.ownerId, vehicleEntries: { some: { eventId } } } })
@@ -999,7 +1021,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
           ownerId: owner.id,
           categoryId: body.vehicle.categoryId,
           entryNumber,
-          ownerAccessCode: accessCodeForEntry(entryNumber),
+          ownerAccessCode,
           year: body.vehicle.year,
           make: body.vehicle.make,
           model: body.vehicle.model,
@@ -1262,6 +1284,11 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
 
       let created = 0;
       let updated = 0;
+      const accessCodes = new Set(
+        (await tx.vehicleEntry.findMany({ where: { eventId }, select: { ownerAccessCode: true } })).map(
+          (entry) => entry.ownerAccessCode,
+        ),
+      );
       const photoTargets: ImportPhotoTarget[] = [];
       const previousOwnerIds = new Set<string>();
       const existingOwners = await tx.owner.findMany({
@@ -1345,7 +1372,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
             model: row.model,
             exteriorColor: row.color,
             internalNotes: importNotesForCsvRow(row),
-            ownerAccessCode: accessCodeForEntry(row.entryNumber),
+            ownerAccessCode: randomOwnerAccessCode(accessCodes),
             source: "ONLINE_IMPORT" as const,
             registeredByStaffId: staff.id,
           };

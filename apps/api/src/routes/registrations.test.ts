@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { shouldImportCsvPhoto } from "./registrations.js";
+import { randomOwnerAccessCode, shouldImportCsvPhoto } from "./registrations.js";
 
 const existingVehicle = {
   id: "vehicle-1",
@@ -28,4 +28,13 @@ test("never replaces an existing primary photo", () => {
 
 test("does not attempt a photo import without a photo link", () => {
   assert.equal(shouldImportCsvPhoto(existingVehicle, ""), false);
+});
+
+test("allocates random five-digit owner access codes without reusing reserved codes", () => {
+  const used = new Set<string>();
+  const codes = Array.from({ length: 100 }, () => randomOwnerAccessCode(used));
+
+  assert.equal(new Set(codes).size, 100);
+  assert.equal(used.size, 100);
+  assert.ok(codes.every((code) => /^\d{5}$/.test(code)));
 });

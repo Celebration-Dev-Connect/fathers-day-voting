@@ -19,6 +19,11 @@ if [ "${1:-}" = "cleanup-registrations" ]; then
   exec node apps/api/dist/scripts/cleanupRegistrations.js
 fi
 
+if [ "${CLEANUP_REGISTRATIONS_ON_START:-false}" = "true" ]; then
+  echo "[entrypoint] CLEANUP_REGISTRATIONS_ON_START=true — running one-time registration cleanup..."
+  node apps/api/dist/scripts/cleanupRegistrations.js
+fi
+
 if [ "$RUN_SEED" = "true" ]; then
   echo "[entrypoint] RUN_SEED=true — seeding database (idempotent upserts)..."
   "$TSX" packages/db/prisma/seed.ts

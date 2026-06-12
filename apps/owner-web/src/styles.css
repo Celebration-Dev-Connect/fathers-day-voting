@@ -56,6 +56,14 @@ textarea {
   letter-spacing: 0.08em;
 }
 
+.owner-header .owner-logout {
+  flex-shrink: 0;
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 13px;
+}
+
 .owner-page {
   width: min(100%, 980px);
   margin: 0 auto;
@@ -152,15 +160,15 @@ textarea {
 
 .owner-hero-photo {
   display: grid;
-  min-height: 280px;
+  aspect-ratio: 4 / 3;
   background: #eeeeee;
+  overflow: hidden;
 }
 
 .owner-hero-photo img {
   width: 100%;
-  max-height: 620px;
-  object-fit: contain;
-  background: #eeeeee;
+  height: 100%;
+  object-fit: cover;
 }
 
 .owner-photo-placeholder {

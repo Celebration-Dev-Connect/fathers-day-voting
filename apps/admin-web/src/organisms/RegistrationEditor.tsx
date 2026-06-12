@@ -453,7 +453,7 @@ export function RegistrationEditor({
               <p className="eyebrow">Owner Support</p>
               <h3>Photos and hero image</h3>
             </div>
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div className="photo-header-actions">
               <input
                 ref={fileInputRef}
                 className="visually-hidden"
@@ -464,7 +464,9 @@ export function RegistrationEditor({
               {(registration.photos ?? []).some((p) => p.moderationStatus === "APPROVED") ? (
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="icon"
+                  light
+                  aria-label="Download photos"
                   disabled={downloadingPhotos}
                   onClick={() => {
                     setDownloadingPhotos(true);
@@ -472,7 +474,6 @@ export function RegistrationEditor({
                   }}
                 >
                   {downloadingPhotos ? <Loader2 className="spin" size={18} /> : <Download size={18} />}
-                  {downloadingPhotos ? "Downloading..." : "Download Photos"}
                 </Button>
               ) : null}
               <Button type="button" variant="secondary" disabled={uploadingPhoto} onClick={() => fileInputRef.current?.click()}>
@@ -490,21 +491,20 @@ export function RegistrationEditor({
                     <img src={photo.url} alt={photo.altText ?? `Vehicle photo ${index + 1}`} />
                   ) : (
                     <div>
-                      <Camera aria-hidden="true" />
-                      <span>{photo.moderationStatus ?? "Pending"}</span>
+                      <Camera size={20} aria-hidden="true" />
+                      <span>{photo.moderationStatus ? photo.moderationStatus.charAt(0) + photo.moderationStatus.slice(1).toLowerCase() : "Pending"}</span>
                     </div>
                   )}
                   {photo.isPrimary ? <strong>Hero</strong> : null}
                 </div>
                 <div className="owner-assist-photo-actions">
                   {photo.url && photo.moderationStatus === "APPROVED" && !photo.isPrimary ? (
-                    <button type="button" disabled={photoBusyId === photo.id} onClick={() => void setHeroPhoto(photo.id)}>
-                      {photoBusyId === photo.id ? <Loader2 className="spin" size={16} /> : <Star size={16} />}
-                      Set Hero
+                    <button type="button" title="Set as hero image" disabled={photoBusyId === photo.id} onClick={() => void setHeroPhoto(photo.id)}>
+                      {photoBusyId === photo.id ? <Loader2 className="spin" size={14} /> : <Star size={14} />}
                     </button>
-                  ) : (
-                    <span>{photo.isPrimary ? "Hero image" : photo.moderationStatus ?? "Pending review"}</span>
-                  )}
+                  ) : photo.isPrimary ? (
+                    <span>Hero</span>
+                  ) : null}
                   <button
                     className="danger"
                     type="button"
@@ -512,7 +512,7 @@ export function RegistrationEditor({
                     onClick={() => void deletePhoto(photo)}
                     aria-label={`Delete photo ${photo.sortOrder}`}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
@@ -524,7 +524,7 @@ export function RegistrationEditor({
 
       {registration ? (
         <div className="action-strip">
-          <Button variant="secondary" onClick={checkIn}>
+          <Button onClick={checkIn}>
             <CheckCircle2 size={20} />
             Check In
           </Button>

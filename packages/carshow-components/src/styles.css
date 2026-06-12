@@ -1193,7 +1193,7 @@ textarea:focus {
 }
 
 .winner-photo-grid img,
-.photo-empty {
+.winner-photo-grid .photo-empty {
   width: 100%;
   aspect-ratio: 4 / 3;
   border-radius: 6px;
@@ -2158,6 +2158,39 @@ textarea:focus {
   .registration-row > *:nth-child(n + 3) {
     justify-self: start;
     grid-column: 2;
+  }
+
+  /* Form fields: one per line on mobile */
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Owner-assist header: stack title + buttons vertically */
+  .owner-assist-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* QR input: full width on its own row, buttons share the row below */
+  .qr-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .qr-actions input {
+    grid-column: 1 / -1;
+  }
+
+  /* Prevent editor/list panels from overflowing the viewport */
+  .list-panel,
+  .editor-panel {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  /* Ensure all direct grid/flex children can shrink below content size */
+  .editor-panel > *,
+  .owner-assist-panel > * {
+    min-width: 0;
   }
 
   .winner-drawer {

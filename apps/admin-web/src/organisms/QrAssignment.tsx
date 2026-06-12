@@ -1,5 +1,5 @@
 import { QrCode, RefreshCw } from "lucide-react";
-import { Alert, AuditRow, Button } from "@carshow/carshow-components";
+import { Alert, AuditRow, Button, QrScanner } from "@carshow/carshow-components";
 import type { AuditLog, Registration } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
 import { assignQrCard, listAudit, lookupQrCard } from "../api";
@@ -11,18 +11,12 @@ export function QrAssignment({
   registration: Registration;
   onAssigned: (registration: Registration) => void;
 }) {
-  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
-  const cameraAvailable =
-    typeof window !== "undefined" &&
-    window.isSecureContext &&
-    typeof navigator !== "undefined" &&
-    typeof navigator.mediaDevices?.getUserMedia === "function";
 
   async function refreshAudit() {
     setAuditLoading(true);
@@ -43,42 +37,13 @@ export function QrAssignment({
     void refreshAudit();
   }, [registration.id]);
 
-  async function startScan() {
-    setError("");
-    setMessage("");
-    if (!cameraAvailable) {
-      setError(
-        window.isSecureContext
-          ? "Camera scanning is not available in this browser. Enter the QR code manually."
-          : "Camera scanning requires HTTPS on iPad/Safari. Enter the QR code manually for now.",
-      );
-      return;
-    }
-    if (!videoElement) {
-      setError("Camera view is still loading. Try Scan again.");
-      return;
-    }
-    setScanning(true);
-    try {
-      const { BrowserMultiFormatReader } = await import("@zxing/browser");
-      const reader = new BrowserMultiFormatReader();
-      const result = await reader.decodeOnceFromVideoDevice(undefined, videoElement);
-      const scannedCode = result.getText();
-      setCode(scannedCode);
-      setMessage(`Scanned ${scannedCode}`);
-    } catch (scanError) {
-      setError(scanError instanceof Error ? scanError.message : "Camera scan failed");
-    } finally {
-      setScanning(false);
-    }
-  }
-
-  async function assign() {
+  async function assign(codeToAssign = code) {
+    setScanning(false);
     setError("");
     setMessage("");
     try {
-      await lookupQrCard(code);
-      const result = await assignQrCard(registration.id, code);
+      await lookupQrCard(codeToAssign);
+      const result = await assignQrCard(registration.id, codeToAssign);
       onAssigned(result.registration);
       await refreshAudit();
       setCode("");
@@ -94,14 +59,13 @@ export function QrAssignment({
         <strong>{registration.qrCard ? `QR ${registration.qrCard.visibleCode}` : "Assign QR Card"}</strong>
         <span>{registration.qrCard ? "Scan a new QR to replace this card" : "Camera scan plus manual fallback"}</span>
       </div>
-      <video ref={setVideoElement} className="qr-video" muted playsInline />
       <div className="qr-actions">
         <input value={code} onChange={(event) => setCode(event.target.value)} placeholder="0001 or scan QR" />
-        <Button variant="secondary" onClick={startScan} disabled={scanning}>
+        <Button variant="secondary" onClick={() => setScanning(true)}>
           <QrCode size={20} />
-          {scanning ? "Scanning..." : "Scan"}
+          Scan
         </Button>
-        <Button onClick={assign} disabled={!code}>
+        <Button onClick={() => void assign()} disabled={!code}>
           {registration.qrCard ? "Replace QR" : "Assign"}
         </Button>
       </div>
@@ -120,6 +84,12 @@ export function QrAssignment({
           <AuditRow key={log.id} log={log} />
         ))}
       </div>
+      {scanning && (
+        <QrScanner
+          onScan={(token) => { void assign(token); }}
+          onClose={() => setScanning(false)}
+        />
+      )}
     </section>
   );
 }

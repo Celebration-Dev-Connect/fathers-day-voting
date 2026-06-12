@@ -147,6 +147,10 @@ label {
   margin-top: -2px;
 }
 
+.input-error {
+  border-color: var(--red, #c8102e) !important;
+}
+
 input,
 select,
 textarea {
@@ -491,6 +495,7 @@ textarea:focus {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 12px;
   margin-bottom: 16px;
 }

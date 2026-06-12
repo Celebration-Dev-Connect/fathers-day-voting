@@ -331,17 +331,18 @@ export function RegistrationEditor({
       <div className="form-grid">
         <label>
           First name *
-          <input disabled={Boolean(selectedOwner)} value={payload.owner.firstName} onChange={(event) => updateOwner("firstName", event.target.value)} />
+          <input className={fieldErrors["owner.firstName"] ? "input-error" : undefined} disabled={Boolean(selectedOwner)} value={payload.owner.firstName} onChange={(event) => updateOwner("firstName", event.target.value)} />
           {fieldErrors["owner.firstName"] && <span className="field-error">{fieldErrors["owner.firstName"]}</span>}
         </label>
         <label>
           Last name *
-          <input disabled={Boolean(selectedOwner)} value={payload.owner.lastName} onChange={(event) => updateOwner("lastName", event.target.value)} />
+          <input className={fieldErrors["owner.lastName"] ? "input-error" : undefined} disabled={Boolean(selectedOwner)} value={payload.owner.lastName} onChange={(event) => updateOwner("lastName", event.target.value)} />
           {fieldErrors["owner.lastName"] && <span className="field-error">{fieldErrors["owner.lastName"]}</span>}
         </label>
         <label>
           Phone *
           <input
+            className={fieldErrors["owner.phone"] ? "input-error" : undefined}
             value={payload.owner.phone}
             inputMode="numeric"
             maxLength={12}
@@ -354,7 +355,7 @@ export function RegistrationEditor({
         </label>
         <label>
           Email
-          <input disabled={Boolean(selectedOwner)} value={payload.owner.email} onChange={(event) => updateOwner("email", event.target.value)} />
+          <input className={fieldErrors["owner.email"] ? "input-error" : undefined} disabled={Boolean(selectedOwner)} value={payload.owner.email} onChange={(event) => updateOwner("email", event.target.value)} />
           {fieldErrors["owner.email"] && <span className="field-error">{fieldErrors["owner.email"]}</span>}
         </label>
       </div>
@@ -374,6 +375,7 @@ export function RegistrationEditor({
         <label>
           Year *
           <input
+            className={fieldErrors["vehicle.year"] ? "input-error" : undefined}
             type="number"
             value={payload.vehicle.year}
             onChange={(event) => updateVehicle("year", Number(event.target.value))}
@@ -382,17 +384,18 @@ export function RegistrationEditor({
         </label>
         <label>
           Make *
-          <input value={payload.vehicle.make} onChange={(event) => updateVehicle("make", event.target.value)} />
+          <input className={fieldErrors["vehicle.make"] ? "input-error" : undefined} value={payload.vehicle.make} onChange={(event) => updateVehicle("make", event.target.value)} />
           {fieldErrors["vehicle.make"] && <span className="field-error">{fieldErrors["vehicle.make"]}</span>}
         </label>
         <label>
           Model *
-          <input value={payload.vehicle.model} onChange={(event) => updateVehicle("model", event.target.value)} />
+          <input className={fieldErrors["vehicle.model"] ? "input-error" : undefined} value={payload.vehicle.model} onChange={(event) => updateVehicle("model", event.target.value)} />
           {fieldErrors["vehicle.model"] && <span className="field-error">{fieldErrors["vehicle.model"]}</span>}
         </label>
         <label>
           Plate
           <input
+            className={fieldErrors["vehicle.plateNumber"] ? "input-error" : undefined}
             value={payload.vehicle.plateNumber}
             onChange={(event) => updateVehicle("plateNumber", event.target.value.toUpperCase())}
           />
@@ -403,6 +406,7 @@ export function RegistrationEditor({
       <label>
         Category *
         <select
+          className={fieldErrors["vehicle.categoryId"] ? "input-error" : undefined}
           value={payload.vehicle.categoryId}
           onChange={(event) => updateVehicle("categoryId", event.target.value)}
         >
@@ -420,6 +424,7 @@ export function RegistrationEditor({
       <label>
         Owner story / build description
         <textarea
+          className={fieldErrors["vehicle.buildStory"] ? "input-error" : undefined}
           value={payload.vehicle.buildStory}
           onChange={(event) => updateVehicle("buildStory", event.target.value)}
           rows={5}
@@ -432,6 +437,7 @@ export function RegistrationEditor({
       <label>
         Internal notes
         <textarea
+          className={fieldErrors["vehicle.internalNotes"] ? "input-error" : undefined}
           value={payload.vehicle.internalNotes}
           onChange={(event) => updateVehicle("internalNotes", event.target.value)}
           rows={3}

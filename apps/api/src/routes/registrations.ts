@@ -1,5 +1,7 @@
 import { Prisma, QrCardStatus, StaffRole, VehicleStatus, prisma } from "@carshow/db";
 import { randomInt } from "node:crypto";
+import { extname } from "node:path";
+import { ZipArchive } from "archiver";
 import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
@@ -1589,5 +1591,65 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
     });
 
     return { registration: registrationResponse(registration) };
+  });
+
+  app.get("/registrations/:id/photos/download", async (request, reply) => {
+    await requireStaff(app, request);
+    const params = z.object({ id: z.string() }).parse(request.params);
+
+    const vehicle = await prisma.vehicleEntry.findFirst({
+      where: { id: params.id, eventId },
+      select: {
+        entryNumber: true,
+        year: true,
+        make: true,
+        model: true,
+        owner: { select: { firstName: true, lastName: true } },
+        category: { select: { name: true } },
+        photos: {
+          where: { moderationStatus: "APPROVED", storageKey: { not: null } },
+          orderBy: { sortOrder: "asc" },
+          select: { id: true, storageKey: true, contentType: true, sortOrder: true },
+        },
+      },
+    });
+
+    if (!vehicle) throw app.httpErrors.notFound("Registration not found");
+    if (!vehicle.photos.length) throw app.httpErrors.notFound("No approved photos for this registration");
+
+    const safeMake = vehicle.make.replace(/[^a-zA-Z0-9-]/g, "_").slice(0, 20);
+    const safeModel = vehicle.model.replace(/[^a-zA-Z0-9-]/g, "_").slice(0, 20);
+    const zipName = `entry-${String(vehicle.entryNumber).padStart(3, "0")}-${vehicle.year}-${safeMake}-${safeModel}.zip`;
+
+    const mimeToExt: Record<string, string> = {
+      "image/jpeg": ".jpg",
+      "image/jpg": ".jpg",
+      "image/png": ".png",
+      "image/webp": ".webp",
+    };
+
+    const infoLines = [
+      `Entry #${vehicle.entryNumber}`,
+      `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+      `Category: ${vehicle.category.name}`,
+      `Owner: ${vehicle.owner.firstName} ${vehicle.owner.lastName}`,
+      `Photos: ${vehicle.photos.length}`,
+    ];
+
+    void reply.header("Content-Type", "application/zip");
+    void reply.header("Content-Disposition", `attachment; filename="${zipName}"`);
+
+    const archive = new ZipArchive();
+    archive.append(infoLines.join("\n") + "\n", { name: "info.txt" });
+
+    for (const photo of vehicle.photos) {
+      const ext = (photo.contentType && mimeToExt[photo.contentType]) || extname(photo.storageKey!) || ".jpg";
+      const filename = `${String(photo.sortOrder).padStart(2, "0")}${ext}`;
+      const bytes = await deps.storage.getBytes(photo.storageKey!);
+      archive.append(bytes, { name: filename });
+    }
+
+    void archive.finalize();
+    return reply.send(archive);
   });
 }

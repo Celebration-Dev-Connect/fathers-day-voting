@@ -1,5 +1,5 @@
-import { Camera, CheckCircle2, ImagePlus, Loader2, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
-import { Alert, Button, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
+import { Camera, CheckCircle2, Download, ImagePlus, Loader2, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
+import { Alert, Button, compressImage, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
 import type { Category, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import {
@@ -7,6 +7,7 @@ import {
   createRegistration,
   createRegistrationForOwner,
   deleteRegistrationPhoto,
+  downloadRegistrationPhotos,
   getRegistration,
   listOwners,
   setRegistrationPrimaryPhoto,
@@ -15,6 +16,24 @@ import {
   type OwnerSummary,
 } from "../api";
 import { QrAssignment } from "./QrAssignment";
+
+function parseFieldErrors(error: unknown): Record<string, string> {
+  if (!(error instanceof Error)) return {};
+  try {
+    const parsed: unknown = JSON.parse(error.message);
+    if (!Array.isArray(parsed)) return {};
+    const map: Record<string, string> = {};
+    for (const issue of parsed) {
+      if (issue && Array.isArray(issue.path) && issue.path.length >= 2 && typeof issue.message === "string") {
+        const msg: string = issue.message.includes("at least 1 character") ? "Required" : issue.message;
+        map[issue.path.join(".")] = msg;
+      }
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
 
 const emptyPayload: RegistrationPayload = {
   owner: {
@@ -59,9 +78,11 @@ export function RegistrationEditor({
   );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [downloadingPhotos, setDownloadingPhotos] = useState(false);
   const [ownerSearch, setOwnerSearch] = useState("");
   const [ownerCandidates, setOwnerCandidates] = useState<OwnerSummary[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<OwnerSummary | null>(null);
@@ -81,6 +102,7 @@ export function RegistrationEditor({
     key: Key,
     value: RegistrationPayload["owner"][Key],
   ) {
+    setFieldErrors((prev) => { const next = { ...prev }; delete next[`owner.${key}`]; return next; });
     setPayload((current) => ({ ...current, owner: { ...current.owner, [key]: value } }));
   }
 
@@ -88,6 +110,7 @@ export function RegistrationEditor({
     key: Key,
     value: RegistrationPayload["vehicle"][Key],
   ) {
+    setFieldErrors((prev) => { const next = { ...prev }; delete next[`vehicle.${key}`]; return next; });
     setPayload((current) => ({ ...current, vehicle: { ...current.vehicle, [key]: value } }));
   }
 
@@ -96,6 +119,7 @@ export function RegistrationEditor({
     setSaving(true);
     setMessage("");
     setError("");
+    setFieldErrors({});
     try {
       const result = registration
         ? await updateRegistration(registration.id, payload)
@@ -105,7 +129,12 @@ export function RegistrationEditor({
       onSaved(result.registration);
       setMessage("Registration saved.");
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Save failed");
+      const parsed = parseFieldErrors(saveError);
+      if (Object.keys(parsed).length > 0) {
+        setFieldErrors(parsed);
+      } else {
+        setError(saveError instanceof Error ? saveError.message : "Save failed");
+      }
     } finally {
       setSaving(false);
     }
@@ -172,7 +201,8 @@ export function RegistrationEditor({
     setError("");
     setMessage("");
     try {
-      await uploadRegistrationPhoto(registration.id, file);
+      const toUpload = await compressImage(file);
+      await uploadRegistrationPhoto(registration.id, toUpload);
       await refreshRegistration("Photo uploaded for review.");
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Photo upload failed");
@@ -302,15 +332,18 @@ export function RegistrationEditor({
       <div className="form-grid">
         <label>
           First name *
-          <input disabled={Boolean(selectedOwner)} value={payload.owner.firstName} onChange={(event) => updateOwner("firstName", event.target.value)} />
+          <input className={fieldErrors["owner.firstName"] ? "input-error" : undefined} disabled={Boolean(selectedOwner)} value={payload.owner.firstName} onChange={(event) => updateOwner("firstName", event.target.value)} />
+          {fieldErrors["owner.firstName"] && <span className="field-error">{fieldErrors["owner.firstName"]}</span>}
         </label>
         <label>
           Last name *
-          <input disabled={Boolean(selectedOwner)} value={payload.owner.lastName} onChange={(event) => updateOwner("lastName", event.target.value)} />
+          <input className={fieldErrors["owner.lastName"] ? "input-error" : undefined} disabled={Boolean(selectedOwner)} value={payload.owner.lastName} onChange={(event) => updateOwner("lastName", event.target.value)} />
+          {fieldErrors["owner.lastName"] && <span className="field-error">{fieldErrors["owner.lastName"]}</span>}
         </label>
         <label>
           Phone *
           <input
+            className={fieldErrors["owner.phone"] ? "input-error" : undefined}
             value={payload.owner.phone}
             inputMode="numeric"
             maxLength={12}
@@ -319,10 +352,12 @@ export function RegistrationEditor({
             disabled={Boolean(selectedOwner)}
             onChange={(event) => updateOwner("phone", formatPhone(event.target.value))}
           />
+          {fieldErrors["owner.phone"] && <span className="field-error">{fieldErrors["owner.phone"]}</span>}
         </label>
         <label>
           Email
-          <input disabled={Boolean(selectedOwner)} value={payload.owner.email} onChange={(event) => updateOwner("email", event.target.value)} />
+          <input className={fieldErrors["owner.email"] ? "input-error" : undefined} disabled={Boolean(selectedOwner)} value={payload.owner.email} onChange={(event) => updateOwner("email", event.target.value)} />
+          {fieldErrors["owner.email"] && <span className="field-error">{fieldErrors["owner.email"]}</span>}
         </label>
       </div>
 
@@ -335,36 +370,44 @@ export function RegistrationEditor({
         />
         Owner agreed to event liability waiver.
       </label>
+      {fieldErrors["owner.waiverAccepted"] && <span className="field-error">{fieldErrors["owner.waiverAccepted"]}</span>}
 
       <div className="form-grid">
         <label>
           Year *
           <input
+            className={fieldErrors["vehicle.year"] ? "input-error" : undefined}
             type="number"
             value={payload.vehicle.year}
             onChange={(event) => updateVehicle("year", Number(event.target.value))}
           />
+          {fieldErrors["vehicle.year"] && <span className="field-error">{fieldErrors["vehicle.year"]}</span>}
         </label>
         <label>
           Make *
-          <input value={payload.vehicle.make} onChange={(event) => updateVehicle("make", event.target.value)} />
+          <input className={fieldErrors["vehicle.make"] ? "input-error" : undefined} value={payload.vehicle.make} onChange={(event) => updateVehicle("make", event.target.value)} />
+          {fieldErrors["vehicle.make"] && <span className="field-error">{fieldErrors["vehicle.make"]}</span>}
         </label>
         <label>
           Model *
-          <input value={payload.vehicle.model} onChange={(event) => updateVehicle("model", event.target.value)} />
+          <input className={fieldErrors["vehicle.model"] ? "input-error" : undefined} value={payload.vehicle.model} onChange={(event) => updateVehicle("model", event.target.value)} />
+          {fieldErrors["vehicle.model"] && <span className="field-error">{fieldErrors["vehicle.model"]}</span>}
         </label>
         <label>
           Plate
           <input
+            className={fieldErrors["vehicle.plateNumber"] ? "input-error" : undefined}
             value={payload.vehicle.plateNumber}
             onChange={(event) => updateVehicle("plateNumber", event.target.value.toUpperCase())}
           />
+          {fieldErrors["vehicle.plateNumber"] && <span className="field-error">{fieldErrors["vehicle.plateNumber"]}</span>}
         </label>
       </div>
 
       <label>
         Category *
         <select
+          className={fieldErrors["vehicle.categoryId"] ? "input-error" : undefined}
           value={payload.vehicle.categoryId}
           onChange={(event) => updateVehicle("categoryId", event.target.value)}
         >
@@ -376,26 +419,31 @@ export function RegistrationEditor({
               </option>
             ))}
         </select>
+        {fieldErrors["vehicle.categoryId"] && <span className="field-error">{fieldErrors["vehicle.categoryId"]}</span>}
       </label>
 
       <label>
         Owner story / build description
         <textarea
+          className={fieldErrors["vehicle.buildStory"] ? "input-error" : undefined}
           value={payload.vehicle.buildStory}
           onChange={(event) => updateVehicle("buildStory", event.target.value)}
           rows={5}
           maxLength={2500}
           placeholder="Add or edit the story the owner wants shown with their vehicle."
         />
+        {fieldErrors["vehicle.buildStory"] && <span className="field-error">{fieldErrors["vehicle.buildStory"]}</span>}
       </label>
 
       <label>
         Internal notes
         <textarea
+          className={fieldErrors["vehicle.internalNotes"] ? "input-error" : undefined}
           value={payload.vehicle.internalNotes}
           onChange={(event) => updateVehicle("internalNotes", event.target.value)}
           rows={3}
         />
+        {fieldErrors["vehicle.internalNotes"] && <span className="field-error">{fieldErrors["vehicle.internalNotes"]}</span>}
       </label>
 
       {registration ? (
@@ -405,7 +453,7 @@ export function RegistrationEditor({
               <p className="eyebrow">Owner Support</p>
               <h3>Photos and hero image</h3>
             </div>
-            <div>
+            <div className="photo-header-actions">
               <input
                 ref={fileInputRef}
                 className="visually-hidden"
@@ -413,6 +461,21 @@ export function RegistrationEditor({
                 accept="image/jpeg,image/png,image/webp"
                 onChange={(event) => void uploadPhoto(event.target.files?.[0] ?? null)}
               />
+              {(registration.photos ?? []).some((p) => p.moderationStatus === "APPROVED") ? (
+                <Button
+                  type="button"
+                  variant="icon"
+                  light
+                  aria-label="Download photos"
+                  disabled={downloadingPhotos}
+                  onClick={() => {
+                    setDownloadingPhotos(true);
+                    downloadRegistrationPhotos(registration.id).finally(() => setDownloadingPhotos(false));
+                  }}
+                >
+                  {downloadingPhotos ? <Loader2 className="spin" size={18} /> : <Download size={18} />}
+                </Button>
+              ) : null}
               <Button type="button" variant="secondary" disabled={uploadingPhoto} onClick={() => fileInputRef.current?.click()}>
                 {uploadingPhoto ? <Loader2 className="spin" size={18} /> : <ImagePlus size={18} />}
                 {uploadingPhoto ? "Uploading..." : "Upload Photo"}
@@ -428,21 +491,20 @@ export function RegistrationEditor({
                     <img src={photo.url} alt={photo.altText ?? `Vehicle photo ${index + 1}`} />
                   ) : (
                     <div>
-                      <Camera aria-hidden="true" />
-                      <span>{photo.moderationStatus ?? "Pending"}</span>
+                      <Camera size={20} aria-hidden="true" />
+                      <span>{photo.moderationStatus ? photo.moderationStatus.charAt(0) + photo.moderationStatus.slice(1).toLowerCase() : "Pending"}</span>
                     </div>
                   )}
                   {photo.isPrimary ? <strong>Hero</strong> : null}
                 </div>
                 <div className="owner-assist-photo-actions">
                   {photo.url && photo.moderationStatus === "APPROVED" && !photo.isPrimary ? (
-                    <button type="button" disabled={photoBusyId === photo.id} onClick={() => void setHeroPhoto(photo.id)}>
-                      {photoBusyId === photo.id ? <Loader2 className="spin" size={16} /> : <Star size={16} />}
-                      Set Hero
+                    <button type="button" title="Set as hero image" disabled={photoBusyId === photo.id} onClick={() => void setHeroPhoto(photo.id)}>
+                      {photoBusyId === photo.id ? <Loader2 className="spin" size={14} /> : <Star size={14} />}
                     </button>
-                  ) : (
-                    <span>{photo.isPrimary ? "Hero image" : photo.moderationStatus ?? "Pending review"}</span>
-                  )}
+                  ) : photo.isPrimary ? (
+                    <span>Hero</span>
+                  ) : null}
                   <button
                     className="danger"
                     type="button"
@@ -450,7 +512,7 @@ export function RegistrationEditor({
                     onClick={() => void deletePhoto(photo)}
                     aria-label={`Delete photo ${photo.sortOrder}`}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
@@ -462,7 +524,7 @@ export function RegistrationEditor({
 
       {registration ? (
         <div className="action-strip">
-          <Button variant="secondary" onClick={checkIn}>
+          <Button onClick={checkIn}>
             <CheckCircle2 size={20} />
             Check In
           </Button>

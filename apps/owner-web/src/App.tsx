@@ -21,14 +21,21 @@ type StoredOwnerSession = {
   vehicleId: string;
 };
 
-function AppHeader() {
+function AppHeader({ onLogout }: { onLogout?: () => void }) {
   return (
     <header className="owner-header">
       <div>
         <p className="owner-header-brand">Celebration Church</p>
         <h1>Father's Day Car Show</h1>
       </div>
-      <span>Owner</span>
+      {onLogout ? (
+        <button className="owner-logout" type="button" onClick={onLogout}>
+          <LogOut aria-hidden="true" />
+          Log Out
+        </button>
+      ) : (
+        <span>Owner</span>
+      )}
     </header>
   );
 }
@@ -507,14 +514,8 @@ function OwnerPortal() {
 
   return (
     <>
-      <AppHeader />
+      <AppHeader onLogout={logout} />
       <main className="owner-page">
-        <div className="owner-top-actions">
-          <button className="owner-logout" type="button" onClick={logout}>
-            <LogOut aria-hidden="true" />
-            Log Out
-          </button>
-        </div>
 
         {loading ? (
           <section className="owner-card owner-loading">

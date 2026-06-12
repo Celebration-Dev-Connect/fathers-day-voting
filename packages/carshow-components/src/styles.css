@@ -138,6 +138,19 @@ label {
   text-transform: uppercase;
 }
 
+.field-error {
+  color: var(--red, #c8102e);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  margin-top: -2px;
+}
+
+.input-error {
+  border-color: var(--red, #c8102e) !important;
+}
+
 input,
 select,
 textarea {
@@ -482,6 +495,7 @@ textarea:focus {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -606,18 +620,38 @@ textarea:focus {
   text-transform: uppercase;
 }
 
-.owner-assist-photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
+.photo-header-actions {
+  display: flex;
+  gap: 8px;
 }
 
-.owner-assist-photo,
-.photo-empty {
+.owner-assist-photo-grid {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.owner-assist-photo {
+  flex-shrink: 0;
+  width: 120px;
   border: 1px solid var(--border-grey);
   border-radius: 6px;
   background: var(--pure-white);
   overflow: hidden;
+}
+
+.photo-empty {
+  flex: 1;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-grey);
+  border-radius: 6px;
+  background: var(--pure-white);
 }
 
 .owner-assist-photo.primary {
@@ -627,26 +661,28 @@ textarea:focus {
 .owner-assist-photo-preview {
   position: relative;
   display: grid;
-  min-height: 140px;
+  min-height: 80px;
   background: #eeeeee;
 }
 
 .owner-assist-photo-preview img {
   width: 100%;
-  height: 100%;
-  min-height: 140px;
+  height: 80px;
   object-fit: cover;
 }
 
 .owner-assist-photo-preview div {
-  display: grid;
-  place-items: center;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
   color: var(--muted-grey);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 0.7;
 }
 
 .owner-assist-photo-preview strong {
@@ -664,36 +700,29 @@ textarea:focus {
 }
 
 .owner-assist-photo-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
+  display: flex;
   align-items: center;
-  padding: 8px;
-}
-
-.owner-assist-photo-actions button,
-.owner-assist-photo-actions span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 34px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  gap: 4px;
+  padding: 6px 8px;
+  min-height: 38px;
 }
 
 .owner-assist-photo-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--border-grey);
+  border-radius: 4px;
   background: var(--pure-white);
   color: var(--on-surface);
 }
 
 .owner-assist-photo-actions button.danger {
-  width: 36px;
+  margin-left: auto;
   color: var(--primary);
+  border-color: transparent;
 }
 
 .owner-assist-photo-actions button:disabled {
@@ -702,6 +731,12 @@ textarea:focus {
 }
 
 .owner-assist-photo-actions span {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--muted-grey);
 }
 
@@ -1165,7 +1200,7 @@ textarea:focus {
 }
 
 .winner-photo-grid img,
-.photo-empty {
+.winner-photo-grid .photo-empty {
   width: 100%;
   aspect-ratio: 4 / 3;
   border-radius: 6px;
@@ -2130,6 +2165,52 @@ textarea:focus {
   .registration-row > *:nth-child(n + 3) {
     justify-self: start;
     grid-column: 2;
+  }
+
+  /* Form fields: one per line on mobile */
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Owner-assist header: stack title + buttons vertically */
+  .owner-assist-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Photo header buttons: Upload button fills row, icon button stays compact */
+  .photo-header-actions > .secondary-button {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* QR input: full width on its own row, buttons share the row below */
+  .qr-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .qr-actions input {
+    grid-column: 1 / -1;
+  }
+
+  /* Prevent editor/list panels from overflowing the viewport */
+  .list-panel,
+  .editor-panel {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  /* Registration detail row: strip border and padding to reclaim horizontal space */
+  .registration-detail-row .editor-panel {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  /* Ensure all direct grid/flex children can shrink below content size */
+  .editor-panel > *,
+  .owner-assist-panel > * {
+    min-width: 0;
   }
 
   .winner-drawer {

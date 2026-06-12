@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { compressImage } from "@carshow/carshow-components";
 import { uploadVisitorPhoto } from "../api";
 
 type Props = {
@@ -37,7 +38,8 @@ export function PhotoUploadModal({ vehicleId, vehicleTitle, onClose }: Props) {
     if (!file) return;
     setStage("uploading");
     try {
-      await uploadVisitorPhoto(vehicleId, file);
+      const toUpload = await compressImage(file);
+      await uploadVisitorPhoto(vehicleId, toUpload);
       setStage("success");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Upload failed. Please try again.");

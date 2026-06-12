@@ -1,5 +1,5 @@
 import { Camera, CheckCircle2, Download, ImagePlus, Loader2, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
-import { Alert, Button, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
+import { Alert, Button, compressImage, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
 import type { Category, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import {
@@ -201,7 +201,8 @@ export function RegistrationEditor({
     setError("");
     setMessage("");
     try {
-      await uploadRegistrationPhoto(registration.id, file);
+      const toUpload = await compressImage(file);
+      await uploadRegistrationPhoto(registration.id, toUpload);
       await refreshRegistration("Photo uploaded for review.");
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Photo upload failed");

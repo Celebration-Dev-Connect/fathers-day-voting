@@ -1202,7 +1202,7 @@ textarea:focus {
 .winner-photo-grid img,
 .winner-photo-grid .photo-empty {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 4;
   border-radius: 6px;
   object-fit: cover;
   background: var(--light-grey);
@@ -3135,8 +3135,10 @@ textarea:focus {
 .vehicle-profile-main-photo {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 4;
+  max-height: 75svh;
   object-fit: cover;
+  object-position: center top;
 }
 
 .vehicle-profile-thumb-row {
@@ -3204,7 +3206,7 @@ textarea:focus {
 
 .vehicle-profile-no-photo {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 4;
   background: var(--light-grey);
 }
 
@@ -3391,7 +3393,7 @@ textarea:focus {
 
 .entry-card-photo {
   position: relative;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 4;
   overflow: hidden;
   background: var(--light-grey);
 }

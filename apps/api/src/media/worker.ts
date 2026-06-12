@@ -76,7 +76,7 @@ export class PhotoModerationWorker {
         const [webBytes, mediumBytes, thumbBytes] = await Promise.all([
           // Web variant: max 1200px wide, preserve aspect ratio, <600 KB in practice.
           sharp(originalBytes).rotate().resize({ width: 1200, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer(),
-          sharp(originalBytes).rotate().resize(384, 288, { fit: "cover" }).webp({ quality: 82 }).toBuffer(),
+          sharp(originalBytes).rotate().resize(288, 384, { fit: "cover" }).webp({ quality: 82 }).toBuffer(),
           sharp(originalBytes).rotate().resize(128, 128, { fit: "cover" }).webp({ quality: 80 }).toBuffer(),
         ]);
 

@@ -160,7 +160,7 @@ textarea {
 
 .owner-hero-photo {
   display: grid;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 4;
   background: #eeeeee;
   overflow: hidden;
 }

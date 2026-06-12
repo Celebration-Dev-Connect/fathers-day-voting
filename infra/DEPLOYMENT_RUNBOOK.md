@@ -74,8 +74,9 @@ Before registering a task definition, ensure:
 - `CLEANUP_REGISTRATIONS_ON_START` is absent.
 - `RANDOMIZE_OWNER_CODES_ON_START` is absent.
 - Production has `RUN_SEED=false`.
-- Test should also have `RUN_SEED=false` after its initial seed. Re-seeding on
-  every startup can exceed the load-balancer health window.
+- Preserve test's existing `RUN_SEED` value until its startup issue is
+  resolved. As of June 12, 2026, attempts to roll a new test API task stop
+  after target registration while ECS retains the previous healthy task.
 
 After registering the new revision:
 
@@ -135,6 +136,14 @@ Useful deployment diagnostics also currently lack:
 - `logs:DescribeLogStreams`
 - `logs:FilterLogEvents`
 
+These diagnostic permissions are required before the test API rollout issue can
+be resolved confidently. Do not repeatedly force new test tasks without access
+to their stopped reason and CloudWatch logs.
+
+Current API note: the API/database source at commit `2633cde` is unchanged from
+the healthy production image tag `e64c53f`. The latest `2633cde` SPAs can be
+deployed independently while production continues using that healthy API image.
+
 Review every Terraform plan carefully. Do not apply a plan that rotates
 secrets, clears URLs, changes the shared ECR environment tag, or otherwise
 contains unexplained drift.
@@ -147,3 +156,7 @@ contains unexplained drift.
   `https://d1eujn6wmp8c9o.cloudfront.net`
 - Region: `ca-central-1`
 
+## GitHub Actions
+
+The implementation assessment and recommended rollout sequence are documented
+in `planning/github_actions_deployment_plan.md`.

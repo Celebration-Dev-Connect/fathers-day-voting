@@ -67,6 +67,9 @@ model Event {
   judgesVotingEnabled    Boolean                  @default(true)
   judgingOpen            Boolean                  @default(false)
   resultsPublished       Boolean                  @default(false)
+  resultsPublishedAt     DateTime?
+  resultsPublishedById   String?
+  resultsSnapshot        Json?
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   categories             Category[]

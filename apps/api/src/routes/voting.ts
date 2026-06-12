@@ -8,6 +8,7 @@ import {
   buildVotingTallies,
   votingRegistrationInclude,
 } from "../services/votingTally.js";
+import { buildPublishedResultsSnapshot } from "../services/publishedResults.js";
 
 const eventControlsSelect = {
   id: true,
@@ -17,6 +18,7 @@ const eventControlsSelect = {
   judgesVotingEnabled: true,
   judgingOpen: true,
   resultsPublished: true,
+  resultsPublishedAt: true,
   peopleChoiceCutoff: true,
 };
 
@@ -59,7 +61,6 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         registrationOpen: z.boolean().optional(),
         judgesVotingEnabled: z.boolean().optional(),
         judgingOpen: z.boolean().optional(),
-        resultsPublished: z.boolean().optional(),
         peopleChoiceCutoff: z.string().datetime().nullable().optional(),
       })
       .parse(request.body);
@@ -71,7 +72,6 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         votingOpen: body.votingOpen,
         judgesVotingEnabled: body.judgesVotingEnabled,
         judgingOpen: body.judgesVotingEnabled === false ? false : body.judgingOpen,
-        resultsPublished: body.resultsPublished,
         peopleChoiceCutoff:
           body.peopleChoiceCutoff === undefined
             ? undefined
@@ -83,6 +83,41 @@ export async function registerVotingRoutes(app: FastifyInstance) {
     });
 
     return { event };
+  });
+
+  app.post("/voting/results/publish", async (request) => {
+    const staff = await requireAdmin(app, request);
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        peopleChoiceCutoff: true,
+        judgesVotingEnabled: true,
+        judgingOpen: true,
+      },
+    });
+
+    if (!event) throw app.httpErrors.notFound("Event not found");
+    if (!event.peopleChoiceCutoff || new Date() < event.peopleChoiceCutoff) {
+      throw app.httpErrors.conflict("Results cannot be published until the People's Choice cutoff has passed");
+    }
+    if (event.judgesVotingEnabled && event.judgingOpen) {
+      throw app.httpErrors.conflict("Close judging before publishing results");
+    }
+
+    const snapshot = await buildPublishedResultsSnapshot(staff.displayName);
+    const updated = await prisma.event.update({
+      where: { id: eventId },
+      data: {
+        votingOpen: false,
+        resultsPublished: true,
+        resultsPublishedAt: new Date(snapshot.publishedAt),
+        resultsPublishedById: staff.id,
+        resultsSnapshot: snapshot,
+      },
+      select: eventControlsSelect,
+    });
+
+    return { event: updated, results: snapshot };
   });
 
   app.get("/voting/tallies", async (request) => {

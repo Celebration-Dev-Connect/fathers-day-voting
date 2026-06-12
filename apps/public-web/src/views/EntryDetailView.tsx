@@ -1,5 +1,5 @@
 import { Alert, VehicleProfileCard } from "@carshow/carshow-components";
-import type { PublicVehicle } from "@carshow/carshow-components";
+import type { PublishedVehiclePlacement, PublicVehicle } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getEntryByNumber } from "../api";
@@ -171,6 +171,7 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
 export function EntryDetailView() {
   const { entryNumber = "" } = useParams<{ entryNumber: string }>();
   const [vehicle, setVehicle] = useState<PublicVehicle | null>(null);
+  const [placements, setPlacements] = useState<PublishedVehiclePlacement[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
@@ -184,7 +185,10 @@ export function EntryDetailView() {
     setError("");
     setNotFound(false);
     getEntryByNumber(num)
-      .then(({ vehicle }) => setVehicle(vehicle))
+      .then(({ vehicle, placements }) => {
+        setVehicle(vehicle);
+        setPlacements(placements);
+      })
       .catch((err: Error) => {
         if (err.message.toLowerCase().includes("not found")) {
           setNotFound(true);
@@ -245,6 +249,26 @@ export function EntryDetailView() {
         showVoting={false}
         onUploadPhoto={() => setUploadOpen(true)}
       />
+      {placements.length ? (
+        <section className="published-placements">
+          <p className="eyebrow">Published Results</p>
+          <h2>Awards &amp; Placements</h2>
+          <div className="published-placement-list">
+            {placements.map((placement) => (
+              <div key={`${placement.kind}-${placement.label}`}>
+                <strong>#{placement.rank}</strong>
+                <span>
+                  {placement.kind === "OFFICIAL"
+                    ? `${placement.label} - Official Judged Results`
+                    : placement.kind === "PEOPLE_CHOICE"
+                      ? `${placement.label} - People's Choice`
+                      : placement.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <VoteSection vehicle={vehicle} />
       <SpecialAwardVoteSections vehicle={vehicle} />
       {uploadOpen && (

@@ -23,6 +23,7 @@ export interface VotingContextValue {
   voterKey: string;
   votingOpen: boolean;
   cutoffPassed: boolean;
+  resultsPublished: boolean;
   categories: PublicCategory[];
   specialAwards: PublicSpecialAward[];
   drafts: Record<string, DraftPick>; // categoryId → pending pick
@@ -58,6 +59,7 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
   const [votingOpen, setVotingOpen] = useState(false);
   const [cutoffTime, setCutoffTime] = useState<Date | null>(null);
   const [cutoffPassed, setCutoffPassed] = useState(false);
+  const [resultsPublished, setResultsPublished] = useState(false);
   const [categories, setCategories] = useState<PublicCategory[]>([]);
   const [specialAwards, setSpecialAwards] = useState<PublicSpecialAward[]>([]);
   const [drafts, setDrafts] = useState<Record<string, DraftPick>>(() => getDrafts());
@@ -72,25 +74,35 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
   const cutoffRef = useRef(cutoffTime);
   cutoffRef.current = cutoffTime;
 
-  useEffect(() => {
-    getPublicEvent()
+  const refreshEvent = useCallback(() => {
+    return getPublicEvent()
       .then(({ event, categories, specialAwards = [] }) => {
         setVotingOpen(event.votingOpen);
+        setResultsPublished(event.resultsPublished);
         setCategories(categories);
         setSpecialAwards(specialAwards);
         if (event.peopleChoiceCutoff) {
           const cutoff = new Date(event.peopleChoiceCutoff);
           setCutoffTime(cutoff);
-          setCutoffPassed(new Date() > cutoff);
+          setCutoffPassed(Date.now() >= cutoff.getTime());
+        } else {
+          setCutoffTime(null);
+          setCutoffPassed(false);
         }
       })
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    void refreshEvent();
+    const id = setInterval(() => void refreshEvent(), 30_000);
+    return () => clearInterval(id);
+  }, [refreshEvent]);
+
   // Re-check cutoff every 30 s
   useEffect(() => {
     const id = setInterval(() => {
-      if (cutoffRef.current) setCutoffPassed(new Date() > cutoffRef.current);
+      if (cutoffRef.current) setCutoffPassed(Date.now() >= cutoffRef.current.getTime());
     }, 30_000);
     return () => clearInterval(id);
   }, []);
@@ -193,13 +205,13 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<VotingContextValue>(
     () => ({
-      voterKey, votingOpen, cutoffPassed, categories, specialAwards,
+      voterKey, votingOpen, cutoffPassed, resultsPublished, categories, specialAwards,
       drafts, submitted, specialAwardDrafts, specialAwardSubmitted,
       select, selectSpecialAward, clearSelection, clearSpecialAwardSelection,
       submitVote, submitVoteDirect, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
       isPanelOpen, openPanel, closePanel, togglePanel,
     }),
-    [voterKey, votingOpen, cutoffPassed, categories, specialAwards, drafts, submitted,
+    [voterKey, votingOpen, cutoffPassed, resultsPublished, categories, specialAwards, drafts, submitted,
       specialAwardDrafts, specialAwardSubmitted, select, selectSpecialAward, clearSelection,
       clearSpecialAwardSelection, submitVote, submitVoteDirect, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
       isPanelOpen, openPanel, closePanel, togglePanel],

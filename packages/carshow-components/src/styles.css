@@ -4142,3 +4142,138 @@ html.landing .public-app {
   max-width: 300px;
   line-height: 1.5;
 }
+
+.public-event-notice {
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  padding: 12px 20px;
+  background: var(--primary);
+  color: var(--pure-white);
+  text-align: center;
+  font-weight: 800;
+}
+
+.public-results {
+  max-width: 1080px;
+}
+
+.public-results-hero {
+  margin-bottom: 32px;
+  padding: 32px 20px;
+  border: 2px solid var(--ink);
+  background: var(--pure-white);
+  text-align: center;
+}
+
+.public-results-hero svg {
+  color: var(--primary);
+}
+
+.public-results-hero .public-page-title {
+  margin: 4px 0 8px;
+}
+
+.public-results-browse {
+  display: inline-flex;
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: 2px solid var(--ink);
+  background: var(--primary);
+  color: var(--pure-white);
+  font-weight: 900;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.public-results-section {
+  margin: 0 0 32px;
+}
+
+.public-results-section > h2 {
+  margin-bottom: 12px;
+}
+
+.public-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+}
+
+.public-result-card,
+.published-placements {
+  border: 2px solid var(--ink);
+  background: var(--pure-white);
+  padding: 18px;
+}
+
+.public-result-card h3,
+.published-placements h2 {
+  margin: 0 0 14px;
+}
+
+.public-result-card ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-result-card li a {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--off-white);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.public-result-card li a:hover {
+  outline: 2px solid var(--primary);
+}
+
+.public-result-card small,
+.public-result-card strong {
+  display: block;
+}
+
+.public-result-card b {
+  color: var(--primary);
+  font-size: 12px;
+  text-align: right;
+}
+
+.public-result-rank {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  background: var(--ink);
+  color: var(--pure-white);
+  font-weight: 900;
+}
+
+.published-placements {
+  margin: 16px 0;
+}
+
+.published-placement-list {
+  display: grid;
+  gap: 8px;
+}
+
+.published-placement-list div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--off-white);
+}
+
+.published-placement-list strong {
+  color: var(--primary);
+  font-size: 20px;
+}

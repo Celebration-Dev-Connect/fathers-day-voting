@@ -323,7 +323,6 @@ export async function updateVotingSettings(
       | "votingOpen"
       | "judgesVotingEnabled"
       | "judgingOpen"
-      | "resultsPublished"
       | "peopleChoiceCutoff"
     >
   >,
@@ -331,6 +330,12 @@ export async function updateVotingSettings(
   return request<{ event: VotingSettings }>("/voting/settings", {
     method: "PATCH",
     body: JSON.stringify(input),
+  });
+}
+
+export async function publishVotingResults() {
+  return request<{ event: VotingSettings }>("/voting/results/publish", {
+    method: "POST",
   });
 }
 

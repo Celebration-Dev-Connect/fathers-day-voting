@@ -2,6 +2,7 @@ import { PhotoModerationStatus, Prisma, VehicleStatus, prisma } from "@carshow/d
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { eventId } from "../config.js";
+import { placementsForVehicle } from "../services/publishedResults.js";
 
 const PAGE_SIZE = 12;
 
@@ -57,6 +58,8 @@ export async function registerPublicRoutes(app: FastifyInstance) {
         votingOpen: true,
         peopleChoiceCutoff: true,
         resultsPublished: true,
+        resultsPublishedAt: true,
+        resultsSnapshot: true,
       },
     });
     if (!event) throw app.httpErrors.notFound("Event not found");
@@ -74,7 +77,19 @@ export async function registerPublicRoutes(app: FastifyInstance) {
       }),
     ]);
 
-    return { event, categories, specialAwards };
+    return {
+      event: {
+        name: event.name,
+        eventDate: event.eventDate,
+        venueName: event.venueName,
+        votingOpen: event.votingOpen,
+        peopleChoiceCutoff: event.peopleChoiceCutoff,
+        resultsPublished: event.resultsPublished && event.resultsSnapshot !== null,
+        resultsPublishedAt: event.resultsPublishedAt,
+      },
+      categories,
+      specialAwards,
+    };
   });
 
   app.get("/public/vehicles/:token", async (request) => {
@@ -103,7 +118,9 @@ export async function registerPublicRoutes(app: FastifyInstance) {
       select: { votingOpen: true, peopleChoiceCutoff: true },
     });
 
-    const cutoffPassed = event?.peopleChoiceCutoff ? new Date() > event.peopleChoiceCutoff : false;
+    const cutoffPassed = event?.peopleChoiceCutoff
+      ? Date.now() >= event.peopleChoiceCutoff.getTime()
+      : false;
 
     let alreadyVotedInCategory = false;
     if (query.voterKey && event?.votingOpen && !cutoffPassed) {
@@ -159,7 +176,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     });
 
     if (!event?.votingOpen) throw app.httpErrors.forbidden("Voting is not currently open");
-    if (event.peopleChoiceCutoff && new Date() > event.peopleChoiceCutoff) {
+    if (event.peopleChoiceCutoff && Date.now() >= event.peopleChoiceCutoff.getTime()) {
       throw app.httpErrors.forbidden("Voting has closed");
     }
 
@@ -215,7 +232,25 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     }
 
     if (!vehicle) throw app.httpErrors.notFound("Entry not found");
-    return { vehicle: toPublicVehicle(vehicle) };
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { resultsPublished: true, resultsSnapshot: true },
+    });
+    return {
+      vehicle: toPublicVehicle(vehicle),
+      placements: event?.resultsPublished ? placementsForVehicle(event.resultsSnapshot, vehicle.id) : [],
+    };
+  });
+
+  app.get("/public/results", async () => {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { resultsPublished: true, resultsSnapshot: true },
+    });
+    if (!event?.resultsPublished || !event.resultsSnapshot) {
+      throw app.httpErrors.notFound("Results have not been published");
+    }
+    return { results: event.resultsSnapshot };
   });
 
   app.post(
@@ -242,7 +277,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
       select: { votingOpen: true, peopleChoiceCutoff: true },
     });
     if (!event?.votingOpen) throw app.httpErrors.forbidden("Voting is not currently open");
-    if (event.peopleChoiceCutoff && new Date() > event.peopleChoiceCutoff) {
+    if (event.peopleChoiceCutoff && Date.now() >= event.peopleChoiceCutoff.getTime()) {
       throw app.httpErrors.forbidden("Voting has closed");
     }
 
@@ -287,7 +322,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
         select: { votingOpen: true, peopleChoiceCutoff: true },
       });
       if (!event?.votingOpen) throw app.httpErrors.forbidden("Voting is not currently open");
-      if (event.peopleChoiceCutoff && new Date() > event.peopleChoiceCutoff) {
+      if (event.peopleChoiceCutoff && Date.now() >= event.peopleChoiceCutoff.getTime()) {
         throw app.httpErrors.forbidden("Voting has closed");
       }
 

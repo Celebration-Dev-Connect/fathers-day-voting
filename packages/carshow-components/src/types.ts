@@ -51,6 +51,7 @@ export type VotingSettings = {
   judgesVotingEnabled: boolean;
   judgingOpen: boolean;
   resultsPublished: boolean;
+  resultsPublishedAt?: string | null;
   peopleChoiceCutoff?: string | null;
 };
 
@@ -294,4 +295,37 @@ export type PublicEvent = {
   votingOpen: boolean;
   peopleChoiceCutoff: string | null;
   resultsPublished: boolean;
+  resultsPublishedAt?: string | null;
+};
+
+export type PublishedResultEntry = {
+  rank: number;
+  vehicle: PublicVehicle;
+  votes?: number;
+  judgePoints?: number;
+};
+
+export type PublishedCategoryResults = {
+  category: PublicCategory;
+  official: PublishedResultEntry[];
+  peopleChoice: PublishedResultEntry[];
+};
+
+export type PublishedSpecialAwardResults = {
+  specialAward: PublicSpecialAward;
+  results: PublishedResultEntry[];
+};
+
+export type PublishedResultsSnapshot = {
+  publishedAt: string;
+  publishedByName: string;
+  judgesVotingEnabled: boolean;
+  categories: PublishedCategoryResults[];
+  specialAwards: PublishedSpecialAwardResults[];
+};
+
+export type PublishedVehiclePlacement = {
+  kind: "OFFICIAL" | "PEOPLE_CHOICE" | "SPECIAL_AWARD";
+  label: string;
+  rank: number;
 };

@@ -1,4 +1,4 @@
-import { CalendarClock, CheckCircle2, Gavel, Save, Trophy } from "lucide-react";
+import { CalendarClock, Gavel, Save, Send, Trophy } from "lucide-react";
 import {
   Button,
   formatDateTime,
@@ -9,8 +9,7 @@ type EventControlKey =
   | "registrationOpen"
   | "votingOpen"
   | "judgesVotingEnabled"
-  | "judgingOpen"
-  | "resultsPublished";
+  | "judgingOpen";
 
 export function VotingControls({
   settings,
@@ -20,6 +19,8 @@ export function VotingControls({
   onCutoffChange,
   onSettingChange,
   onSave,
+  onPublish,
+  publishDisabledReason,
 }: {
   settings: VotingSettingsType | null;
   cutoff: string;
@@ -28,6 +29,8 @@ export function VotingControls({
   onCutoffChange: (value: string) => void;
   onSettingChange: <Key extends EventControlKey>(key: Key, value: VotingSettingsType[Key]) => void;
   onSave: () => void;
+  onPublish: () => void;
+  publishDisabledReason: string;
 }) {
   return (
     <div className="voting-settings">
@@ -85,20 +88,19 @@ export function VotingControls({
         <Gavel size={18} />
         Judging open
       </label>
-      <label className="toggle-row">
-        <input
-          type="checkbox"
-          checked={settings?.resultsPublished ?? false}
-          disabled={!canManage || !settings}
-          onChange={(event) => onSettingChange("resultsPublished", event.target.checked)}
-        />
-        <CheckCircle2 size={18} />
-        Results published
-      </label>
       <Button onClick={onSave} disabled={!canManage || saving || !settings}>
         <Save size={20} />
         {saving ? "Saving..." : "Save"}
       </Button>
+      <Button
+        variant="secondary"
+        onClick={onPublish}
+        disabled={!canManage || saving || !settings || Boolean(publishDisabledReason)}
+      >
+        <Send size={20} />
+        {settings?.resultsPublished ? "Republish Results" : "Publish Results"}
+      </Button>
+      {canManage && publishDisabledReason ? <span className="muted-copy">{publishDisabledReason}</span> : null}
     </div>
   );
 }

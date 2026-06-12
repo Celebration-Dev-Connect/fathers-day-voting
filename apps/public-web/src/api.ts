@@ -2,6 +2,8 @@ import type {
   PublicCategory,
   PublicEntry,
   PublicEvent,
+  PublishedResultsSnapshot,
+  PublishedVehiclePlacement,
   PublicSpecialAward,
   PublicVehicle,
 } from "@carshow/carshow-components";
@@ -66,7 +68,11 @@ export async function getCategoryEntries(slug: string, page: number) {
 }
 
 export async function getEntryByNumber(entryNumber: number) {
-  return request<{ vehicle: PublicVehicle }>(`/public/entries/${entryNumber}`);
+  return request<{ vehicle: PublicVehicle; placements: PublishedVehiclePlacement[] }>(`/public/entries/${entryNumber}`);
+}
+
+export async function getPublishedResults() {
+  return request<{ results: PublishedResultsSnapshot }>("/public/results");
 }
 
 export async function submitBrowseVote(vehicleId: string, voterKey: string) {

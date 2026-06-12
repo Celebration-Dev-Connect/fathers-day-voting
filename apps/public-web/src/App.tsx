@@ -6,6 +6,7 @@ import { BrowseView } from "./views/BrowseView";
 import { CategoryView } from "./views/CategoryView";
 import { EntryDetailView } from "./views/EntryDetailView";
 import { LandingView } from "./views/LandingView";
+import { ResultsView } from "./views/ResultsView";
 import { VehicleView } from "./views/VehicleView";
 
 function Header() {
@@ -81,11 +82,13 @@ function WithHeader() {
 }
 
 function AppRoutes() {
+  const { resultsPublished } = useVoting();
   return (
     <div className="public-app">
       <Routes>
-        <Route path="/" element={<LandingView />} />
+        <Route path="/" element={resultsPublished ? <Navigate to="/results" replace /> : <LandingView />} />
         <Route element={<WithHeader />}>
+          <Route path="/results" element={<ResultsView />} />
           <Route path="/v/:token" element={<VehicleView />} />
           <Route path="/browse" element={<BrowseView />} />
           <Route path="/browse/:slug" element={<CategoryView />} />
@@ -97,9 +100,20 @@ function AppRoutes() {
   );
 }
 
+function EventNotice() {
+  const { cutoffPassed, resultsPublished } = useVoting();
+  if (!cutoffPassed || resultsPublished) return null;
+  return (
+    <div className="public-event-notice">
+      Voting has closed. Results will be published soon. You can still browse the vehicles.
+    </div>
+  );
+}
+
 export function App() {
   return (
     <VotingProvider>
+      <EventNotice />
       <AppRoutes />
     </VotingProvider>
   );

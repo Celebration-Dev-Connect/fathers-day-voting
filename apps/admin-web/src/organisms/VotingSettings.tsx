@@ -17,6 +17,7 @@ import {
   getVotingSettings,
   getVotingTallies,
   initializeEvent,
+  publishVotingResults,
   updateCategoryWinners,
   updateVotingSettings,
 } from "../api";
@@ -42,6 +43,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
   const [selectedWinner, setSelectedWinner] = useState<Registration | null>(null);
   const [manualCategory, setManualCategory] = useState<CategoryVotingTally | null>(null);
   const [showJudgingGuide, setShowJudgingGuide] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const canManage = staff.role === "ADMIN";
 
   async function refreshVoting() {
@@ -92,6 +94,11 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
     void refreshVoting();
   }, []);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   async function saveSettings() {
     if (!settings) return;
     setSaving(true);
@@ -103,7 +110,6 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
         votingOpen: settings.votingOpen,
         judgesVotingEnabled: settings.judgesVotingEnabled,
         judgingOpen: settings.judgingOpen,
-        resultsPublished: settings.resultsPublished,
         peopleChoiceCutoff: fromDateTimeLocalValue(cutoff),
       });
       setSettings(result.event);
@@ -120,11 +126,35 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
   function updateSetting<
     Key extends keyof Pick<
       VotingSettingsType,
-      "registrationOpen" | "votingOpen" | "judgesVotingEnabled" | "judgingOpen" | "resultsPublished"
+      "registrationOpen" | "votingOpen" | "judgesVotingEnabled" | "judgingOpen"
     >,
   >(key: Key, value: VotingSettingsType[Key]) {
     setSettings((current) => (current ? { ...current, [key]: value } : current));
   }
+
+  async function publishResults() {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await publishVotingResults();
+      setSettings(result.event);
+      await refreshVoting();
+      setMessage(result.event.resultsPublished ? "Results published to the public site." : "Results updated.");
+    } catch (publishError) {
+      setError(publishError instanceof Error ? publishError.message : "Could not publish results");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const publishDisabledReason = !settings?.peopleChoiceCutoff
+    ? "Set a voting cutoff before publishing."
+    : now < new Date(settings.peopleChoiceCutoff).getTime()
+      ? "Results can be published after the voting cutoff."
+      : settings.judgesVotingEnabled && settings.judgingOpen
+        ? "Close judging before publishing results."
+        : "";
 
   async function saveManualWinners(
     tally: CategoryVotingTally,
@@ -192,6 +222,8 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
         onCutoffChange={setCutoff}
         onSettingChange={updateSetting}
         onSave={saveSettings}
+        onPublish={publishResults}
+        publishDisabledReason={publishDisabledReason}
       />
 
       {!loading && settings?.judgesVotingEnabled ? <JudgeCompletionPanel categories={judgeCompletion} /> : null}

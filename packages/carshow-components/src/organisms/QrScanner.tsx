@@ -16,9 +16,11 @@ function extractToken(decoded: string): string | null {
 export function QrScanner({
   onScan,
   onClose,
+  mirror = false,
 }: {
   onScan: (token: string) => void;
   onClose: () => void;
+  mirror?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
@@ -78,7 +80,7 @@ export function QrScanner({
         </button>
         <p className="qr-scanner-label">Point your camera at a QR code</p>
         <div className="qr-scanner-viewport">
-          <video ref={videoRef} className="qr-scanner-video" autoPlay muted playsInline />
+          <video ref={videoRef} className="qr-scanner-video" autoPlay muted playsInline style={mirror ? { transform: "scaleX(-1)" } : undefined} />
           <div className="qr-scanner-reticle" />
         </div>
         {error && <p className="qr-scanner-error">{error}</p>}

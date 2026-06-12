@@ -88,6 +88,7 @@ export function QrAssignment({
         <QrScanner
           onScan={(token) => { void assign(token); }}
           onClose={() => setScanning(false)}
+          mirror={window.matchMedia("(pointer: fine)").matches}
         />
       )}
     </section>

@@ -17,6 +17,24 @@ import {
 } from "../api";
 import { QrAssignment } from "./QrAssignment";
 
+function parseFieldErrors(error: unknown): Record<string, string> {
+  if (!(error instanceof Error)) return {};
+  try {
+    const parsed: unknown = JSON.parse(error.message);
+    if (!Array.isArray(parsed)) return {};
+    const map: Record<string, string> = {};
+    for (const issue of parsed) {
+      if (issue && Array.isArray(issue.path) && issue.path.length >= 2 && typeof issue.message === "string") {
+        const msg: string = issue.message.includes("at least 1 character") ? "Required" : issue.message;
+        map[issue.path.join(".")] = msg;
+      }
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 const emptyPayload: RegistrationPayload = {
   owner: {
     firstName: "",
@@ -60,6 +78,7 @@ export function RegistrationEditor({
   );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -83,6 +102,7 @@ export function RegistrationEditor({
     key: Key,
     value: RegistrationPayload["owner"][Key],
   ) {
+    setFieldErrors((prev) => { const next = { ...prev }; delete next[`owner.${key}`]; return next; });
     setPayload((current) => ({ ...current, owner: { ...current.owner, [key]: value } }));
   }
 
@@ -90,6 +110,7 @@ export function RegistrationEditor({
     key: Key,
     value: RegistrationPayload["vehicle"][Key],
   ) {
+    setFieldErrors((prev) => { const next = { ...prev }; delete next[`vehicle.${key}`]; return next; });
     setPayload((current) => ({ ...current, vehicle: { ...current.vehicle, [key]: value } }));
   }
 
@@ -98,6 +119,7 @@ export function RegistrationEditor({
     setSaving(true);
     setMessage("");
     setError("");
+    setFieldErrors({});
     try {
       const result = registration
         ? await updateRegistration(registration.id, payload)
@@ -107,7 +129,12 @@ export function RegistrationEditor({
       onSaved(result.registration);
       setMessage("Registration saved.");
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Save failed");
+      const parsed = parseFieldErrors(saveError);
+      if (Object.keys(parsed).length > 0) {
+        setFieldErrors(parsed);
+      } else {
+        setError(saveError instanceof Error ? saveError.message : "Save failed");
+      }
     } finally {
       setSaving(false);
     }
@@ -305,10 +332,12 @@ export function RegistrationEditor({
         <label>
           First name *
           <input disabled={Boolean(selectedOwner)} value={payload.owner.firstName} onChange={(event) => updateOwner("firstName", event.target.value)} />
+          {fieldErrors["owner.firstName"] && <span className="field-error">{fieldErrors["owner.firstName"]}</span>}
         </label>
         <label>
           Last name *
           <input disabled={Boolean(selectedOwner)} value={payload.owner.lastName} onChange={(event) => updateOwner("lastName", event.target.value)} />
+          {fieldErrors["owner.lastName"] && <span className="field-error">{fieldErrors["owner.lastName"]}</span>}
         </label>
         <label>
           Phone *
@@ -321,10 +350,12 @@ export function RegistrationEditor({
             disabled={Boolean(selectedOwner)}
             onChange={(event) => updateOwner("phone", formatPhone(event.target.value))}
           />
+          {fieldErrors["owner.phone"] && <span className="field-error">{fieldErrors["owner.phone"]}</span>}
         </label>
         <label>
           Email
           <input disabled={Boolean(selectedOwner)} value={payload.owner.email} onChange={(event) => updateOwner("email", event.target.value)} />
+          {fieldErrors["owner.email"] && <span className="field-error">{fieldErrors["owner.email"]}</span>}
         </label>
       </div>
 
@@ -337,6 +368,7 @@ export function RegistrationEditor({
         />
         Owner agreed to event liability waiver.
       </label>
+      {fieldErrors["owner.waiverAccepted"] && <span className="field-error">{fieldErrors["owner.waiverAccepted"]}</span>}
 
       <div className="form-grid">
         <label>
@@ -346,14 +378,17 @@ export function RegistrationEditor({
             value={payload.vehicle.year}
             onChange={(event) => updateVehicle("year", Number(event.target.value))}
           />
+          {fieldErrors["vehicle.year"] && <span className="field-error">{fieldErrors["vehicle.year"]}</span>}
         </label>
         <label>
           Make *
           <input value={payload.vehicle.make} onChange={(event) => updateVehicle("make", event.target.value)} />
+          {fieldErrors["vehicle.make"] && <span className="field-error">{fieldErrors["vehicle.make"]}</span>}
         </label>
         <label>
           Model *
           <input value={payload.vehicle.model} onChange={(event) => updateVehicle("model", event.target.value)} />
+          {fieldErrors["vehicle.model"] && <span className="field-error">{fieldErrors["vehicle.model"]}</span>}
         </label>
         <label>
           Plate
@@ -361,6 +396,7 @@ export function RegistrationEditor({
             value={payload.vehicle.plateNumber}
             onChange={(event) => updateVehicle("plateNumber", event.target.value.toUpperCase())}
           />
+          {fieldErrors["vehicle.plateNumber"] && <span className="field-error">{fieldErrors["vehicle.plateNumber"]}</span>}
         </label>
       </div>
 
@@ -378,6 +414,7 @@ export function RegistrationEditor({
               </option>
             ))}
         </select>
+        {fieldErrors["vehicle.categoryId"] && <span className="field-error">{fieldErrors["vehicle.categoryId"]}</span>}
       </label>
 
       <label>
@@ -389,6 +426,7 @@ export function RegistrationEditor({
           maxLength={2500}
           placeholder="Add or edit the story the owner wants shown with their vehicle."
         />
+        {fieldErrors["vehicle.buildStory"] && <span className="field-error">{fieldErrors["vehicle.buildStory"]}</span>}
       </label>
 
       <label>
@@ -398,6 +436,7 @@ export function RegistrationEditor({
           onChange={(event) => updateVehicle("internalNotes", event.target.value)}
           rows={3}
         />
+        {fieldErrors["vehicle.internalNotes"] && <span className="field-error">{fieldErrors["vehicle.internalNotes"]}</span>}
       </label>
 
       {registration ? (

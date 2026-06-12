@@ -1,5 +1,5 @@
 import { AlertTriangle, Check, Plus, RefreshCw, Upload, X } from "lucide-react";
-import { Alert, Button, PageHeader, RegistrationRow, SearchBox } from "@carshow/carshow-components";
+import { Alert, Button, PageHeader, Pagination, RegistrationRow, SearchBox } from "@carshow/carshow-components";
 import type { Category, Registration, StaffUser } from "@carshow/carshow-components";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -75,6 +75,8 @@ export function RegistrationsView({
   onSelect: (registration: Registration | null) => void;
   onRefresh: () => void;
 }) {
+  const PAGE_SIZE = 25;
+  const [page, setPage] = useState(0);
   const [showNewEditor, setShowNewEditor] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
@@ -90,6 +92,10 @@ export function RegistrationsView({
   const [activeImport, setActiveImport] = useState<RegistrationImportJob | null>(null);
   const [showImportProgress, setShowImportProgress] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setPage(0);
+  }, [registrations]);
 
   useEffect(() => {
     if (staff.role !== "ADMIN") return;
@@ -187,6 +193,9 @@ export function RegistrationsView({
       setImporting(false);
     }
   }
+
+  const pageCount = Math.ceil(registrations.length / PAGE_SIZE);
+  const pagedRegistrations = registrations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <section className="registrations-layout">
@@ -319,7 +328,7 @@ export function RegistrationsView({
               />
             </div>
           ) : null}
-          {registrations.map((registration) => (
+          {pagedRegistrations.map((registration) => (
             <div className="registration-list-item" key={registration.id}>
               <RegistrationRow
                 registration={registration}
@@ -344,6 +353,13 @@ export function RegistrationsView({
             </div>
           ))}
           {!registrations.length ? <div className="empty-state">No registrations found.</div> : null}
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            total={registrations.length}
+            pageSize={PAGE_SIZE}
+            onChange={(p) => { setPage(p); onSelect(null); }}
+          />
         </div>
       </div>
     </section>

@@ -138,6 +138,15 @@ label {
   text-transform: uppercase;
 }
 
+.field-error {
+  color: var(--red, #c8102e);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  margin-top: -2px;
+}
+
 input,
 select,
 textarea {

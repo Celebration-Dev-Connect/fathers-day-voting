@@ -1,4 +1,5 @@
 export { AuditRow } from "./AuditRow.js";
+export { Pagination } from "./Pagination.js";
 export { CategoryCard } from "./CategoryCard.js";
 export { EntryCard } from "./EntryCard.js";
 export { PageHeader } from "./PageHeader.js";

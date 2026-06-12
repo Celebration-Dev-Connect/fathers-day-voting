@@ -1,13 +1,15 @@
 import { Car, CheckCircle2, Plus, Printer, QrCode } from "lucide-react";
-import { Alert, Button, Metric, PageHeader, QrPrintCard, chunk } from "@carshow/carshow-components";
+import { Alert, Button, Metric, PageHeader, Pagination, QrPrintCard, chunk } from "@carshow/carshow-components";
 import type { QrCard } from "@carshow/carshow-components";
 import { useCallback, useEffect, useState } from "react";
 import { generateQrCards, listQrCards } from "../api";
 import { PUBLIC_APP_URL } from "../config";
 
 export function QrCardsView() {
+  const PAGE_SIZE = 50;
   const [qrCards, setQrCards] = useState<QrCard[]>([]);
   const [status, setStatus] = useState("");
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [quantity, setQuantity] = useState(4);
@@ -17,6 +19,7 @@ export function QrCardsView() {
   const loadQrCards = useCallback(() => {
     setLoading(true);
     setError("");
+    setPage(0);
     listQrCards(status)
       .then(({ qrCards }) => setQrCards(qrCards))
       .catch((loadError) =>
@@ -47,6 +50,8 @@ export function QrCardsView() {
 
   const availableCount = qrCards.filter((card) => card.status === "PRINTED").length;
   const assignedCount = qrCards.filter((card) => card.status === "ASSIGNED").length;
+  const pageCount = Math.ceil(qrCards.length / PAGE_SIZE);
+  const pagedQrCards = qrCards.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <section className="qr-cards-view">
@@ -98,10 +103,17 @@ export function QrCardsView() {
         </div>
         {loading ? <div className="empty-state">Loading QR cards...</div> : null}
         {!loading && !qrCards.length ? <div className="empty-state">No QR cards found.</div> : null}
+        <Pagination
+          page={page}
+          pageCount={pageCount}
+          total={qrCards.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+        />
       </div>
 
       <div className="print-sheet" aria-label="Printable QR card sheet">
-        {chunk(qrCards, 4).map((pageCards, pageIndex) => (
+        {chunk(pagedQrCards, 4).map((pageCards, pageIndex) => (
           <div className="print-page" key={`qr-page-${pageIndex}`}>
             {pageCards.map((card) => (
               <QrPrintCard key={card.id} card={card} publicAppUrl={PUBLIC_APP_URL} />

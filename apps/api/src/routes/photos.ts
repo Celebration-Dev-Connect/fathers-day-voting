@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { createReadStream } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { requireAdmin, requireStaff } from "../auth.js";
+import { requireStaff } from "../auth.js";
 import { config, eventId } from "../config.js";
 import type { PhotoModerationWorker } from "../media/worker.js";
 import type { PhotoStorage } from "../media/storage/index.js";
@@ -98,7 +98,7 @@ async function deletePhotoObjects(app: FastifyInstance, deps: PhotosDeps, photoI
 
 export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDeps) {
   app.get("/photos/review", async (request) => {
-    await requireAdmin(app, request);
+    await requireStaff(app, request);
     const query = z
       .object({
         status: z.enum(["needs-review", "approved", "rejected", "all"]).default("needs-review"),
@@ -189,7 +189,7 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
   });
 
   app.get("/photos/review/:id/image", async (request, reply) => {
-    await requireAdmin(app, request);
+    await requireStaff(app, request);
     const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
     const photo = await prisma.vehiclePhoto.findFirst({
       where: { id: params.id, vehicleEntry: { eventId }, storageKey: { not: null } },
@@ -204,7 +204,7 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
   });
 
   app.patch("/photos/review/:id", async (request) => {
-    await requireAdmin(app, request);
+    await requireStaff(app, request);
     const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
     const body = z.object({ status: z.enum(["APPROVED", "REJECTED"]) }).parse(request.body);
 

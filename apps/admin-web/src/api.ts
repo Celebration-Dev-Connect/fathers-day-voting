@@ -371,6 +371,23 @@ export async function updatePhotoReviewStatus(id: string, status: Extract<PhotoM
   });
 }
 
+export async function downloadRegistrationPhotos(id: string) {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/registrations/${encodeURIComponent(id)}/photos/download`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) throw new Error(`Download failed with ${response.status}`);
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  const filename = match?.[1] ?? "photos.zip";
+  const url = URL.createObjectURL(await response.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function getPhotoReviewImageUrl(id: string) {
   const token = getToken();
   const response = await fetch(`${API_URL}/photos/review/${encodeURIComponent(id)}/image`, {

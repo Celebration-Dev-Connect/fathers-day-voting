@@ -1,4 +1,4 @@
-import { Camera, CheckCircle2, ImagePlus, Loader2, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
+import { Camera, CheckCircle2, Download, ImagePlus, Loader2, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
 import { Alert, Button, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
 import type { Category, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
 import { FormEvent, useEffect, useRef, useState } from "react";
@@ -7,6 +7,7 @@ import {
   createRegistration,
   createRegistrationForOwner,
   deleteRegistrationPhoto,
+  downloadRegistrationPhotos,
   getRegistration,
   listOwners,
   setRegistrationPrimaryPhoto,
@@ -62,6 +63,7 @@ export function RegistrationEditor({
   const [saving, setSaving] = useState(false);
   const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [downloadingPhotos, setDownloadingPhotos] = useState(false);
   const [ownerSearch, setOwnerSearch] = useState("");
   const [ownerCandidates, setOwnerCandidates] = useState<OwnerSummary[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<OwnerSummary | null>(null);
@@ -405,7 +407,7 @@ export function RegistrationEditor({
               <p className="eyebrow">Owner Support</p>
               <h3>Photos and hero image</h3>
             </div>
-            <div>
+            <div style={{ display: "flex", gap: "8px" }}>
               <input
                 ref={fileInputRef}
                 className="visually-hidden"
@@ -413,6 +415,20 @@ export function RegistrationEditor({
                 accept="image/jpeg,image/png,image/webp"
                 onChange={(event) => void uploadPhoto(event.target.files?.[0] ?? null)}
               />
+              {(registration.photos ?? []).some((p) => p.moderationStatus === "APPROVED") ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={downloadingPhotos}
+                  onClick={() => {
+                    setDownloadingPhotos(true);
+                    downloadRegistrationPhotos(registration.id).finally(() => setDownloadingPhotos(false));
+                  }}
+                >
+                  {downloadingPhotos ? <Loader2 className="spin" size={18} /> : <Download size={18} />}
+                  {downloadingPhotos ? "Downloading..." : "Download Photos"}
+                </Button>
+              ) : null}
               <Button type="button" variant="secondary" disabled={uploadingPhoto} onClick={() => fileInputRef.current?.click()}>
                 {uploadingPhoto ? <Loader2 className="spin" size={18} /> : <ImagePlus size={18} />}
                 {uploadingPhoto ? "Uploading..." : "Upload Photo"}

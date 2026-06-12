@@ -101,6 +101,12 @@ Dev login is blocked when `NODE_ENV=production` unless `ENABLE_DEV_LOGIN=true`.
 
 Two environments — `test` and `prod` — each in its own Terraform workspace with isolated state.
 
+The current deployment source of truth is
+[`infra/DEPLOYMENT_RUNBOOK.md`](infra/DEPLOYMENT_RUNBOOK.md). Read it before
+every deploy. The existing `carshow-deploy-caleb` IAM user is key/secret-only,
+is loaded from the ignored repository `.env`, and does not use SSO. Always use
+`--auto-approve` for requested non-interactive deploys.
+
 When helping with AWS deploys, prefer the repository script over hand-running
 Terraform/app deploy steps. Do not expose or commit AWS keys, secrets, tfvars,
 state files, or `.env` values. If credentials are needed locally, use the AWS

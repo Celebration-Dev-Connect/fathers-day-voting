@@ -41,6 +41,10 @@ build/push (for `linux/amd64`, so it works from Apple Silicon), `terraform
 apply` in the right workspace, and the SPA builds + S3 sync + CloudFront
 invalidation. Credentials are never passed as args or printed.
 
+For the current routine test/production process, credential behavior, ECS
+promotion steps, safety checks, and known IAM limitations, read
+[`DEPLOYMENT_RUNBOOK.md`](DEPLOYMENT_RUNBOOK.md) before deploying.
+
 ```sh
 infra/deploy.sh --env test  --profile <aws-profile>   # full test deploy
 infra/deploy.sh --env prod  --profile <aws-profile>   # full prod deploy

@@ -3138,7 +3138,7 @@ textarea:focus {
   aspect-ratio: 3 / 4;
   max-height: 75svh;
   object-fit: cover;
-  object-position: center top;
+  object-position: center;
 }
 
 .vehicle-profile-thumb-row {

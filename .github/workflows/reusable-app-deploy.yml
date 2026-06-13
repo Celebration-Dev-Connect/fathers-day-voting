@@ -62,7 +62,9 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # npm ci skips optional platform binaries not in the lock file (npm/cli#4828).
+        # npm install respects lock file versions and fills in missing platform deps.
+        run: npm install
 
       - name: Run build and API tests
         run: |

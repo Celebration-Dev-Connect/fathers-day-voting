@@ -1,0 +1,4 @@
+# Changes to workflows and CI scripts require review from a repo admin.
+.github/workflows/** @Huget-Org/admins
+infra/ci/**          @Huget-Org/admins
+infra/iam/**         @Huget-Org/admins

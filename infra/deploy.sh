@@ -144,6 +144,11 @@ VAR_FILE_NAME="$ENVIRONMENT.tfvars"
 VAR_FILE="$TF_DIR/$VAR_FILE_NAME"
 [[ -f "$VAR_FILE" ]] || die "Missing $VAR_FILE — copy $ENVIRONMENT.tfvars.example to $ENVIRONMENT.tfvars and fill it in."
 
+# Prod can only be deployed from CI — OIDC credentials never exist locally.
+if [[ "$ENVIRONMENT" == "prod" && "${CI:-}" != "true" ]]; then
+  die "prod deploys must originate from GitHub Actions. Trigger the 'Deploy Production' workflow instead."
+fi
+
 # Pass --profile through to the AWS CLI via the standard env var (never logged).
 if [[ -n "$PROFILE" ]]; then export AWS_PROFILE="$PROFILE"; fi
 export AWS_REGION="$REGION" AWS_DEFAULT_REGION="$REGION"

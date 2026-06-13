@@ -9,7 +9,7 @@
     "Condition": {
       "StringEquals": {
         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-        "token.actions.githubusercontent.com:sub": "repo:chuget/fathers-day-voting:environment:test"
+        "token.actions.githubusercontent.com:sub": "repo:Huget-Org/fathers-day-voting:environment:test"
       }
     }
   }]

@@ -62,8 +62,17 @@ BEGIN
 END $$;
 
 -- Step 3: Enforce 4-digit format going forward.
--- IF NOT EXISTS makes this safe on environments where the original migration
--- (20260610203000) ran successfully and already added this constraint.
-ALTER TABLE "QrCard"
-  ADD CONSTRAINT IF NOT EXISTS "QrCard_visibleCode_four_digits_check"
-  CHECK ("visibleCode" ~ '^[0-9]{4}$');
+-- Wrapped in a DO block because PostgreSQL has no ADD CONSTRAINT IF NOT EXISTS.
+-- Safe on environments where the original migration (20260610203000) already
+-- added this constraint.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'QrCard_visibleCode_four_digits_check'
+  ) THEN
+    ALTER TABLE "QrCard"
+      ADD CONSTRAINT "QrCard_visibleCode_four_digits_check"
+      CHECK ("visibleCode" ~ '^[0-9]{4}$');
+  END IF;
+END $$;

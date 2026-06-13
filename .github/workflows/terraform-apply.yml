@@ -36,16 +36,189 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
-      - name: Write tfvars from secret
+      - name: Write tfvars from secrets
         env:
-          TEST_TFVARS: ${{ secrets.TEST_TFVARS }}
-          PERF_TFVARS: ${{ secrets.PERF_TFVARS }}
-          PROD_TFVARS: ${{ secrets.PROD_TFVARS }}
+          # ── Test (infra-nonprod) ──────────────────────────────────────────
+          TF_TEST_REGION:                ${{ secrets.TF_TEST_REGION }}
+          TF_TEST_PROJECT:               ${{ secrets.TF_TEST_PROJECT }}
+          TF_TEST_ENVIRONMENT:           ${{ secrets.TF_TEST_ENVIRONMENT }}
+          TF_TEST_DOMAIN:                ${{ secrets.TF_TEST_DOMAIN }}
+          TF_TEST_DB_USERNAME:           ${{ secrets.TF_TEST_DB_USERNAME }}
+          TF_TEST_ROUTE53_ZONE_ID:       ${{ secrets.TF_TEST_ROUTE53_ZONE_ID }}
+          TF_TEST_ECS_CPU:               ${{ secrets.TF_TEST_ECS_CPU }}
+          TF_TEST_ECS_MEMORY:            ${{ secrets.TF_TEST_ECS_MEMORY }}
+          TF_TEST_ECS_MIN_SIZE:          ${{ secrets.TF_TEST_ECS_MIN_SIZE }}
+          TF_TEST_ECS_MAX_SIZE:          ${{ secrets.TF_TEST_ECS_MAX_SIZE }}
+          TF_TEST_RDS_INSTANCE_CLASS:    ${{ secrets.TF_TEST_RDS_INSTANCE_CLASS }}
+          TF_TEST_RDS_ALLOCATED_STORAGE: ${{ secrets.TF_TEST_RDS_ALLOCATED_STORAGE }}
+          TF_TEST_RDS_BACKUP_RETENTION:  ${{ secrets.TF_TEST_RDS_BACKUP_RETENTION }}
+          TF_TEST_ENABLE_DEV_LOGIN:      ${{ secrets.TF_TEST_ENABLE_DEV_LOGIN }}
+          TF_TEST_RUN_SEED:              ${{ secrets.TF_TEST_RUN_SEED }}
+          TF_TEST_TEARDOWN_FRIENDLY:     ${{ secrets.TF_TEST_TEARDOWN_FRIENDLY }}
+          TF_TEST_IMAGE_TAG:             ${{ secrets.TF_TEST_IMAGE_TAG }}
+          TF_TEST_PCO_CLIENT_ID:         ${{ secrets.TF_TEST_PCO_CLIENT_ID }}
+          TF_TEST_PCO_CLIENT_SECRET:     ${{ secrets.TF_TEST_PCO_CLIENT_SECRET }}
+          TF_TEST_PCO_CALLBACK_URL:      ${{ secrets.TF_TEST_PCO_CALLBACK_URL }}
+          TF_TEST_PCO_TEAM_NAME:         ${{ secrets.TF_TEST_PCO_TEAM_NAME }}
+          TF_TEST_ADMIN_WEB_URL:         ${{ secrets.TF_TEST_ADMIN_WEB_URL }}
+          TF_TEST_JUDGE_WEB_URL:         ${{ secrets.TF_TEST_JUDGE_WEB_URL }}
+          TF_TEST_WEBGUIDE_USERNAME:     ${{ secrets.TF_TEST_WEBGUIDE_USERNAME }}
+          TF_TEST_WEBGUIDE_PASSWORD:     ${{ secrets.TF_TEST_WEBGUIDE_PASSWORD }}
+          # ── Perf (infra-nonprod) ─────────────────────────────────────────
+          TF_PERF_REGION:                ${{ secrets.TF_PERF_REGION }}
+          TF_PERF_PROJECT:               ${{ secrets.TF_PERF_PROJECT }}
+          TF_PERF_ENVIRONMENT:           ${{ secrets.TF_PERF_ENVIRONMENT }}
+          TF_PERF_DOMAIN:                ${{ secrets.TF_PERF_DOMAIN }}
+          TF_PERF_DB_USERNAME:           ${{ secrets.TF_PERF_DB_USERNAME }}
+          TF_PERF_ROUTE53_ZONE_ID:       ${{ secrets.TF_PERF_ROUTE53_ZONE_ID }}
+          TF_PERF_ECS_CPU:               ${{ secrets.TF_PERF_ECS_CPU }}
+          TF_PERF_ECS_MEMORY:            ${{ secrets.TF_PERF_ECS_MEMORY }}
+          TF_PERF_ECS_MIN_SIZE:          ${{ secrets.TF_PERF_ECS_MIN_SIZE }}
+          TF_PERF_ECS_MAX_SIZE:          ${{ secrets.TF_PERF_ECS_MAX_SIZE }}
+          TF_PERF_RDS_INSTANCE_CLASS:    ${{ secrets.TF_PERF_RDS_INSTANCE_CLASS }}
+          TF_PERF_RDS_ALLOCATED_STORAGE: ${{ secrets.TF_PERF_RDS_ALLOCATED_STORAGE }}
+          TF_PERF_RDS_BACKUP_RETENTION:  ${{ secrets.TF_PERF_RDS_BACKUP_RETENTION }}
+          TF_PERF_DB_CONNECTION_LIMIT:   ${{ secrets.TF_PERF_DB_CONNECTION_LIMIT }}
+          TF_PERF_SKIP_CLOUDFRONT:       ${{ secrets.TF_PERF_SKIP_CLOUDFRONT }}
+          TF_PERF_CLOUDFRONT_CUSTOM_DOMAIN: ${{ secrets.TF_PERF_CLOUDFRONT_CUSTOM_DOMAIN }}
+          TF_PERF_ENABLE_DEV_LOGIN:      ${{ secrets.TF_PERF_ENABLE_DEV_LOGIN }}
+          TF_PERF_RUN_SEED:              ${{ secrets.TF_PERF_RUN_SEED }}
+          TF_PERF_TEARDOWN_FRIENDLY:     ${{ secrets.TF_PERF_TEARDOWN_FRIENDLY }}
+          TF_PERF_IMAGE_TAG:             ${{ secrets.TF_PERF_IMAGE_TAG }}
+          TF_PERF_PCO_CLIENT_ID:         ${{ secrets.TF_PERF_PCO_CLIENT_ID }}
+          TF_PERF_PCO_CLIENT_SECRET:     ${{ secrets.TF_PERF_PCO_CLIENT_SECRET }}
+          TF_PERF_PCO_CALLBACK_URL:      ${{ secrets.TF_PERF_PCO_CALLBACK_URL }}
+          TF_PERF_PCO_TEAM_NAME:         ${{ secrets.TF_PERF_PCO_TEAM_NAME }}
+          TF_PERF_ADMIN_WEB_URL:         ${{ secrets.TF_PERF_ADMIN_WEB_URL }}
+          TF_PERF_JUDGE_WEB_URL:         ${{ secrets.TF_PERF_JUDGE_WEB_URL }}
+          TF_PERF_WEBGUIDE_USERNAME:     ${{ secrets.TF_PERF_WEBGUIDE_USERNAME }}
+          TF_PERF_WEBGUIDE_PASSWORD:     ${{ secrets.TF_PERF_WEBGUIDE_PASSWORD }}
+          # ── Prod (infra-prod) ────────────────────────────────────────────
+          TF_PROD_REGION:                ${{ secrets.TF_PROD_REGION }}
+          TF_PROD_PROJECT:               ${{ secrets.TF_PROD_PROJECT }}
+          TF_PROD_ENVIRONMENT:           ${{ secrets.TF_PROD_ENVIRONMENT }}
+          TF_PROD_DOMAIN:                ${{ secrets.TF_PROD_DOMAIN }}
+          TF_PROD_DB_USERNAME:           ${{ secrets.TF_PROD_DB_USERNAME }}
+          TF_PROD_ROUTE53_ZONE_ID:       ${{ secrets.TF_PROD_ROUTE53_ZONE_ID }}
+          TF_PROD_ECS_CPU:               ${{ secrets.TF_PROD_ECS_CPU }}
+          TF_PROD_ECS_MEMORY:            ${{ secrets.TF_PROD_ECS_MEMORY }}
+          TF_PROD_ECS_MIN_SIZE:          ${{ secrets.TF_PROD_ECS_MIN_SIZE }}
+          TF_PROD_ECS_MAX_SIZE:          ${{ secrets.TF_PROD_ECS_MAX_SIZE }}
+          TF_PROD_RDS_INSTANCE_CLASS:    ${{ secrets.TF_PROD_RDS_INSTANCE_CLASS }}
+          TF_PROD_RDS_ALLOCATED_STORAGE: ${{ secrets.TF_PROD_RDS_ALLOCATED_STORAGE }}
+          TF_PROD_RDS_BACKUP_RETENTION:  ${{ secrets.TF_PROD_RDS_BACKUP_RETENTION }}
+          TF_PROD_DB_CONNECTION_LIMIT:   ${{ secrets.TF_PROD_DB_CONNECTION_LIMIT }}
+          TF_PROD_ENABLE_DEV_LOGIN:      ${{ secrets.TF_PROD_ENABLE_DEV_LOGIN }}
+          TF_PROD_RUN_SEED:              ${{ secrets.TF_PROD_RUN_SEED }}
+          TF_PROD_TEARDOWN_FRIENDLY:     ${{ secrets.TF_PROD_TEARDOWN_FRIENDLY }}
+          TF_PROD_CORS_ALLOWED_ORIGINS:  ${{ secrets.TF_PROD_CORS_ALLOWED_ORIGINS }}
+          TF_PROD_ALERT_EMAIL:           ${{ secrets.TF_PROD_ALERT_EMAIL }}
+          TF_PROD_ALERT_SMS:             ${{ secrets.TF_PROD_ALERT_SMS }}
+          TF_PROD_PCO_CLIENT_ID:         ${{ secrets.TF_PROD_PCO_CLIENT_ID }}
+          TF_PROD_PCO_CLIENT_SECRET:     ${{ secrets.TF_PROD_PCO_CLIENT_SECRET }}
+          TF_PROD_PCO_CALLBACK_URL:      ${{ secrets.TF_PROD_PCO_CALLBACK_URL }}
+          TF_PROD_PCO_TEAM_NAME:         ${{ secrets.TF_PROD_PCO_TEAM_NAME }}
+          TF_PROD_ADMIN_WEB_URL:         ${{ secrets.TF_PROD_ADMIN_WEB_URL }}
+          TF_PROD_JUDGE_WEB_URL:         ${{ secrets.TF_PROD_JUDGE_WEB_URL }}
+          TF_PROD_WEBGUIDE_USERNAME:     ${{ secrets.TF_PROD_WEBGUIDE_USERNAME }}
+          TF_PROD_WEBGUIDE_PASSWORD:     ${{ secrets.TF_PROD_WEBGUIDE_PASSWORD }}
+          TF_PROD_CLOUDFRONT_CUSTOM_DOMAIN: ${{ secrets.TF_PROD_CLOUDFRONT_CUSTOM_DOMAIN }}
         run: |
           case "${{ inputs.environment }}" in
-            test) printf '%s' "$TEST_TFVARS" > infra/terraform/test.tfvars ;;
-            perf) printf '%s' "$PERF_TFVARS" > infra/terraform/perf.tfvars ;;
-            prod) printf '%s' "$PROD_TFVARS" > infra/terraform/prod.tfvars ;;
+            test)
+              cat > infra/terraform/test.tfvars << EOF
+          region      = "$TF_TEST_REGION"
+          project     = "$TF_TEST_PROJECT"
+          environment = "$TF_TEST_ENVIRONMENT"
+          domain      = "$TF_TEST_DOMAIN"
+          db_username = "$TF_TEST_DB_USERNAME"
+          route53_zone_id       = "$TF_TEST_ROUTE53_ZONE_ID"
+          ecs_cpu               = "$TF_TEST_ECS_CPU"
+          ecs_memory            = "$TF_TEST_ECS_MEMORY"
+          ecs_min_size          = $TF_TEST_ECS_MIN_SIZE
+          ecs_max_size          = $TF_TEST_ECS_MAX_SIZE
+          rds_instance_class    = "$TF_TEST_RDS_INSTANCE_CLASS"
+          rds_allocated_storage = $TF_TEST_RDS_ALLOCATED_STORAGE
+          rds_backup_retention  = $TF_TEST_RDS_BACKUP_RETENTION
+          enable_dev_login  = $TF_TEST_ENABLE_DEV_LOGIN
+          run_seed          = $TF_TEST_RUN_SEED
+          teardown_friendly = $TF_TEST_TEARDOWN_FRIENDLY
+          image_tag         = "$TF_TEST_IMAGE_TAG"
+          pco_client_id     = "$TF_TEST_PCO_CLIENT_ID"
+          pco_client_secret = "$TF_TEST_PCO_CLIENT_SECRET"
+          pco_callback_url  = "$TF_TEST_PCO_CALLBACK_URL"
+          pco_team_name     = "$TF_TEST_PCO_TEAM_NAME"
+          admin_web_url     = "$TF_TEST_ADMIN_WEB_URL"
+          judge_web_url     = "$TF_TEST_JUDGE_WEB_URL"
+          webguide_username = "$TF_TEST_WEBGUIDE_USERNAME"
+          webguide_password = "$TF_TEST_WEBGUIDE_PASSWORD"
+          EOF
+              ;;
+            perf)
+              cat > infra/terraform/perf.tfvars << EOF
+          region      = "$TF_PERF_REGION"
+          project     = "$TF_PERF_PROJECT"
+          environment = "$TF_PERF_ENVIRONMENT"
+          domain      = "$TF_PERF_DOMAIN"
+          db_username = "$TF_PERF_DB_USERNAME"
+          route53_zone_id       = "$TF_PERF_ROUTE53_ZONE_ID"
+          ecs_cpu               = "$TF_PERF_ECS_CPU"
+          ecs_memory            = "$TF_PERF_ECS_MEMORY"
+          ecs_min_size          = $TF_PERF_ECS_MIN_SIZE
+          ecs_max_size          = $TF_PERF_ECS_MAX_SIZE
+          rds_instance_class    = "$TF_PERF_RDS_INSTANCE_CLASS"
+          rds_allocated_storage = $TF_PERF_RDS_ALLOCATED_STORAGE
+          rds_backup_retention  = $TF_PERF_RDS_BACKUP_RETENTION
+          db_connection_limit   = $TF_PERF_DB_CONNECTION_LIMIT
+          skip_cloudfront          = $TF_PERF_SKIP_CLOUDFRONT
+          cloudfront_custom_domain = $TF_PERF_CLOUDFRONT_CUSTOM_DOMAIN
+          enable_dev_login  = $TF_PERF_ENABLE_DEV_LOGIN
+          run_seed          = $TF_PERF_RUN_SEED
+          teardown_friendly = $TF_PERF_TEARDOWN_FRIENDLY
+          image_tag         = "$TF_PERF_IMAGE_TAG"
+          pco_client_id     = "$TF_PERF_PCO_CLIENT_ID"
+          pco_client_secret = "$TF_PERF_PCO_CLIENT_SECRET"
+          pco_callback_url  = "$TF_PERF_PCO_CALLBACK_URL"
+          pco_team_name     = "$TF_PERF_PCO_TEAM_NAME"
+          admin_web_url     = "$TF_PERF_ADMIN_WEB_URL"
+          judge_web_url     = "$TF_PERF_JUDGE_WEB_URL"
+          webguide_username = "$TF_PERF_WEBGUIDE_USERNAME"
+          webguide_password = "$TF_PERF_WEBGUIDE_PASSWORD"
+          EOF
+              ;;
+            prod)
+              cat > infra/terraform/prod.tfvars << EOF
+          region      = "$TF_PROD_REGION"
+          project     = "$TF_PROD_PROJECT"
+          environment = "$TF_PROD_ENVIRONMENT"
+          domain      = "$TF_PROD_DOMAIN"
+          db_username = "$TF_PROD_DB_USERNAME"
+          route53_zone_id       = "$TF_PROD_ROUTE53_ZONE_ID"
+          ecs_cpu               = "$TF_PROD_ECS_CPU"
+          ecs_memory            = "$TF_PROD_ECS_MEMORY"
+          ecs_min_size          = $TF_PROD_ECS_MIN_SIZE
+          ecs_max_size          = $TF_PROD_ECS_MAX_SIZE
+          rds_instance_class    = "$TF_PROD_RDS_INSTANCE_CLASS"
+          rds_allocated_storage = $TF_PROD_RDS_ALLOCATED_STORAGE
+          rds_backup_retention  = $TF_PROD_RDS_BACKUP_RETENTION
+          db_connection_limit   = $TF_PROD_DB_CONNECTION_LIMIT
+          enable_dev_login  = $TF_PROD_ENABLE_DEV_LOGIN
+          run_seed          = $TF_PROD_RUN_SEED
+          teardown_friendly = $TF_PROD_TEARDOWN_FRIENDLY
+          cors_allowed_origins     = "$TF_PROD_CORS_ALLOWED_ORIGINS"
+          alert_email              = "$TF_PROD_ALERT_EMAIL"
+          alert_sms                = "$TF_PROD_ALERT_SMS"
+          cloudfront_custom_domain = $TF_PROD_CLOUDFRONT_CUSTOM_DOMAIN
+          pco_client_id     = "$TF_PROD_PCO_CLIENT_ID"
+          pco_client_secret = "$TF_PROD_PCO_CLIENT_SECRET"
+          pco_callback_url  = "$TF_PROD_PCO_CALLBACK_URL"
+          pco_team_name     = "$TF_PROD_PCO_TEAM_NAME"
+          admin_web_url     = "$TF_PROD_ADMIN_WEB_URL"
+          judge_web_url     = "$TF_PROD_JUDGE_WEB_URL"
+          webguide_username = "$TF_PROD_WEBGUIDE_USERNAME"
+          webguide_password = "$TF_PROD_WEBGUIDE_PASSWORD"
+          EOF
+              ;;
           esac
 
       - name: Configure AWS credentials with OIDC
@@ -67,9 +240,6 @@ jobs:
 
       - name: Terraform apply (infra only — image and SPAs unchanged)
         if: inputs.action == 'apply'
-        env:
-          TF_VAR_webguide_username: ${{ secrets.WEBGUIDE_USERNAME }}
-          TF_VAR_webguide_password: ${{ secrets.WEBGUIDE_PASSWORD }}
         run: |
           ./infra/deploy.sh \
             --env ${{ inputs.environment }} \
@@ -80,9 +250,6 @@ jobs:
 
       - name: Terraform destroy
         if: inputs.action == 'destroy'
-        env:
-          TF_VAR_webguide_username: ${{ secrets.WEBGUIDE_USERNAME }}
-          TF_VAR_webguide_password: ${{ secrets.WEBGUIDE_PASSWORD }}
         run: ./infra/deploy.sh --env ${{ inputs.environment }} --destroy --auto-approve
 
       - name: Suspend compute

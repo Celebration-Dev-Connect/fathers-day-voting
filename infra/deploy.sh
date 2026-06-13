@@ -34,8 +34,13 @@ fi
 if [[ -n "${AWS_SECRET:-}" && -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
   export AWS_SECRET_ACCESS_KEY="$AWS_SECRET"
 fi
-export TF_VAR_webguide_username="${WEBGUIDE_USERNAME:-${WEBGUIDEUSERNAME:-}}"
-export TF_VAR_webguide_password="${WEBGUIDE_PASSWORD:-${WEBGUIDEPASSWORD:-}}"
+# Only set TF_VAR overrides when values are available locally (from .env).
+# In CI, webguide credentials come from the tfvars file written by the pipeline.
+_wg_user="${WEBGUIDE_USERNAME:-${WEBGUIDEUSERNAME:-}}"
+_wg_pass="${WEBGUIDE_PASSWORD:-${WEBGUIDEPASSWORD:-}}"
+[[ -n "$_wg_user" ]] && export TF_VAR_webguide_username="$_wg_user"
+[[ -n "$_wg_pass" ]] && export TF_VAR_webguide_password="$_wg_pass"
+unset _wg_user _wg_pass
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
 ENVIRONMENT=""

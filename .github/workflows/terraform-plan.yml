@@ -31,6 +31,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
+      - name: Write tfvars from secret
+        env:
+          TEST_TFVARS: ${{ secrets.TEST_TFVARS }}
+          PERF_TFVARS: ${{ secrets.PERF_TFVARS }}
+          PROD_TFVARS: ${{ secrets.PROD_TFVARS }}
+        run: |
+          case "${{ inputs.environment }}" in
+            test) printf '%s' "$TEST_TFVARS" > infra/terraform/test.tfvars ;;
+            perf) printf '%s' "$PERF_TFVARS" > infra/terraform/perf.tfvars ;;
+            prod) printf '%s' "$PROD_TFVARS" > infra/terraform/prod.tfvars ;;
+          esac
+
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6
         with:

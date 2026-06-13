@@ -152,7 +152,9 @@ deploy_api() {
     --task-definition "$task_definition_arn" \
     --force-new-deployment >/dev/null
 
-  aws ecs wait services-stable \
+  # Default waiter: 40 attempts × 15 s = 10 min. Increase to 80 × 15 s = 20 min
+  # so rolling deploys following a prior crash-loop have time to fully drain.
+  AWS_MAX_ATTEMPTS=80 aws ecs wait services-stable \
     --region "$AWS_REGION" \
     --cluster "$ECS_CLUSTER" \
     --services "$ECS_SERVICE"

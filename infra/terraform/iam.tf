@@ -70,6 +70,12 @@ resource "aws_iam_role" "ecs_task" {
 
 data "aws_iam_policy_document" "ecs_task" {
   statement {
+    sid       = "PhotosBucketList"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.photos.arn]
+  }
+
+  statement {
     sid       = "PhotosPendingReadWrite"
     actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
     resources = ["${aws_s3_bucket.photos.arn}/pending/*"]

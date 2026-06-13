@@ -237,8 +237,22 @@ diagnostics() {
       --region "${AWS_REGION:-ca-central-1}" \
       --cluster "${ECS_CLUSTER:-}" \
       --tasks $task_arns \
-      --query 'tasks[].{taskArn:taskArn,stoppedReason:stoppedReason,containers:containers[].{name:name,reason:reason,exitCode:exitCode}}' \
+      --query 'tasks[].{taskArn:taskArn,taskDefinitionArn:taskDefinitionArn,createdAt:createdAt,stoppedAt:stoppedAt,stoppedReason:stoppedReason,containers:containers[].{name:name,reason:reason,exitCode:exitCode}}' \
       --output json
+
+    echo "Recent logs for stopped tasks:"
+    local task_arn task_id
+    for task_arn in $task_arns; do
+      task_id="${task_arn##*/}"
+      echo "Task $task_id:"
+      aws logs filter-log-events \
+        --region "${AWS_REGION:-ca-central-1}" \
+        --log-group-name "/ecs/${ECS_SERVICE:-}" \
+        --log-stream-names "api/api/$task_id" \
+        --limit 100 \
+        --query 'events[].message' \
+        --output text
+    done
   fi
 
   echo "Recent API logs:"

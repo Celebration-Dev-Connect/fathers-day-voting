@@ -4155,30 +4155,119 @@ html.landing .public-app {
 }
 
 .public-results {
-  max-width: 1080px;
+  width: 100%;
 }
 
-.public-results-hero {
-  margin-bottom: 32px;
-  padding: 32px 20px;
-  border: 2px solid var(--ink);
-  background: var(--pure-white);
+.results-carousel {
+  position: relative;
+  min-height: clamp(480px, 68vh, 720px);
+  overflow: hidden;
+  background: var(--inverse-surface);
+}
+
+.results-carousel-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.results-carousel-slide.active.loaded {
+  opacity: 1;
+}
+
+.results-carousel-slide img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.results-carousel-overlay {
+  position: relative;
+  z-index: 2;
+  min-height: clamp(480px, 68vh, 720px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px 70px;
+  background: linear-gradient(180deg, rgba(185, 10, 41, 0.55), rgba(25, 28, 33, 0.9));
+  color: var(--pure-white);
   text-align: center;
 }
 
-.public-results-hero svg {
-  color: var(--primary);
+.results-carousel-logo {
+  width: min(260px, 60vw);
+  height: auto;
+  margin-bottom: 14px;
+  filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.55));
 }
 
-.public-results-hero .public-page-title {
+.results-carousel-kicker {
+  margin: 0 0 18px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.results-carousel-winner {
+  display: grid;
+  gap: 5px;
+  color: var(--pure-white);
+  text-decoration: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.75);
+}
+
+.results-carousel-winner span {
+  color: #ffd8df;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.results-carousel-winner strong {
+  font-size: clamp(26px, 5vw, 48px);
+  line-height: 1.05;
+}
+
+.results-carousel-winner small,
+.results-carousel-fallback {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 15px;
+}
+
+.results-carousel-dots {
+  position: absolute;
+  z-index: 3;
+  bottom: 24px;
+  left: 50%;
+  display: flex;
+  gap: 10px;
+  transform: translateX(-50%);
+}
+
+.public-results-content {
+  max-width: 1080px;
+}
+
+.public-results-intro {
+  margin: 0 0 32px;
+  text-align: center;
+}
+
+.public-results-intro .public-page-title {
   margin: 4px 0 8px;
 }
 
 .public-results-browse {
   display: inline-flex;
-  margin-top: 12px;
+  margin-top: 22px;
   padding: 10px 16px;
-  border: 2px solid var(--ink);
+  border: 2px solid var(--pure-white);
   background: var(--primary);
   color: var(--pure-white);
   font-weight: 900;
@@ -4222,7 +4311,7 @@ html.landing .public-app {
 
 .public-result-card li a {
   display: grid;
-  grid-template-columns: 36px 1fr auto;
+  grid-template-columns: 76px 1fr auto;
   align-items: center;
   gap: 10px;
   padding: 10px;
@@ -4240,20 +4329,67 @@ html.landing .public-app {
   display: block;
 }
 
-.public-result-card b {
+.public-result-score {
   color: var(--primary);
   font-size: 12px;
   text-align: right;
 }
 
-.public-result-rank {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
+.public-result-thumbnail {
+  position: relative;
+  width: 76px;
+  height: 62px;
+  overflow: hidden;
   background: var(--ink);
+}
+
+.public-result-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.public-result-rank {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: grid !important;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: var(--primary);
   color: var(--pure-white);
   font-weight: 900;
+}
+
+.public-result-owner {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .results-carousel,
+  .results-carousel-overlay {
+    min-height: 500px;
+  }
+
+  .public-result-card {
+    padding: 12px;
+  }
+
+  .public-result-card li a {
+    grid-template-columns: 68px 1fr;
+  }
+
+  .public-result-thumbnail {
+    width: 68px;
+    height: 58px;
+  }
+
+  .public-result-score {
+    grid-column: 2;
+    text-align: left;
+  }
 }
 
 .published-placements {

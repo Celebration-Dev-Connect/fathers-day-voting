@@ -47,7 +47,7 @@
       "Sid": "ECSTaskDefinitionRead",
       "Effect": "Allow",
       "Action": "ecs:DescribeTaskDefinition",
-      "Resource": "arn:aws:ecs:ca-central-1:123456789012:task-definition/carshow-prod-api:*"
+      "Resource": "*"
     },
     {
       "Sid": "ECSTaskDefinitionRegister",

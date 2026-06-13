@@ -72,20 +72,32 @@ render_task_definition() {
     --desired-status RUNNING \
     --query 'taskArns[0]' \
     --output text)"
-  [[ -n "$running_task_arn" && "$running_task_arn" != "None" ]] || {
-    echo "No healthy running task is available to use as the deployment template" >&2
-    exit 1
-  }
-  base_task_definition="$(aws ecs describe-tasks \
-    --region "$AWS_REGION" \
-    --cluster "$ECS_CLUSTER" \
-    --tasks "$running_task_arn" \
-    --query 'tasks[0].taskDefinitionArn' \
-    --output text)"
-  [[ -n "$base_task_definition" && "$base_task_definition" != "None" ]] || {
-    echo "Could not determine the running task definition" >&2
-    exit 1
-  }
+
+  if [[ -n "$running_task_arn" && "$running_task_arn" != "None" ]]; then
+    base_task_definition="$(aws ecs describe-tasks \
+      --region "$AWS_REGION" \
+      --cluster "$ECS_CLUSTER" \
+      --tasks "$running_task_arn" \
+      --query 'tasks[0].taskDefinitionArn' \
+      --output text)"
+    [[ -n "$base_task_definition" && "$base_task_definition" != "None" ]] || {
+      echo "Could not determine the running task definition" >&2
+      exit 1
+    }
+  else
+    # No running task (e.g., crash-loop with 0 healthy tasks). Fall back to
+    # the latest registered task definition so the deploy can still proceed.
+    echo "[deploy] No running task found — using latest registered task definition as base."
+    base_task_definition="$(aws ecs describe-task-definition \
+      --region "$AWS_REGION" \
+      --task-definition "${ECS_SERVICE}" \
+      --query 'taskDefinition.taskDefinitionArn' \
+      --output text)"
+    [[ -n "$base_task_definition" && "$base_task_definition" != "None" ]] || {
+      echo "No registered task definition found for ${ECS_SERVICE}" >&2
+      exit 1
+    }
+  fi
 
   aws ecs describe-task-definition \
     --region "$AWS_REGION" \
@@ -126,6 +138,65 @@ render_task_definition() {
   ' "$TASK_FILE" >/dev/null
 }
 
+run_migrations() {
+  local task_definition_arn="$1"
+  local network_json task_arn task_id exit_code
+
+  echo "[deploy] Running database migrations (isolated Fargate task)..."
+
+  network_json="$(aws ecs describe-services \
+    --region "$AWS_REGION" \
+    --cluster "$ECS_CLUSTER" \
+    --services "$ECS_SERVICE" \
+    --query 'services[0].networkConfiguration' \
+    --output json)"
+
+  task_arn="$(aws ecs run-task \
+    --region "$AWS_REGION" \
+    --cluster "$ECS_CLUSTER" \
+    --task-definition "$task_definition_arn" \
+    --launch-type FARGATE \
+    --network-configuration "$network_json" \
+    --overrides '{"containerOverrides":[{"name":"api","command":["--migrate-only"]}]}' \
+    --query 'tasks[0].taskArn' \
+    --output text)"
+
+  task_id="${task_arn##*/}"
+  echo "[deploy] Migration task: $task_id"
+
+  # Wait up to 10 min for the migration task to finish (40 × 15 s)
+  AWS_MAX_ATTEMPTS=40 aws ecs wait tasks-stopped \
+    --region "$AWS_REGION" \
+    --cluster "$ECS_CLUSTER" \
+    --tasks "$task_arn" || true
+
+  exit_code="$(aws ecs describe-tasks \
+    --region "$AWS_REGION" \
+    --cluster "$ECS_CLUSTER" \
+    --tasks "$task_arn" \
+    --query 'tasks[0].containers[0].exitCode' \
+    --output text)"
+
+  if [[ -z "$exit_code" || "$exit_code" == "None" ]]; then
+    echo "[deploy] Migration task timed out — check ECS console for task $task_id." >&2
+    exit 1
+  fi
+
+  if [[ "$exit_code" != "0" ]]; then
+    echo "[deploy] Migration task failed (exit $exit_code). Task logs:" >&2
+    aws logs filter-log-events \
+      --region "$AWS_REGION" \
+      --log-group-name "/ecs/${ECS_SERVICE}" \
+      --log-stream-names "api/api/$task_id" \
+      --query 'events[].message' \
+      --output text 2>/dev/null | tail -50 >&2 || true
+    echo "[deploy] Migrations failed — deployment aborted. Existing service is unchanged." >&2
+    exit 1
+  fi
+
+  echo "[deploy] Database migrations applied successfully."
+}
+
 deploy_api() {
   local account_id registry task_definition_arn
   account_id="$(aws sts get-caller-identity --query Account --output text)"
@@ -144,6 +215,8 @@ deploy_api() {
     --cli-input-json "file://$TASK_FILE" \
     --query taskDefinition.taskDefinitionArn \
     --output text)"
+
+  run_migrations "$task_definition_arn"
 
   aws ecs update-service \
     --region "$AWS_REGION" \
@@ -192,7 +265,7 @@ deploy() {
   validate
   deploy_api
   deploy_spas
-  curl --fail --silent --show-error --retry 12 --retry-delay 10 \
+  curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors \
     "$PUBLIC_URL/api/health"
   echo
   echo "Deployed commit $IMAGE_TAG to $PUBLIC_URL"

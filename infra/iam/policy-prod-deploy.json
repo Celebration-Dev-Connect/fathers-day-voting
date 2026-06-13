@@ -56,6 +56,17 @@
       "Resource": "*"
     },
     {
+      "Sid": "ECSRunMigrationTask",
+      "Effect": "Allow",
+      "Action": "ecs:RunTask",
+      "Resource": "arn:aws:ecs:ca-central-1:123456789012:task-definition/carshow-prod-api:*",
+      "Condition": {
+        "ArnEquals": {
+          "ecs:cluster": "arn:aws:ecs:ca-central-1:123456789012:cluster/carshow-prod"
+        }
+      }
+    },
+    {
       "Sid": "ECSServiceUpdate",
       "Effect": "Allow",
       "Action": "ecs:UpdateService",

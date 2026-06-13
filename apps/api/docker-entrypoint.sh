@@ -11,13 +11,46 @@ PRISMA="node_modules/.bin/prisma"
 TSX="node_modules/.bin/tsx"
 SCHEMA="packages/db/prisma/schema.prisma"
 
-echo "[entrypoint] Applying database migrations..."
-"$PRISMA" migrate deploy --schema "$SCHEMA"
+apply_migrations() {
+  echo "[entrypoint] Applying database migrations..."
+  MIGRATE_LOG="$(mktemp)"
+  "$PRISMA" migrate deploy --schema "$SCHEMA" >"$MIGRATE_LOG" 2>&1 || {
+    cat "$MIGRATE_LOG" >&2
+    # P3009: a prior migration failed mid-run and was recorded as failed.
+    # PostgreSQL rolls back failed migration transactions atomically, so no
+    # partial changes exist. Resolve the record(s) and retry.
+    FAILED=$(awk -F'`' '/migration started.*failed/{print $2}' "$MIGRATE_LOG")
+    if [ -n "$FAILED" ]; then
+      echo "[entrypoint] P3009 detected — resolving rolled-back migration(s)..."
+      for m in $FAILED; do
+        echo "[entrypoint]   resolve --rolled-back $m"
+        "$PRISMA" migrate resolve --rolled-back "$m" --schema "$SCHEMA"
+      done
+      echo "[entrypoint] Retrying after resolve..."
+      "$PRISMA" migrate deploy --schema "$SCHEMA"
+    else
+      exit 1
+    fi
+  }
+  rm -f "$MIGRATE_LOG"
+}
+
+# ── Modes ─────────────────────────────────────────────────────────────────────
+
+if [ "${1:-}" = "--migrate-only" ]; then
+  apply_migrations
+  echo "[entrypoint] Migration complete."
+  exit 0
+fi
 
 if [ "${1:-}" = "cleanup-registrations" ]; then
   echo "[entrypoint] Running one-time registration cleanup..."
   exec node apps/api/dist/scripts/cleanupRegistrations.js
 fi
+
+# ── Normal startup ────────────────────────────────────────────────────────────
+
+apply_migrations
 
 if [ "${CLEANUP_REGISTRATIONS_ON_START:-false}" = "true" ]; then
   echo "[entrypoint] CLEANUP_REGISTRATIONS_ON_START=true — running one-time registration cleanup..."

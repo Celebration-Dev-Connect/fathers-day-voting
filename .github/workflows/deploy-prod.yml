@@ -1,0 +1,21 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full commit SHA already verified in test
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/reusable-app-deploy.yml
+    with:
+      environment: prod
+      runner_labels: '["self-hosted","Linux","X64","carshow","deploy-prod"]'
+      commit_sha: ${{ inputs.commit_sha }}

@@ -184,8 +184,6 @@ Implement:
 .github/workflows/deploy-prod.yml
 .github/workflows/reusable-app-deploy.yml
 infra/ci/deploy-app.sh
-infra/ci/task-definition-test.json
-infra/ci/task-definition-prod.json
 infra/ci/runner-post-job.sh
 ```
 
@@ -197,7 +195,8 @@ The reusable deployment workflow should:
 4. Run the full build and API tests.
 5. Authenticate to AWS using OIDC or the approved bootstrap profile.
 6. Build and push `carshow/api:<full-commit-sha>`.
-7. Render a version-controlled ECS task-definition template with that image.
+7. Read the task definition from a currently healthy running task, replace
+   only the image, and preserve its roles, secrets, logging, and resources.
 8. Assert that `CLEANUP_REGISTRATIONS_ON_START` and
    `RANDOMIZE_OWNER_CODES_ON_START` are absent and `RUN_SEED=false`.
 9. Deploy ECS and wait for service stability.
@@ -229,7 +228,8 @@ Environment variables:
 
 Production protections:
 
-- Required reviewer.
+- Required reviewer when supported by the repository billing plan. GitHub
+  currently rejects this rule for the private repository.
 - Restrict deployment branches to `main`.
 - Manual workflow dispatch only.
 - Production runner restricted to the production workflow/environment.
@@ -251,7 +251,8 @@ Before enabling automatic API deployments:
 3. Grant the missing ECS and CloudWatch diagnostic permissions.
 4. Resolve the test ECS startup issue; new test tasks currently stop after
    target registration while ECS preserves the previous healthy task.
-5. Create stable, version-controlled task-definition templates.
+5. Grant permission to read the healthy running task definition used as the
+   safe deployment template.
 6. Confirm test and production use `RUN_SEED=false`.
 7. Validate the test runner with the harmless manual workflow.
 8. Validate one manual test deployment before enabling automatic deploys from

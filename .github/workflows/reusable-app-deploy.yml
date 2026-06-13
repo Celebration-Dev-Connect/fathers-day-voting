@@ -11,45 +11,10 @@ on:
         description: JSON array of runner labels
         required: true
         type: string
-      aws_region:
-        description: AWS region
+      commit_sha:
+        description: Exact commit SHA to deploy
         required: true
         type: string
-      ecs_cluster:
-        description: ECS cluster name
-        required: true
-        type: string
-      ecs_service:
-        description: ECS service name
-        required: true
-        type: string
-      public_bucket:
-        description: Public SPA bucket
-        required: true
-        type: string
-      admin_bucket:
-        description: Admin SPA bucket
-        required: true
-        type: string
-      judge_bucket:
-        description: Judge SPA bucket
-        required: true
-        type: string
-      cloudfront_distribution_id:
-        description: CloudFront distribution ID
-        required: true
-        type: string
-      public_url:
-        description: Public application URL
-        required: true
-        type: string
-      task_definition_template:
-        description: Path to task definition template
-        required: true
-        type: string
-    secrets:
-      aws_role_arn:
-        required: false
 
 permissions:
   contents: read
@@ -60,114 +25,67 @@ jobs:
     name: Deploy to ${{ inputs.environment }}
     environment: ${{ inputs.environment }}
     runs-on: ${{ fromJson(inputs.runner_labels) }}
+    timeout-minutes: 45
     concurrency:
       group: deploy-${{ inputs.environment }}
       cancel-in-progress: false
 
     env:
-      AWS_REGION: ${{ inputs.aws_region }}
-      ECS_CLUSTER: ${{ inputs.ecs_cluster }}
-      ECS_SERVICE: ${{ inputs.ecs_service }}
-      PUBLIC_BUCKET: ${{ inputs.public_bucket }}
-      ADMIN_BUCKET: ${{ inputs.admin_bucket }}
-      JUDGE_BUCKET: ${{ inputs.judge_bucket }}
-      CLOUDFRONT_DISTRIBUTION_ID: ${{ inputs.cloudfront_distribution_id }}
-      PUBLIC_URL: ${{ inputs.public_url }}
-      TASK_DEFINITION_TEMPLATE: ${{ inputs.task_definition_template }}
-      IMAGE_TAG: ${{ github.sha }}
+      DEPLOY_ENV: ${{ inputs.environment }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+      ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+      PUBLIC_BUCKET: ${{ vars.PUBLIC_BUCKET }}
+      ADMIN_BUCKET: ${{ vars.ADMIN_BUCKET }}
+      JUDGE_BUCKET: ${{ vars.JUDGE_BUCKET }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      IMAGE_TAG: ${{ inputs.commit_sha }}
 
     steps:
       - name: Checkout exact commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
 
-      - name: Show deployment context
+      - name: Verify commit is on main
         run: |
-          echo "Environment: ${{ inputs.environment }}"
-          echo "Runner labels: ${{ inputs.runner_labels }}"
-          echo "AWS region: $AWS_REGION"
-          echo "ECS cluster: $ECS_CLUSTER"
-          echo "ECS service: $ECS_SERVICE"
-          echo "Image tag: $IMAGE_TAG"
+          git merge-base --is-ancestor "$IMAGE_TAG" origin/main
+          test "$(git rev-parse HEAD)" = "$IMAGE_TAG"
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run build and tests
+      - name: Run build and API tests
         run: |
-          echo "TODO: replace with your real build/test commands"
           npm run build
-          npm test --if-present
-
-      - name: Validate unsafe startup flags are absent
-        run: |
-          if grep -R "CLEANUP_REGISTRATIONS_ON_START" .; then
-            echo "CLEANUP_REGISTRATIONS_ON_START must not be present"
-            exit 1
-          fi
-          if grep -R "RANDOMIZE_OWNER_CODES_ON_START" .; then
-            echo "RANDOMIZE_OWNER_CODES_ON_START must not be present"
-            exit 1
-          fi
-          if grep -R "RUN_SEED=true" .; then
-            echo "RUN_SEED must be false"
-            exit 1
-          fi
+          npm test --workspace @carshow/api
 
       - name: Configure AWS credentials with OIDC
-        if: ${{ secrets.aws_role_arn != '' }}
+        if: ${{ env.AWS_ROLE_ARN != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.aws_role_arn }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Confirm AWS identity
-        run: |
-          echo "TODO: requires AWS credentials"
-          aws sts get-caller-identity
+      - name: Validate deployment configuration
+        run: ./infra/ci/deploy-app.sh validate
 
-      - name: Log in to Amazon ECR
-        run: |
-          echo "TODO: add ECR login"
-
-      - name: Build and push API image
-        run: |
-          echo "TODO: build and push carshow/api:${IMAGE_TAG}"
-
-      - name: Render ECS task definition
-        run: |
-          echo "TODO: render task definition from ${TASK_DEFINITION_TEMPLATE}"
-          mkdir -p infra/ci/out
-          cp "${TASK_DEFINITION_TEMPLATE}" infra/ci/out/task-definition.rendered.json
-
-      - name: Deploy ECS service
-        run: |
-          echo "TODO: register task definition and update ECS service"
-
-      - name: Wait for ECS stability
-        run: |
-          echo "TODO: wait for ECS service stability"
-
-      - name: Sync SPA assets
-        run: |
-          echo "TODO: build and sync public/admin/judge apps to S3"
-
-      - name: Invalidate CloudFront
-        run: |
-          echo "TODO: invalidate distribution ${CLOUDFRONT_DISTRIBUTION_ID}"
-
-      - name: Verify health endpoint
-        run: |
-          curl --fail --silent --show-error "${PUBLIC_URL}/api/health"
+      - name: Build, deploy, and verify application
+        run: ./infra/ci/deploy-app.sh deploy
 
       - name: Print rollout diagnostics on failure
         if: failure()
-        run: |
-          echo "TODO: print ECS task failures, target health, and CloudWatch logs"
+        run: ./infra/ci/deploy-app.sh diagnostics
+
+      - name: Clean deployment workspace
+        if: always()
+        run: ./infra/ci/deploy-app.sh cleanup

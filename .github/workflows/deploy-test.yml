@@ -3,8 +3,14 @@ name: Deploy Test
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   deploy:
     uses: ./.github/workflows/reusable-app-deploy.yml
     with:
       environment: test
+      runner_labels: '["self-hosted","Linux","X64","carshow","deploy-test"]'
+      commit_sha: ${{ github.sha }}

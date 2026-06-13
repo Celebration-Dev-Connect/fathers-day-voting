@@ -1,0 +1,132 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "STSCallerIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECRAuth",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECRImagePush",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:CompleteLayerUpload",
+        "ecr:DescribeImages",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:InitiateLayerUpload",
+        "ecr:PutImage",
+        "ecr:UploadLayerPart"
+      ],
+      "Resource": "arn:aws:ecr:ca-central-1:123456789012:repository/carshow/api"
+    },
+    {
+      "Sid": "ECSServiceRead",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeServices",
+        "ecs:ListTasks",
+        "ecs:DescribeTasks"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "ecs:cluster": "arn:aws:ecs:ca-central-1:123456789012:cluster/carshow-perf"
+        }
+      }
+    },
+    {
+      "Sid": "ECSTaskDefinitionRead",
+      "Effect": "Allow",
+      "Action": "ecs:DescribeTaskDefinition",
+      "Resource": "arn:aws:ecs:ca-central-1:123456789012:task-definition/carshow-perf-api:*"
+    },
+    {
+      "Sid": "ECSTaskDefinitionRegister",
+      "Effect": "Allow",
+      "Action": "ecs:RegisterTaskDefinition",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECSServiceUpdate",
+      "Effect": "Allow",
+      "Action": "ecs:UpdateService",
+      "Resource": "arn:aws:ecs:ca-central-1:123456789012:service/carshow-perf/carshow-perf-api"
+    },
+    {
+      "Sid": "ECSPassRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::123456789012:role/carshow-perf-ecs-execution",
+        "arn:aws:iam::123456789012:role/carshow-perf-ecs-task"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "ecs-tasks.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "S3SPAObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::carshow-public-web-perf/*",
+        "arn:aws:s3:::carshow-admin-web-perf/*",
+        "arn:aws:s3:::carshow-judge-web-perf/*"
+      ]
+    },
+    {
+      "Sid": "S3SPAList",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": [
+        "arn:aws:s3:::carshow-public-web-perf",
+        "arn:aws:s3:::carshow-admin-web-perf",
+        "arn:aws:s3:::carshow-judge-web-perf"
+      ]
+    },
+    {
+      "Sid": "CloudFrontInvalidation",
+      "Effect": "Allow",
+      "Action": "cloudfront:CreateInvalidation",
+      "Resource": "arn:aws:cloudfront::123456789012:distribution/*"
+    },
+    {
+      "Sid": "CloudWatchLogsDiagnostics",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:logs:ca-central-1:123456789012:log-group:/ecs/carshow-perf-api",
+        "arn:aws:logs:ca-central-1:123456789012:log-group:/ecs/carshow-perf-api:*"
+      ]
+    },
+    {
+      "Sid": "ELBDiagnostics",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:DescribeTargetGroups"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

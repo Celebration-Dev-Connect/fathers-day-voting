@@ -1,10 +1,10 @@
-name: Deploy Production
+name: Deploy Perf
 
 on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: Full commit SHA already verified in test
+        description: Full commit SHA to deploy to perf
         required: true
         type: string
 
@@ -16,6 +16,6 @@ jobs:
   deploy:
     uses: ./.github/workflows/reusable-app-deploy.yml
     with:
-      environment: prod
+      environment: perf
       runner_labels: '["self-hosted","Linux","X64","carshow","deploy-test"]'
       commit_sha: ${{ inputs.commit_sha }}

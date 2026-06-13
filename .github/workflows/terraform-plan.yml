@@ -1,0 +1,44 @@
+name: Terraform Plan
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options: [test, perf, prod]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    name: Plan ${{ inputs.environment }}
+    runs-on: [self-hosted, Linux, X64, carshow, deploy-test]
+    environment: ${{ inputs.environment == 'prod' && 'infra-prod' || 'infra-nonprod' }}
+    timeout-minutes: 20
+    concurrency:
+      group: terraform-${{ inputs.environment }}
+      cancel-in-progress: false
+
+    env:
+      AWS_REGION: ca-central-1
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform plan
+        env:
+          TF_VAR_webguide_username: ${{ secrets.WEBGUIDE_USERNAME }}
+          TF_VAR_webguide_password: ${{ secrets.WEBGUIDE_PASSWORD }}
+        run: ./infra/deploy.sh --env ${{ inputs.environment }} --plan --auto-approve

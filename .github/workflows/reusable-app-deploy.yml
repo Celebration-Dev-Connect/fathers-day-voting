@@ -70,7 +70,6 @@ jobs:
           npm test --workspace @carshow/api
 
       - name: Configure AWS credentials with OIDC
-        if: ${{ env.AWS_ROLE_ARN != '' }}
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}

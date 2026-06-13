@@ -35,14 +35,15 @@ validate() {
     echo "PUBLIC_URL must use HTTPS" >&2
     exit 1
   }
+  # perf deployments are intentionally excluded from CI; use infra/deploy.sh --env perf
   [[ "$DEPLOY_ENV" == "test" || "$DEPLOY_ENV" == "prod" ]] || {
     echo "DEPLOY_ENV must be test or prod" >&2
     exit 1
   }
-  if [[ "$DEPLOY_ENV" == "prod" && -z "${AWS_ROLE_ARN:-}" ]]; then
-    echo "Production deployments require AWS_ROLE_ARN for OIDC authentication" >&2
+  [[ -n "${AWS_ROLE_ARN:-}" ]] || {
+    echo "AWS_ROLE_ARN is required. Set it in the GitHub environment variables." >&2
     exit 1
-  fi
+  }
   [[ "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]] || {
     echo "IMAGE_TAG must be a full Git commit SHA" >&2
     exit 1

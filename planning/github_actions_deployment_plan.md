@@ -63,17 +63,17 @@ Full role list with perf included:
 
 | File | Trigger | Runner | AWS Role |
 |---|---|---|---|
-| `ci.yml` | PR opened/updated | `ubuntu-latest` (GitHub-hosted) | None |
-| `terraform-plan.yml` | PR opened/updated (infra paths changed) | `ubuntu-latest` (GitHub-hosted) | `infra-nonprod` or `infra-prod` based on target |
-| `terraform-apply.yml` | `workflow_dispatch` | Self-hosted infra runner | `infra-nonprod` or `infra-prod` |
-| `deploy-test.yml` | Push to `main` + `workflow_dispatch` | `deploy-test` runner | `test-deploy` |
-| `deploy-perf.yml` | `workflow_dispatch` | `deploy-perf` runner | `perf-deploy` |
-| `deploy-prod.yml` | `workflow_dispatch` (commit SHA required) | `deploy-prod` runner | `prod-deploy` |
+| `ci.yml` | PR opened/updated | Self-hosted (`carshow`) | None |
+| `terraform-plan.yml` | PR opened/updated (infra paths changed) | Self-hosted (`carshow`) | `infra-nonprod` or `infra-prod` based on target |
+| `terraform-apply.yml` | `workflow_dispatch` | Self-hosted (`carshow`) | `infra-nonprod` or `infra-prod` |
+| `deploy-test.yml` | Push to `main` + `workflow_dispatch` | Self-hosted (`carshow`) | `test-deploy` |
+| `deploy-perf.yml` | `workflow_dispatch` | Self-hosted (`carshow`) | `perf-deploy` |
+| `deploy-prod.yml` | `workflow_dispatch` (commit SHA required) | Self-hosted (`carshow`) | `prod-deploy` |
 | `reusable-app-deploy.yml` | Called by deploy-*.yml | Passed from caller | Passed from caller |
 
 ### `ci.yml` (PR Checks)
 
-Runs on GitHub-hosted `ubuntu-latest`. No AWS access. Steps:
+Runs on the shared self-hosted runner. No AWS access. Steps:
 
 1. `npm ci`
 2. `npm run build`
@@ -84,10 +84,10 @@ Validates every PR before merge. Failure blocks the merge.
 
 ### `terraform-plan.yml`
 
-Triggered on PRs that modify `infra/terraform/**` or `infra/iam/**`. Posts the
-Terraform plan as a PR comment for human review before any apply. Uses the
-appropriate infra OIDC role based on an input (`nonprod` or `prod`). The plan
-is read-only; it never applies.
+Triggered on PRs that modify `infra/terraform/**` or `infra/iam/**`. Runs on
+the shared runner. Posts the Terraform plan as a PR comment for human review
+before any apply. Uses the appropriate infra OIDC role based on an input
+(`nonprod` or `prod`). The plan is read-only; it never applies.
 
 ### `terraform-apply.yml`
 
@@ -103,21 +103,21 @@ restricted to the `main` branch.
 ### `deploy-test.yml`
 
 Triggered automatically on every push to `main`. Calls `reusable-app-deploy.yml`
-targeting the `test` GitHub environment and `deploy-test` runner labels.
+targeting the `test` GitHub environment on the shared self-hosted runner.
 No commit SHA input needed — always deploys `github.sha`.
 
 ### `deploy-perf.yml`
 
 Manual `workflow_dispatch` only. Inputs: `commit_sha` (the exact SHA to deploy).
-Targets the `perf` GitHub environment and `deploy-perf` runner. Used to deploy a
+Targets the `perf` GitHub environment on the shared runner. Used to deploy a
 build to the perf stack immediately after provisioning it via `terraform-apply.yml`.
 
 ### `deploy-prod.yml`
 
 Manual `workflow_dispatch` only. Input: `commit_sha` (required) — the full SHA
 of a commit that was already verified healthy in test. Targets the `prod` GitHub
-environment and `deploy-prod` runner. The reusable workflow verifies that the
-SHA is an ancestor of `main` before proceeding.
+environment on the shared runner. The reusable workflow verifies that the SHA is
+an ancestor of `main` before proceeding.
 
 ### `reusable-app-deploy.yml`
 
@@ -139,30 +139,34 @@ properties:
 
 ## Self-Hosted Runner Architecture
 
-| Runner | Labels | Purpose | Hosted on |
-|---|---|---|---|
-| `deploy-test` | `self-hosted,Linux,X64,carshow,deploy-test` | Test app deploys | Proxmox LXC #1 |
-| `deploy-perf` | `self-hosted,Linux,X64,carshow,deploy-perf` | Perf app deploys | Proxmox LXC #2 |
-| `deploy-prod` | `self-hosted,Linux,X64,carshow,deploy-prod` | Prod app deploys | Proxmox LXC #3 |
-| `infra` | `self-hosted,Linux,X64,carshow,infra` | Terraform applies (all envs) | Proxmox LXC #4 |
+All jobs run on a single self-hosted runner with labels
+`[self-hosted, Linux, X64, carshow, deploy-test]`.
 
-Each runner is in its own isolated Proxmox LXC container. A compromised deploy
-job on one runner has no path to another runner's environment or credentials.
+Environment isolation is provided by the OIDC trust policy, not by runner
+separation. Each deploy job acquires credentials only for its environment's
+OIDC role at job start; those credentials expire when the job ends and are never
+written to disk. The runner itself carries no AWS credentials between jobs.
+A test job and a prod job can run on the same machine safely because the prod
+role can only be assumed by GitHub's OIDC service when the calling workflow
+is running in the `prod` GitHub environment — a condition enforced by the
+token issuer, not by the runner.
 
-LXC baseline per runner:
+Concurrent jobs on the same runner are prevented by the `concurrency` group on
+the reusable workflow (`group: deploy-${{ inputs.environment }}`), which queues
+rather than cancels competing deploys.
 
-- Debian or Ubuntu unprivileged LXC with Docker support.
-- At least 4 CPU cores, 8 GB RAM, 20 GB disk (image builds are disk-intensive).
+Runner requirements:
+
+- Debian or Ubuntu (unprivileged or privileged, Docker must work).
+- At least 4 CPU cores, 8 GB RAM, 20 GB disk (Docker image builds are
+  disk-intensive).
 - Dedicated non-root `runner` user with Docker group access.
-- Runner registered as a systemd service.
-- Outbound access to GitHub, npm, AWS APIs, ECR, and the stack health URLs only.
+- Runner registered as a systemd service so it restarts after reboots.
+- Outbound access to GitHub, npm, AWS APIs, ECR, and the stack health URLs.
 - No inbound public ports.
 - Automatic OS security updates.
-- Post-job cleanup hook to remove the workspace and prune the Docker build cache.
-
-The deploy runners carry no AWS credentials. Credentials are obtained at job
-start via OIDC token exchange and expire when the job ends. The infra runner is
-the same: no stored keys.
+- Post-job cleanup hook to remove the workspace and prune Docker build cache:
+  `docker builder prune --force --filter "until=168h"`.
 
 Setup guide: <https://blog.ricardof.dev/setup-self-hosted-github-action-runner-in-minutes/>
 
@@ -584,7 +588,7 @@ jobs:
     uses: ./.github/workflows/reusable-app-deploy.yml
     with:
       environment: perf
-      runner_labels: '["self-hosted","Linux","X64","carshow","deploy-perf"]'
+      runner_labels: '["self-hosted","Linux","X64","carshow","deploy-test"]'
       commit_sha: ${{ inputs.commit_sha }}
 ```
 
@@ -604,7 +608,7 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, carshow, deploy-test]
     steps:
       - uses: actions/checkout@<pinned-sha>
       - uses: actions/setup-node@<pinned-sha>
@@ -695,10 +699,10 @@ touch the database, read secrets, or modify infrastructure.
 
 ### Phase 4 — Runner Provisioning
 
-15. Provision and register the `deploy-test` runner; validate with a manual deploy.
-16. Provision and register the `deploy-prod` runner; validate with a manual deploy.
-17. Provision and register the `infra` runner; validate with a Terraform plan.
-18. Provision the `deploy-perf` runner when a perf cycle is planned.
+15. Provision and register the single self-hosted runner with labels
+    `[self-hosted, Linux, X64, carshow, deploy-test]`.
+16. Validate runner connectivity with a manual `workflow_dispatch` on the
+    harmless `main.yml` test workflow.
 
 ### Phase 5 — Cutover
 

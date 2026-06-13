@@ -24,9 +24,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        # npm ci skips optional platform binaries not in the lock file (npm/cli#4828).
-        # npm install respects lock file versions and fills in missing platform deps.
-        run: npm install
+        run: npm ci
+
+      - name: Install Rollup Linux native binary
+        # Lock file was generated on macOS; no resolved entry exists for the Linux
+        # binary (npm/cli#4828). npm ci cannot install what's not in the lock file,
+        # so install the exact matching version explicitly after the clean install.
+        run: npm install --no-save "@rollup/rollup-linux-x64-gnu@4.60.4"
 
       - name: Build
         run: npm run build

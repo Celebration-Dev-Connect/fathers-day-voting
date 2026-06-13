@@ -19,3 +19,5 @@ infra/terraform/.terraform/
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+
+infra/DEPLOYMENT_RUNBOOK.md

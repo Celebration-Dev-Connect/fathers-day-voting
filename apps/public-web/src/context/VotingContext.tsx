@@ -78,7 +78,7 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
     return getPublicEvent()
       .then(({ event, categories, specialAwards = [] }) => {
         setVotingOpen(event.votingOpen);
-        setResultsPublished(event.resultsPublished);
+        setResultsPublished(Boolean(event.resultsPublished && event.resultsPublishedAt));
         setCategories(categories);
         setSpecialAwards(specialAwards);
         if (event.peopleChoiceCutoff) {

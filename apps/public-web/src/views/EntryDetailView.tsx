@@ -185,7 +185,7 @@ export function EntryDetailView() {
     setError("");
     setNotFound(false);
     getEntryByNumber(num)
-      .then(({ vehicle, placements }) => {
+      .then(({ vehicle, placements = [] }) => {
         setVehicle(vehicle);
         setPlacements(placements);
       })

@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Checkout exact commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
@@ -56,7 +56,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$IMAGE_TAG"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -71,7 +71,7 @@ jobs:
 
       - name: Configure AWS credentials with OIDC
         if: ${{ env.AWS_ROLE_ARN != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}

@@ -1,0 +1,10 @@
+name: Deploy Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/reusable-app-deploy.yml
+    with:
+      environment: test

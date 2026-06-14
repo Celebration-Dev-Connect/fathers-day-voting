@@ -97,94 +97,17 @@ Copy `.env.example` to `.env` for local dev. Key vars:
 
 Dev login is blocked when `NODE_ENV=production` unless `ENABLE_DEV_LOGIN=true`.
 
-## AWS Deployment (`infra/deploy.sh`)
+## Deployment
 
-Two environments — `test` and `prod` — each in its own Terraform workspace with isolated state.
+Deployments are handled exclusively via GitHub Actions — do not run `infra/deploy.sh` or Terraform locally. To ship a change:
 
-The current deployment source of truth is
-[`infra/DEPLOYMENT_RUNBOOK.md`](infra/DEPLOYMENT_RUNBOOK.md). Read it before
-every deploy. The existing `carshow-deploy-caleb` IAM user is key/secret-only,
-is loaded from the ignored repository `.env`, and does not use SSO. Always use
-`--auto-approve` for requested non-interactive deploys.
+1. Commit your work to a feature branch.
+2. Open a pull request against `main`.
+3. GitHub Actions will build, test, and deploy automatically on merge.
 
-When helping with AWS deploys, prefer the repository script over hand-running
-Terraform/app deploy steps. Do not expose or commit AWS keys, secrets, tfvars,
-state files, or `.env` values. If credentials are needed locally, use the AWS
-profile named `carshow`.
+Test changes on localhost before opening a PR. Do not expose or commit AWS keys, secrets, tfvars, state files, or `.env` values.
 
-**Local AWS setup checklist:**
-
-```sh
-# Tools required on PATH
-aws --version
-terraform version
-
-# Configure credentials from private local values only; never paste them into git.
-aws configure --profile carshow
-# Default region: ca-central-1
-# Default output format: json
-
-# Validate identity before any Terraform or deploy action.
-aws sts get-caller-identity --profile carshow
-```
-
-Before deploying AWS changes, make sure the relevant PR/state-sync branch has
-been merged and `main` is current locally. Pull/fetch latest before initializing
-or applying infrastructure so local code and Terraform state do not diverge.
-
-**Terraform state sanity check:**
-
-```sh
-cd infra/terraform
-terraform init
-terraform workspace select test
-terraform state list
-```
-
-`terraform state list` should show existing resources for the selected
-workspace. If it is empty or surprising, stop and ask before applying.
-
-**Prerequisites:**
-1. Copy `infra/terraform/test.tfvars.example` → `infra/terraform/test.tfvars` (or `prod.tfvars`) and fill in values.
-2. AWS credentials available via env vars, `--profile`, or SSO.
-3. Tools on PATH: `aws`, `terraform`, `docker`, `npm`, `git`.
-
-**Common operations:**
-
-```sh
-# First-time or routine deploy (builds image, applies infra, syncs SPAs)
-./infra/deploy.sh --env test --profile carshow
-
-# Preview what would change
-./infra/deploy.sh --env test --profile carshow --plan
-
-# Apply reviewed changes to AWS test
-./infra/deploy.sh --env test --profile carshow
-
-# Re-deploy only SPAs (after a frontend change, no image rebuild)
-./infra/deploy.sh --env test --profile carshow --skip-infra --skip-image
-
-# Tear down the test stack
-./infra/deploy.sh --env test --profile carshow --destroy
-
-# Stop compute between sessions (saves ~$35/mo; keeps CloudFront/ACM/Route53)
-./infra/deploy.sh --env test --profile carshow --suspend
-./infra/deploy.sh --env test --profile carshow --resume
-```
-
-**Deploy flow (full deploy):**
-1. Terraform `init` + workspace select/create
-2. Ensure ECR repo exists (`-target=aws_ecr_repository.api`)
-3. Build API Docker image for `linux/amd64` (required even on Apple Silicon)
-4. Push to ECR; tag defaults to git short SHA
-5. `terraform apply` full stack
-6. Build each SPA with correct env vars, sync to S3, invalidate CloudFront
-
-**First-time prod DNS:** After first apply, run `terraform -chdir=infra/terraform output acm_validation_records` to get ACM validation records, then add the CloudFront alias from `terraform output cloudfront_domain`.
-
-**After seeding test:** Set `run_seed = false` in `test.tfvars` to stop re-seeding on every deploy.
-
-### Infrastructure layout (Terraform)
+### Infrastructure layout
 
 ECS Fargate API → ALB → CloudFront. Three S3 buckets (public-web, admin-web, judge-web) served behind the same CloudFront distribution under `/`, `/admin`, `/judge` behaviors. RDS PostgreSQL. ECR for the API image. Secrets Manager for `DATABASE_URL` and `JWT_SECRET`. Region: `ca-central-1` by default.
 

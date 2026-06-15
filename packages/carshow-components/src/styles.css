@@ -3113,6 +3113,8 @@ textarea:focus {
   position: relative;
   overflow: hidden;
   background: #0d0d0d;
+  aspect-ratio: 3 / 4;
+  max-height: 75svh;
 }
 
 .vehicle-profile-photo-bg {
@@ -3125,12 +3127,11 @@ textarea:focus {
 }
 
 .vehicle-profile-main-photo {
-  display: block;
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 1;
   width: 100%;
-  aspect-ratio: 3 / 4;
-  max-height: 75svh;
+  height: 100%;
   object-fit: contain;
   object-position: center;
 }

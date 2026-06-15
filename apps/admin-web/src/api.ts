@@ -339,6 +339,12 @@ export async function publishVotingResults() {
   });
 }
 
+export async function unpublishVotingResults() {
+  return request<{ event: VotingSettings }>("/voting/results/unpublish", {
+    method: "POST",
+  });
+}
+
 export async function getVotingTallies() {
   return request<{
     event: Omit<VotingSettings, "id" | "name">;

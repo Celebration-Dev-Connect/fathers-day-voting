@@ -1,4 +1,4 @@
-import { CalendarClock, Gavel, Save, Send, Trophy } from "lucide-react";
+import { CalendarClock, Gavel, Save, Send, EyeOff, Trophy } from "lucide-react";
 import {
   Button,
   formatDateTime,
@@ -20,6 +20,7 @@ export function VotingControls({
   onSettingChange,
   onSave,
   onPublish,
+  onUnpublish,
   publishDisabledReason,
 }: {
   settings: VotingSettingsType | null;
@@ -30,6 +31,7 @@ export function VotingControls({
   onSettingChange: <Key extends EventControlKey>(key: Key, value: VotingSettingsType[Key]) => void;
   onSave: () => void;
   onPublish: () => void;
+  onUnpublish: () => void;
   publishDisabledReason: string;
 }) {
   return (
@@ -100,6 +102,16 @@ export function VotingControls({
         <Send size={20} />
         {settings?.resultsPublished ? "Republish Results" : "Publish Results"}
       </Button>
+      {settings?.resultsPublished ? (
+        <Button
+          variant="secondary"
+          onClick={onUnpublish}
+          disabled={!canManage || saving}
+        >
+          <EyeOff size={20} />
+          Unpublish Results
+        </Button>
+      ) : null}
       {canManage && publishDisabledReason ? <span className="muted-copy">{publishDisabledReason}</span> : null}
     </div>
   );

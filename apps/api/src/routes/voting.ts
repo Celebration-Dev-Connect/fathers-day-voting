@@ -120,6 +120,16 @@ export async function registerVotingRoutes(app: FastifyInstance) {
     return { event: updated, results: snapshot };
   });
 
+  app.post("/voting/results/unpublish", async (request) => {
+    await requireAdmin(app, request);
+    const updated = await prisma.event.update({
+      where: { id: eventId },
+      data: { resultsPublished: false },
+      select: eventControlsSelect,
+    });
+    return { event: updated };
+  });
+
   app.get("/voting/tallies", async (request) => {
     await requireStaff(app, request);
     const event = await prisma.event.findUnique({

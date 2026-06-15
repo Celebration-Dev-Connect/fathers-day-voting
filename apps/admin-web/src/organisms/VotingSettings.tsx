@@ -18,6 +18,7 @@ import {
   getVotingTallies,
   initializeEvent,
   publishVotingResults,
+  unpublishVotingResults,
   updateCategoryWinners,
   updateVotingSettings,
 } from "../api";
@@ -148,6 +149,22 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
     }
   }
 
+  async function unpublishResults() {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await unpublishVotingResults();
+      setSettings(result.event);
+      await refreshVoting();
+      setMessage("Results hidden from the public site.");
+    } catch (unpublishError) {
+      setError(unpublishError instanceof Error ? unpublishError.message : "Could not unpublish results");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const publishDisabledReason = !settings?.peopleChoiceCutoff
     ? "Set a voting cutoff before publishing."
     : now < new Date(settings.peopleChoiceCutoff).getTime()
@@ -223,6 +240,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
         onSettingChange={updateSetting}
         onSave={saveSettings}
         onPublish={publishResults}
+        onUnpublish={unpublishResults}
         publishDisabledReason={publishDisabledReason}
       />
 

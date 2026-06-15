@@ -51,6 +51,11 @@ export function VehicleProfileCard({
       <div className="vehicle-profile-photos">
         {photos.length > 0 && currentPhoto ? (
           <div className="vehicle-profile-photo-wrap">
+            <div
+              className="vehicle-profile-photo-bg"
+              aria-hidden="true"
+              style={{ backgroundImage: `url(${currentPhoto.url})` }}
+            />
             {!currentLoaded && <div className="img-shimmer" aria-hidden="true" />}
             <img
               key={currentPhoto.id}

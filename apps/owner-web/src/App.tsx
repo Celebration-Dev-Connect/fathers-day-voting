@@ -16,6 +16,36 @@ import {
 
 const OWNER_SESSION_KEY = "carshow-owner-session";
 
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const COMPRESS_MAX_DIMENSION = 3000;
+
+async function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = Math.min(1, COMPRESS_MAX_DIMENSION / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { reject(new Error("Compression failed")); return; }
+          resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        0.85,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("Could not read image")); };
+    img.src = objectUrl;
+  });
+}
+
 type StoredOwnerSession = {
   token: string;
   vehicleId: string;
@@ -229,14 +259,35 @@ function OwnerPhotoUploadDialog({
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [compressing, setCompressing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  function chooseFile(nextFile: File | null) {
+  async function chooseFile(nextFile: File | null) {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setError("");
-    setFile(nextFile);
-    setPreviewUrl(nextFile ? URL.createObjectURL(nextFile) : "");
+    if (!nextFile) {
+      setFile(null);
+      setPreviewUrl("");
+      return;
+    }
+    let fileToUse = nextFile;
+    if (nextFile.size > MAX_UPLOAD_BYTES) {
+      setCompressing(true);
+      try {
+        fileToUse = await compressImage(nextFile);
+      } catch {
+        setError("Could not compress image. Please choose a smaller file.");
+        setFile(null);
+        setPreviewUrl("");
+        setCompressing(false);
+        return;
+      } finally {
+        setCompressing(false);
+      }
+    }
+    setFile(fileToUse);
+    setPreviewUrl(URL.createObjectURL(fileToUse));
   }
 
   useEffect(() => {
@@ -262,6 +313,8 @@ function OwnerPhotoUploadDialog({
     }
   }
 
+  const busy = compressing || uploading;
+
   return (
     <div className="owner-upload-backdrop" role="presentation" onClick={onClose}>
       <section className="owner-upload-dialog" aria-label="Add vehicle photo" onClick={(event) => event.stopPropagation()}>
@@ -283,19 +336,20 @@ function OwnerPhotoUploadDialog({
             className="owner-upload-input"
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
+            onChange={(event) => void chooseFile(event.target.files?.[0] ?? null)}
           />
-          {!file ? (
+          {!file && !compressing ? (
             <button className="owner-upload-secondary" type="button" onClick={() => inputRef.current?.click()}>
               <Camera aria-hidden="true" />
               Choose Photo
             </button>
           ) : (
             <div className="owner-upload-actions">
-              <button type="button" disabled={uploading} onClick={submitPhoto}>
-                {uploading ? "Uploading..." : "Upload Photo"}
+              <button type="button" disabled={busy} onClick={() => void submitPhoto()}>
+                {busy ? <Loader2 className="spin" aria-hidden="true" /> : null}
+                {compressing ? "Optimizing..." : uploading ? "Uploading..." : "Upload Photo"}
               </button>
-              <button className="owner-upload-secondary" type="button" disabled={uploading} onClick={() => inputRef.current?.click()}>
+              <button className="owner-upload-secondary" type="button" disabled={busy} onClick={() => inputRef.current?.click()}>
                 Choose Different
               </button>
             </div>
@@ -552,7 +606,10 @@ function OwnerPortal() {
             <section className="owner-profile-card">
               <div className="owner-hero-photo">
                 {selectedPhoto?.url ? (
-                  <img src={selectedPhoto.url} alt={selectedPhoto.altText ?? `${vehicle.year} ${vehicle.make} ${vehicle.model}`} />
+                  <>
+                    <div className="owner-hero-photo-bg" aria-hidden="true" style={{ backgroundImage: `url(${selectedPhoto.url})` }} />
+                    <img src={selectedPhoto.url} alt={selectedPhoto.altText ?? `${vehicle.year} ${vehicle.make} ${vehicle.model}`} />
+                  </>
                 ) : (
                   <div className="owner-photo-placeholder">
                     <Camera aria-hidden="true" />

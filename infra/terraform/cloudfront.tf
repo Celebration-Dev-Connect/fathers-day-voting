@@ -285,7 +285,25 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Behavior 3 (priority 3): /api/* → Fargate (all other API routes, no caching)
+  # Behavior 4 (priority 4): /api/public/entries/* → cached 30s
+  # Vehicle detail page — called on every QR scan and browse click. Static
+  # public data (no per-user fields), safe to cache at the edge.
+  ordered_cache_behavior {
+    path_pattern             = "/api/public/entries/*"
+    target_origin_id         = "api"
+    viewer_protocol_policy   = "redirect-to-https"
+    allowed_methods          = ["GET", "HEAD"]
+    cached_methods           = ["GET", "HEAD"]
+    cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+    }
+  }
+
+  # Behavior 5 (priority 5): /api/* → Fargate (all other API routes, no caching)
   ordered_cache_behavior {
     path_pattern             = "/api/*"
     target_origin_id         = "api"

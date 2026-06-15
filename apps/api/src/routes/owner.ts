@@ -83,6 +83,7 @@ function ownerVehicleResponse(vehicle: OwnerVehiclePayload) {
       sortOrder: photo.sortOrder,
       isPrimary: photo.id === vehicle.primaryPhotoId,
       ownerUploaded: photo.uploadedBy === `owner:${vehicle.ownerId}`,
+      managedUpload: Boolean(photo.uploadedBy?.startsWith("owner:") || photo.uploadedBy?.startsWith("staff:")),
       moderationStatus: photo.moderationStatus,
       createdAt: photo.createdAt.toISOString(),
     })),

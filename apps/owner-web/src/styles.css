@@ -169,6 +169,7 @@ textarea {
 .owner-hero-photo {
   position: relative;
   aspect-ratio: 3 / 4;
+  max-height: 75svh;
   background: #0d0d0d;
   overflow: hidden;
 }

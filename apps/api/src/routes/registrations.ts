@@ -424,15 +424,16 @@ async function createApprovedPrimaryPhoto(
   });
   if (!vehicle || vehicle.primaryPhotoId || vehicle._count.photos > 0) return false;
 
-  const activeCount = await prisma.vehiclePhoto.count({
+  const activeManagedCount = await prisma.vehiclePhoto.count({
     where: {
       vehicleEntryId: target.vehicleEntryId,
       moderationStatus: { in: ["PENDING", "PROCESSING", "HUMAN_REVIEW", "APPROVED"] },
+      OR: [{ uploadedBy: { startsWith: "owner:" } }, { uploadedBy: { startsWith: "staff:" } }],
     },
   });
-  if (activeCount >= config.photos.perVehicleCap) {
+  if (activeManagedCount >= config.photos.perVehicleCap) {
     throw app.httpErrors.conflict(
-      `Entry ${target.entryNumber} already has the maximum number of photos (${config.photos.perVehicleCap})`,
+      `Entry ${target.entryNumber} already has the maximum number of owner and staff photos (${config.photos.perVehicleCap})`,
     );
   }
 

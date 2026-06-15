@@ -39,9 +39,9 @@ const envSchema = z
     cdnBaseUrl: z.string().optional(),
     moderationMinConfidence: z.coerce.number().min(0).max(100).default(60),
 
-    // Common upload limits
+    // File-size limit for all uploads; count cap for combined owner/staff uploads.
     photoMaxBytes: z.coerce.number().int().positive().default(5 * 1024 * 1024),
-    photoPerVehicleCap: z.coerce.number().int().positive().default(10),
+    photoPerVehicleCap: z.coerce.number().int().positive().default(15),
 
     // Planning Center Online OAuth (production staff login)
     planningCenterClientId: z.string().optional(),

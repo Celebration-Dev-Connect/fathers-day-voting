@@ -7,6 +7,7 @@ export type OwnerPhoto = {
   sortOrder: number;
   isPrimary: boolean;
   ownerUploaded: boolean;
+  managedUpload: boolean;
   moderationStatus: "PENDING" | "PROCESSING" | "HUMAN_REVIEW" | "APPROVED" | "REJECTED" | "FAILED";
   createdAt: string;
 };

@@ -34,15 +34,21 @@ async function createPendingPhoto(
   uploadedBy: string,
   source: "STAFF" | "VISITOR",
   image: { bytes: Buffer; contentType: string },
+  enforceManagedPhotoCap: boolean,
 ) {
-  const activeCount = await prisma.vehiclePhoto.count({
-    where: {
-      vehicleEntryId,
-      moderationStatus: { in: ["PENDING", "PROCESSING", "HUMAN_REVIEW", "APPROVED"] },
-    },
-  });
-  if (activeCount >= config.photos.perVehicleCap) {
-    throw app.httpErrors.conflict("This vehicle already has the maximum number of photos");
+  if (enforceManagedPhotoCap) {
+    const activeManagedCount = await prisma.vehiclePhoto.count({
+      where: {
+        vehicleEntryId,
+        moderationStatus: { in: ["PENDING", "PROCESSING", "HUMAN_REVIEW", "APPROVED"] },
+        OR: [{ uploadedBy: { startsWith: "owner:" } }, { uploadedBy: { startsWith: "staff:" } }],
+      },
+    });
+    if (activeManagedCount >= config.photos.perVehicleCap) {
+      throw app.httpErrors.conflict(
+        `This vehicle already has the maximum number of owner and staff photos (${config.photos.perVehicleCap})`,
+      );
+    }
   }
 
   let photo: { id: string } | undefined;
@@ -102,6 +108,8 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
     const query = z
       .object({
         status: z.enum(["needs-review", "approved", "rejected", "all"]).default("needs-review"),
+        page: z.coerce.number().int().min(0).default(0),
+        pageSize: z.coerce.number().int().min(1).max(100).default(20),
       })
       .parse(request.query);
 
@@ -114,25 +122,36 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
             ? { moderationStatus: "REJECTED" }
             : {};
 
-    const photos = await prisma.vehiclePhoto.findMany({
-      where: {
-        vehicleEntry: { eventId },
-        ...statusWhere,
-      },
-      include: {
-        vehicleEntry: {
-          include: {
-            owner: true,
-            category: true,
-            qrCard: true,
+    const where: Prisma.VehiclePhotoWhereInput = {
+      vehicleEntry: { eventId },
+      ...statusWhere,
+    };
+    const [photos, total] = await Promise.all([
+      prisma.vehiclePhoto.findMany({
+        where,
+        include: {
+          vehicleEntry: {
+            include: {
+              owner: true,
+              category: true,
+              qrCard: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
+        orderBy: { createdAt: "desc" },
+        skip: query.page * query.pageSize,
+        take: query.pageSize,
+      }),
+      prisma.vehiclePhoto.count({ where }),
+    ]);
 
     return {
+      pagination: {
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+        pageCount: Math.ceil(total / query.pageSize),
+      },
       photos: photos.map((photo) => ({
         id: photo.id,
         url: photo.webUrl ?? photo.url ?? null,
@@ -280,7 +299,7 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
       });
       if (!qrCard?.vehicleEntryId) throw app.httpErrors.notFound("Vehicle not found");
       const image = await readUploadedImage(app, request);
-      const result = await createPendingPhoto(app, deps, qrCard.vehicleEntryId, `visitor:${request.ip}`, "VISITOR", image);
+      const result = await createPendingPhoto(app, deps, qrCard.vehicleEntryId, `visitor:${request.ip}`, "VISITOR", image, false);
       return reply.code(202).send(result);
     },
   );
@@ -306,7 +325,7 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
       const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
       const { vehicle } = await requireOwnerVehicle(app, request, params.id);
       const image = await readUploadedImage(app, request);
-      const result = await createPendingPhoto(app, deps, vehicle.id, `owner:${vehicle.ownerId}`, "VISITOR", image);
+      const result = await createPendingPhoto(app, deps, vehicle.id, `owner:${vehicle.ownerId}`, "VISITOR", image, true);
       return reply.code(202).send(result);
     },
   );
@@ -363,7 +382,7 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
     });
     if (!vehicle) throw app.httpErrors.notFound("Registration not found");
     const image = await readUploadedImage(app, request);
-    const result = await createPendingPhoto(app, deps, vehicle.id, `staff:${staff.id}`, "STAFF", image);
+    const result = await createPendingPhoto(app, deps, vehicle.id, `staff:${staff.id}`, "STAFF", image, true);
     return reply.code(202).send(result);
   });
 
@@ -414,7 +433,18 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
 
   app.post(
     "/public/entries/:vehicleId/photos",
-    { config: { rateLimit: { max: 12, timeWindow: "1 minute" } } },
+    {
+      config: {
+        rateLimit: {
+          max: 12,
+          timeWindow: "1 minute",
+          keyGenerator: (req) => {
+            const p = req.params as Record<string, unknown> | undefined;
+            return typeof p?.vehicleId === "string" ? `veh:${p.vehicleId}` : req.ip;
+          },
+        },
+      },
+    },
     async (request, reply) => {
       const params = z.object({ vehicleId: z.string().trim().min(1) }).parse(request.params);
       const vehicle = await prisma.vehicleEntry.findFirst({
@@ -423,7 +453,7 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
       });
       if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
       const image = await readUploadedImage(app, request);
-      const result = await createPendingPhoto(app, deps, vehicle.id, `visitor:${request.ip}`, "VISITOR", image);
+      const result = await createPendingPhoto(app, deps, vehicle.id, `visitor:${request.ip}`, "VISITOR", image, false);
       return reply.code(202).send(result);
     },
   );

@@ -370,9 +370,12 @@ export async function updateCategoryWinners(
 
 export type PhotoReviewQueue = "needs-review" | "approved" | "rejected" | "all";
 
-export async function listPhotoReviews(status: PhotoReviewQueue) {
-  const params = new URLSearchParams({ status });
-  return request<{ photos: PhotoReviewItem[] }>(`/photos/review?${params.toString()}`);
+export async function listPhotoReviews(status: PhotoReviewQueue, page = 0, pageSize = 20) {
+  const params = new URLSearchParams({ status, page: page.toString(), pageSize: pageSize.toString() });
+  return request<{
+    photos: PhotoReviewItem[];
+    pagination: { page: number; pageSize: number; total: number; pageCount: number };
+  }>(`/photos/review?${params.toString()}`);
 }
 
 export async function updatePhotoReviewStatus(id: string, status: Extract<PhotoModerationStatus, "APPROVED" | "REJECTED">) {

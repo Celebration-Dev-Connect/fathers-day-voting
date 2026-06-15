@@ -1,7 +1,7 @@
 import { ArrowLeft, Check, ImageOff, RefreshCw, ShieldCheck, X } from "lucide-react";
-import { Alert, Button, PageHeader, formatDateTime } from "@carshow/carshow-components";
+import { Alert, Button, PageHeader, Pagination, formatDateTime } from "@carshow/carshow-components";
 import type { PhotoModerationStatus, PhotoReviewItem } from "@carshow/carshow-components";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { getPhotoReviewImageUrl, listPhotoReviews, type PhotoReviewQueue, updatePhotoReviewStatus } from "../api";
 
 const QUEUES: Array<{ key: PhotoReviewQueue; label: string }> = [
@@ -109,6 +109,7 @@ function PhotoPreview({ photo, large = false }: { photo: PhotoReviewItem; large?
 
   return (
     <div className={`photo-review-preview ${large ? "large" : ""}`}>
+      <div className="photo-review-preview-bg" aria-hidden="true" style={{ backgroundImage: `url(${previewUrl})` }} />
       <img src={previewUrl} alt={photo.altText ?? vehicleTitle(photo)} onError={handleImageError} />
     </div>
   );
@@ -247,8 +248,11 @@ function PhotoReviewDrawer({
 }
 
 export function PhotoReviewView() {
+  const PAGE_SIZE = 20;
   const [queue, setQueue] = useState<PhotoReviewQueue>("needs-review");
+  const [page, setPage] = useState(0);
   const [photos, setPhotos] = useState<PhotoReviewItem[]>([]);
+  const [pagination, setPagination] = useState({ page: 0, pageSize: PAGE_SIZE, total: 0, pageCount: 0 });
   const [selected, setSelected] = useState<PhotoReviewItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
@@ -258,21 +262,19 @@ export function PhotoReviewView() {
   useEffect(() => {
     setLoading(true);
     setError("");
-    listPhotoReviews(queue)
-      .then(({ photos }) => {
+    listPhotoReviews(queue, page, PAGE_SIZE)
+      .then(({ photos, pagination }) => {
+        if (!photos.length && page > 0 && pagination.total > 0) {
+          setPage(Math.max(0, pagination.pageCount - 1));
+          return;
+        }
         setPhotos(photos);
+        setPagination(pagination);
         setSelected((current) => current ? photos.find((photo) => photo.id === current.id) ?? null : null);
       })
       .catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Could not load photos"))
       .finally(() => setLoading(false));
-  }, [queue, refreshKey]);
-
-  const counts = useMemo(() => {
-    return photos.reduce<Record<string, number>>((acc, photo) => {
-      acc[photo.moderationStatus] = (acc[photo.moderationStatus] ?? 0) + 1;
-      return acc;
-    }, {});
-  }, [photos]);
+  }, [page, queue, refreshKey]);
 
   async function changeStatus(photo: PhotoReviewItem, status: "APPROVED" | "REJECTED") {
     setBusyId(photo.id);
@@ -308,7 +310,11 @@ export function PhotoReviewView() {
             key={item.key}
             className={queue === item.key ? "active" : ""}
             type="button"
-            onClick={() => setQueue(item.key)}
+            onClick={() => {
+              setQueue(item.key);
+              setPage(0);
+              setSelected(null);
+            }}
           >
             {item.label}
           </button>
@@ -317,8 +323,7 @@ export function PhotoReviewView() {
 
       <div className="photo-review-summary">
         <span><ShieldCheck size={18} /> Latest uploads first</span>
-        <span>{photos.length} photos</span>
-        {queue === "needs-review" ? <span>{counts.HUMAN_REVIEW ?? 0} human review</span> : null}
+        <span>{pagination.total} photos</span>
       </div>
 
       {loading ? <div className="empty-state">Loading photos...</div> : null}
@@ -336,6 +341,14 @@ export function PhotoReviewView() {
           />
         ))}
       </div>
+
+      <Pagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        total={pagination.total}
+        pageSize={pagination.pageSize}
+        onChange={setPage}
+      />
 
       <PhotoReviewDrawer
         photo={selected}

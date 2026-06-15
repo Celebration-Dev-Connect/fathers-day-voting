@@ -1,7 +1,7 @@
 import { Camera, CheckCircle2, CircleAlert, CloudUpload, Loader2, LogOut, Save, Star, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Route, Routes } from "react-router-dom";
-import { formatPhone } from "@carshow/carshow-components";
+import { compressImage, formatPhone } from "@carshow/carshow-components";
 import {
   createOwnerSession,
   deleteOwnerPhoto,
@@ -15,36 +15,9 @@ import {
 } from "./api";
 
 const OWNER_SESSION_KEY = "carshow-owner-session";
-
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-const COMPRESS_MAX_DIMENSION = 3000;
-
-async function compressImage(file: File): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      const scale = Math.min(1, COMPRESS_MAX_DIMENSION / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { reject(new Error("Canvas not supported")); return; }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) { reject(new Error("Compression failed")); return; }
-          resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
-        },
-        "image/jpeg",
-        0.85,
-      );
-    };
-    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("Could not read image")); };
-    img.src = objectUrl;
-  });
-}
+const COMPRESSION_TARGET_BYTES = 4.5 * 1024 * 1024;
+const MANAGED_PHOTO_LIMIT = 15;
+const ACTIVE_PHOTO_STATUSES = new Set<OwnerPhoto["moderationStatus"]>(["PENDING", "PROCESSING", "HUMAN_REVIEW", "APPROVED"]);
 
 type StoredOwnerSession = {
   token: string;
@@ -161,13 +134,16 @@ function PhotoManager({
   busyPhotoId: string | null;
 }) {
   const visiblePhotos = photos.filter((photo) => photo.url);
+  const managedPhotoCount = photos.filter(
+    (photo) => photo.managedUpload && ACTIVE_PHOTO_STATUSES.has(photo.moderationStatus),
+  ).length;
 
   return (
     <section className="owner-card owner-photo-manager">
       <div className="owner-section-title">
         <div>
           <p>Photos</p>
-          <h2>{photos.length} / 10</h2>
+          <h2>{managedPhotoCount} / {MANAGED_PHOTO_LIMIT} owner and staff</h2>
         </div>
       </div>
 
@@ -208,10 +184,10 @@ function PhotoManager({
           className="owner-photo-tile owner-photo-add"
           type="button"
           onClick={onAddPhoto}
-          disabled={uploading}
+          disabled={uploading || managedPhotoCount >= MANAGED_PHOTO_LIMIT}
         >
           {uploading ? <Loader2 className="spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}
-          <span>{uploading ? "Uploading" : "Add Photo"}</span>
+          <span>{uploading ? "Uploading" : managedPhotoCount >= MANAGED_PHOTO_LIMIT ? "Photo Limit Reached" : "Add Photo"}</span>
         </button>
       </div>
 
@@ -272,10 +248,10 @@ function OwnerPhotoUploadDialog({
       return;
     }
     let fileToUse = nextFile;
-    if (nextFile.size > MAX_UPLOAD_BYTES) {
+    if (nextFile.size > COMPRESSION_TARGET_BYTES) {
       setCompressing(true);
       try {
-        fileToUse = await compressImage(nextFile);
+        fileToUse = await compressImage(nextFile, COMPRESSION_TARGET_BYTES);
       } catch {
         setError("Could not compress image. Please choose a smaller file.");
         setFile(null);

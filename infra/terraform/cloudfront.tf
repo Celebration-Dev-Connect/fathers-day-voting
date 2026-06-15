@@ -249,7 +249,25 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Behavior 2 (priority 2): /api/public/categories/*/entries → cached 30s
+  # Behavior 2 (priority 2): /api/public/results → cached 30s
+  # Read-only results snapshot; high traffic on results day. Mirrors the
+  # /api/public/event behavior exactly.
+  ordered_cache_behavior {
+    path_pattern             = "/api/public/results"
+    target_origin_id         = "api"
+    viewer_protocol_policy   = "redirect-to-https"
+    allowed_methods          = ["GET", "HEAD"]
+    cached_methods           = ["GET", "HEAD"]
+    cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+    }
+  }
+
+  # Behavior 3 (priority 3): /api/public/categories/*/entries → cached 30s
   # The * wildcard matches the category slug. Query strings (e.g. ?page=2) are
   # included in the cache key via the api_short policy so pages cache separately.
   ordered_cache_behavior {

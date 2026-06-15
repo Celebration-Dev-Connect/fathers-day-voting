@@ -3113,6 +3113,7 @@ textarea:focus {
   position: relative;
   overflow: hidden;
   background: #0d0d0d;
+  width: 100%;
   aspect-ratio: 3 / 4;
   max-height: 75svh;
 }

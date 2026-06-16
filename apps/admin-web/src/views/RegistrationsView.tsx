@@ -93,6 +93,7 @@ export function RegistrationsView({
   const [activeImport, setActiveImport] = useState<RegistrationImportJob | null>(null);
   const [showImportProgress, setShowImportProgress] = useState(false);
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
+  const [showSendAllConfirm, setShowSendAllConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -197,7 +198,6 @@ export function RegistrationsView({
   }
 
   async function sendAllEmails() {
-    if (!window.confirm("Send the owner access code email to all owners who have an email address on file?")) return;
     setSendingBulkEmail(true);
     setImportMessage("");
     setImportError("");
@@ -237,7 +237,7 @@ export function RegistrationsView({
               <Button
                 variant="secondary"
                 disabled={sendingBulkEmail || staff.role !== "ADMIN"}
-                onClick={() => void sendAllEmails()}
+                onClick={() => setShowSendAllConfirm(true)}
               >
                 <Mail size={20} />
                 {sendingBulkEmail ? "Sending..." : "Send All Emails"}
@@ -391,6 +391,36 @@ export function RegistrationsView({
           />
         </div>
       </div>
+      {showSendAllConfirm ? (
+        <div className="import-status-overlay" role="presentation" onClick={() => setShowSendAllConfirm(false)}>
+          <section
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm send all emails"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className="confirm-dialog-title">Send All Access Code Emails?</h2>
+            <p className="confirm-dialog-body">
+              This will send the owner access code email to every owner who has an email address on file and hasn't received one yet. This cannot be undone.
+            </p>
+            <div className="confirm-dialog-actions">
+              <Button variant="secondary" onClick={() => setShowSendAllConfirm(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowSendAllConfirm(false);
+                  void sendAllEmails();
+                }}
+              >
+                <Mail size={18} />
+                Send All Emails
+              </Button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

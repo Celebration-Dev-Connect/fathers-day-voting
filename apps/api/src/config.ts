@@ -8,6 +8,7 @@ const isProduction = process.env.NODE_ENV === "production";
 const storageDriverSchema = z.enum(["local", "s3"]);
 const moderationDriverSchema = z.enum(["mock", "rekognition"]);
 const textModerationDriverSchema = z.enum(["mock", "comprehend", "none"]);
+const emailDriverSchema = z.enum(["console", "ses"]);
 
 const envSchema = z
   .object({
@@ -20,6 +21,14 @@ const envSchema = z
     storageDriver: storageDriverSchema.default("local"),
     moderationDriver: moderationDriverSchema.default("mock"),
     textModerationDriver: textModerationDriverSchema.default("mock"),
+    emailDriver: emailDriverSchema.default("console"),
+    emailFromAddress: z.string().email().default("noreply@fathersdaycarshow.ca"),
+    emailFromName: z.string().default("Father's Day Car Show"),
+    emailSmtpHost: z.string().optional(),
+    emailSmtpPort: z.coerce.number().int().positive().default(465),
+    emailSmtpUsername: z.string().optional(),
+    emailSmtpPassword: z.string().optional(),
+    ownerPortalUrl: z.string().url().default("https://visit.fathersdaycarshow.ca/owner"),
     textModerationMinConfidence: z.coerce.number().min(0).max(1).default(0.5),
 
     // Enables the email/dev-login path even when NODE_ENV=production.
@@ -73,6 +82,13 @@ const envSchema = z
     if (value.moderationDriver === "rekognition" && !value.awsRegion) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["awsRegion"], message: "AWS_REGION is required when MODERATION_DRIVER=rekognition" });
     }
+    if (value.emailDriver === "ses") {
+      for (const key of ["emailSmtpHost", "emailSmtpUsername", "emailSmtpPassword"] as const) {
+        if (!value[key]) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} is required when EMAIL_DRIVER=ses` });
+        }
+      }
+    }
   });
 
 const parsed = envSchema.safeParse({
@@ -104,6 +120,14 @@ const parsed = envSchema.safeParse({
   adminWebUrl: process.env.ADMIN_WEB_URL,
   judgeWebUrl: process.env.JUDGE_WEB_URL,
   corsAllowedOrigins: process.env.CORS_ALLOWED_ORIGINS,
+  emailDriver: process.env.EMAIL_DRIVER,
+  emailFromAddress: process.env.EMAIL_FROM_ADDRESS,
+  emailFromName: process.env.EMAIL_FROM_NAME,
+  emailSmtpHost: process.env.EMAIL_SMTP_HOST,
+  emailSmtpPort: process.env.EMAIL_SMTP_PORT,
+  emailSmtpUsername: process.env.EMAIL_SMTP_USERNAME,
+  emailSmtpPassword: process.env.EMAIL_SMTP_PASSWORD,
+  ownerPortalUrl: process.env.OWNER_PORTAL_URL,
 });
 
 if (!parsed.success) {
@@ -162,6 +186,18 @@ export const config = {
   corsAllowedOrigins: env.corsAllowedOrigins
     ? env.corsAllowedOrigins.split(",").map((origin) => origin.trim()).filter(Boolean)
     : null,
+  email: {
+    driver: env.emailDriver,
+    fromAddress: env.emailFromAddress,
+    fromName: env.emailFromName,
+    smtp: {
+      host: env.emailSmtpHost,
+      port: env.emailSmtpPort,
+      username: env.emailSmtpUsername,
+      password: env.emailSmtpPassword,
+    },
+  },
+  ownerPortalUrl: env.ownerPortalUrl,
 } as const;
 
 export type AppConfig = typeof config;

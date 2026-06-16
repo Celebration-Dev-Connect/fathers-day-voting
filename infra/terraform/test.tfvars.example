@@ -35,3 +35,9 @@ pco_callback_url  = "https://carshow-test.chasesspace.com/api/auth/planning-cent
 pco_team_name     = "carshow"
 admin_web_url     = "https://carshow-test.chasesspace.com/admin"
 judge_web_url     = "https://carshow-test.chasesspace.com/judge"
+
+# ── Email (SES SMTP) ──
+# email_from_address  = "mail@celebrationedmonton.com"
+# owner_portal_url    = "https://visit.fathersdaycarshow.ca/owner"
+# email_smtp_username = ""   # sensitive — store in GitHub secrets, never commit
+# email_smtp_password = ""   # sensitive — store in GitHub secrets, never commit

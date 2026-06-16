@@ -128,10 +128,11 @@ model Owner {
   email           String?
   publicName      String?
   publicNameOptIn Boolean        @default(false)
-  waiverAccepted  Boolean        @default(false)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  vehicleEntries  VehicleEntry[]
+  waiverAccepted      Boolean        @default(false)
+  ownerInviteSentAt   DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  vehicleEntries      VehicleEntry[]
 }
 
 model VehicleEntry {

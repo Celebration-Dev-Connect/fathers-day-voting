@@ -64,6 +64,12 @@ resource "aws_ecs_task_definition" "api" {
       { name = "ADMIN_WEB_URL", value = var.admin_web_url },
       { name = "JUDGE_WEB_URL", value = var.judge_web_url },
       { name = "CORS_ALLOWED_ORIGINS", value = var.cors_allowed_origins },
+      { name = "EMAIL_DRIVER", value = "ses" },
+      { name = "EMAIL_FROM_ADDRESS", value = var.email_from_address },
+      { name = "EMAIL_FROM_NAME", value = "Father's Day Car Show" },
+      { name = "EMAIL_SMTP_HOST", value = "email-smtp.ca-central-1.amazonaws.com" },
+      { name = "EMAIL_SMTP_PORT", value = "465" },
+      { name = "OWNER_PORTAL_URL", value = var.owner_portal_url },
     ]
 
     secrets = [
@@ -73,6 +79,8 @@ resource "aws_ecs_task_definition" "api" {
       { name = "PLANNING_CENTER_CLIENT_SECRET", valueFrom = aws_secretsmanager_secret.pco_client_secret.arn },
       { name = "WEBGUIDE_USERNAME", valueFrom = aws_secretsmanager_secret.webguide_username.arn },
       { name = "WEBGUIDE_PASSWORD", valueFrom = aws_secretsmanager_secret.webguide_password.arn },
+      { name = "EMAIL_SMTP_USERNAME", valueFrom = aws_secretsmanager_secret.email_smtp_username.arn },
+      { name = "EMAIL_SMTP_PASSWORD", valueFrom = aws_secretsmanager_secret.email_smtp_password.arn },
     ]
 
     logConfiguration = {

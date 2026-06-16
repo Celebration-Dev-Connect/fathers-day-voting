@@ -390,6 +390,20 @@ export async function updatePhotoReviewStatus(id: string, status: Extract<PhotoM
   });
 }
 
+export async function sendOwnerInviteEmail(id: string) {
+  return request<{ sent: boolean; reason?: string; sentAt?: string }>(
+    `/registrations/${encodeURIComponent(id)}/send-owner-invite`,
+    { method: "POST" },
+  );
+}
+
+export async function sendBulkOwnerInviteEmails(vehicleEntryIds?: string[]) {
+  return request<{ sent: number; skipped: number; alreadySent: number; errors: number }>(
+    "/registrations/send-owner-invite-bulk",
+    { method: "POST", body: JSON.stringify({ vehicleEntryIds }) },
+  );
+}
+
 export async function downloadRegistrationPhotos(id: string) {
   const token = getToken();
   const response = await fetch(`${API_URL}/registrations/${encodeURIComponent(id)}/photos/download`, {

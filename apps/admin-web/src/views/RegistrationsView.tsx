@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Plus, RefreshCw, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, Mail, Plus, RefreshCw, Upload, X } from "lucide-react";
 import { Alert, Button, PageHeader, Pagination, RegistrationRow, SearchBox } from "@carshow/carshow-components";
 import type { Category, Registration, StaffUser } from "@carshow/carshow-components";
 import { useEffect, useRef, useState } from "react";
@@ -9,6 +9,7 @@ import {
   importRegistrationsCsv,
   previewRegistrationsCsv,
   retryFailedRegistrationImport,
+  sendBulkOwnerInviteEmails,
   type RegistrationCsvPreviewRow,
   type RegistrationImportJob,
   type RegistrationImportItemStatus,
@@ -91,6 +92,7 @@ export function RegistrationsView({
   const [ownerGroupAssignments, setOwnerGroupAssignments] = useState<Record<string, string>>({});
   const [activeImport, setActiveImport] = useState<RegistrationImportJob | null>(null);
   const [showImportProgress, setShowImportProgress] = useState(false);
+  const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -194,6 +196,25 @@ export function RegistrationsView({
     }
   }
 
+  async function sendAllEmails() {
+    if (!window.confirm("Send the owner access code email to all owners who have an email address on file?")) return;
+    setSendingBulkEmail(true);
+    setImportMessage("");
+    setImportError("");
+    try {
+      const result = await sendBulkOwnerInviteEmails();
+      const parts = [`${result.sent} email${result.sent === 1 ? "" : "s"} sent`];
+      if (result.alreadySent) parts.push(`${result.alreadySent} already sent`);
+      if (result.skipped) parts.push(`${result.skipped} skipped (no email)`);
+      if (result.errors) parts.push(`${result.errors} failed`);
+      setImportMessage(parts.join(" · "));
+    } catch (emailError) {
+      setImportError(emailError instanceof Error ? emailError.message : "Bulk email failed");
+    } finally {
+      setSendingBulkEmail(false);
+    }
+  }
+
   const pageCount = Math.ceil(registrations.length / PAGE_SIZE);
   const pagedRegistrations = registrations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
@@ -213,6 +234,14 @@ export function RegistrationsView({
                 className="visually-hidden"
                 onChange={(event) => void previewCsv(event.target.files?.[0] ?? null)}
               />
+              <Button
+                variant="secondary"
+                disabled={sendingBulkEmail || staff.role !== "ADMIN"}
+                onClick={() => void sendAllEmails()}
+              >
+                <Mail size={20} />
+                {sendingBulkEmail ? "Sending..." : "Send All Emails"}
+              </Button>
               <Button
                 variant="secondary"
                 disabled={importing || staff.role !== "ADMIN"}

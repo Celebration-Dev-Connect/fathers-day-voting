@@ -1,4 +1,4 @@
-import { Camera, CheckCircle2, Download, ImagePlus, Loader2, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
+import { Camera, CheckCircle2, Download, ImagePlus, Loader2, Mail, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
 import { Alert, Button, compressImage, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
 import type { Category, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
 import { FormEvent, useEffect, useRef, useState } from "react";
@@ -10,6 +10,7 @@ import {
   downloadRegistrationPhotos,
   getRegistration,
   listOwners,
+  sendOwnerInviteEmail,
   setRegistrationPrimaryPhoto,
   updateRegistration,
   uploadRegistrationPhoto,
@@ -80,6 +81,7 @@ export function RegistrationEditor({
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [downloadingPhotos, setDownloadingPhotos] = useState(false);
@@ -244,6 +246,21 @@ export function RegistrationEditor({
     }
   }
 
+  async function sendEmail() {
+    if (!registration) return;
+    setSendingEmail(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await sendOwnerInviteEmail(registration.id);
+      setMessage(result.sent ? "Access code email sent." : (result.reason ?? "Email not sent."));
+    } catch (emailError) {
+      setError(emailError instanceof Error ? emailError.message : "Could not send email");
+    } finally {
+      setSendingEmail(false);
+    }
+  }
+
   return (
     <form className="editor-panel" onSubmit={save}>
       <div className="editor-header">
@@ -255,6 +272,17 @@ export function RegistrationEditor({
           <Button type="button" variant="secondary" onClick={onCancel}>
             Cancel
           </Button>
+          {registration?.owner.email ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={sendingEmail || Boolean(registration.owner.ownerInviteSentAt)}
+              onClick={() => void sendEmail()}
+            >
+              {sendingEmail ? <Loader2 size={20} className="spin" /> : <Mail size={20} />}
+              {sendingEmail ? "Sending..." : registration.owner.ownerInviteSentAt ? "Email Sent" : "Send Access Code"}
+            </Button>
+          ) : null}
           <Button type="submit" disabled={saving}>
             <Save size={20} />
             {saving ? "Saving..." : "Save"}
@@ -267,6 +295,11 @@ export function RegistrationEditor({
       {registration ? (
         <Alert variant="info">
           Owner app access code: <strong>{ownerAccessCodeFor(registration)}</strong>
+          {!registration.owner.email ? (
+            <span className="muted-copy"> · No email on file</span>
+          ) : registration.owner.ownerInviteSentAt ? (
+            <span className="muted-copy"> · Email sent {new Date(registration.owner.ownerInviteSentAt).toLocaleString()}</span>
+          ) : null}
         </Alert>
       ) : null}
 

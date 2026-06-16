@@ -1,6 +1,7 @@
 import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import { config } from "./config.js";
 import { buildApp } from "./app.js";
+import { createEmailProvider } from "./email/index.js";
 import { createStorage } from "./media/storage/index.js";
 import { createModerator } from "./media/moderation/index.js";
 import { createTextModerator } from "./text/moderation/index.js";
@@ -21,7 +22,8 @@ if (config.moderation.driver === "rekognition") {
 const storage = createStorage();
 const moderator = createModerator();
 const textModerator = createTextModerator();
-const { app, worker, importWorker } = await buildApp({ storage, moderator, textModerator });
+const emailProvider = createEmailProvider();
+const { app, worker, importWorker } = await buildApp({ storage, moderator, textModerator, emailProvider });
 
 await app.listen({ port: config.port, host: config.host });
 worker.start();

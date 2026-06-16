@@ -5,8 +5,9 @@ import { ZipArchive } from "archiver";
 import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { z } from "zod";
-import { requireStaff } from "../auth.js";
+import { requireAdmin, requireStaff } from "../auth.js";
 import { config, eventId } from "../config.js";
+import { buildOwnerInviteEmail, type EmailProvider } from "../email/index.js";
 import type { PhotoStorage } from "../media/storage/index.js";
 import { registrationSchema } from "../schemas/registration.js";
 import { ownerIdentityKey } from "../services/ownerIdentity.js";
@@ -35,6 +36,7 @@ type CsvRegistrationRow = {
 type RegistrationRouteDeps = {
   storage: PhotoStorage;
   importWorker?: RegistrationImportWorker;
+  emailProvider: EmailProvider;
 };
 
 type ImportPhotoTarget = {
@@ -413,7 +415,7 @@ async function downloadWebGuidePhoto(
 
 async function createApprovedPrimaryPhoto(
   app: FastifyInstance,
-  deps: RegistrationRouteDeps,
+  deps: Pick<RegistrationRouteDeps, "storage">,
   staffId: string,
   target: ImportPhotoTarget,
   image: { bytes: Buffer; contentType: string },
@@ -875,6 +877,10 @@ function registrationResponse(registration: RegistrationPayload) {
   return {
     ...registration,
     primaryPhotoId: registration.primaryPhotoId ?? null,
+    owner: {
+      ...registration.owner,
+      ownerInviteSentAt: registration.owner.ownerInviteSentAt?.toISOString() ?? null,
+    },
     photos: photos.map((photo) => ({
       id: photo.id,
       vehicleEntryId: photo.vehicleEntryId,
@@ -1652,5 +1658,136 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
 
     void archive.finalize();
     return reply.send(archive);
+  });
+
+  app.post("/registrations/:id/send-owner-invite", async (request) => {
+    await requireAdmin(app, request);
+    const params = z.object({ id: z.string() }).parse(request.params);
+
+    const vehicle = await prisma.vehicleEntry.findFirst({
+      where: { id: params.id, eventId },
+      include: { owner: true, category: true },
+    });
+    if (!vehicle) throw app.httpErrors.notFound("Registration not found");
+    if (!vehicle.owner.email) {
+      return { sent: false, reason: "Owner has no email address on file" };
+    }
+    if (vehicle.owner.ownerInviteSentAt) {
+      return {
+        sent: false,
+        reason: `Already sent on ${vehicle.owner.ownerInviteSentAt.toISOString()}`,
+        sentAt: vehicle.owner.ownerInviteSentAt.toISOString(),
+      };
+    }
+
+    // Include all vehicles for this owner so they get one complete email
+    const allOwnerVehicles = await prisma.vehicleEntry.findMany({
+      where: { ownerId: vehicle.ownerId, eventId },
+      include: { category: true },
+      orderBy: { entryNumber: "asc" },
+    });
+
+    const message = await buildOwnerInviteEmail({
+      firstName: vehicle.owner.firstName,
+      lastName: vehicle.owner.lastName,
+      email: vehicle.owner.email,
+      portalUrl: config.ownerPortalUrl,
+      vehicles: allOwnerVehicles.map((v) => ({
+        entryNumber: String(v.entryNumber).padStart(3, "0"),
+        vehicleName: `${v.year} ${v.make} ${v.model}`,
+        category: v.category.name,
+        accessCode: v.ownerAccessCode,
+      })),
+    });
+    await deps.emailProvider.send(message);
+
+    const sentAt = new Date();
+    await prisma.owner.update({
+      where: { id: vehicle.ownerId },
+      data: { ownerInviteSentAt: sentAt },
+    });
+
+    return { sent: true, sentAt: sentAt.toISOString() };
+  });
+
+  app.post("/registrations/send-owner-invite-bulk", async (request) => {
+    await requireAdmin(app, request);
+    const body = z
+      .object({ vehicleEntryIds: z.array(z.string()).optional() })
+      .parse(request.body);
+
+    const vehicles = await prisma.vehicleEntry.findMany({
+      where: {
+        eventId,
+        ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
+        owner: { email: { not: null }, ownerInviteSentAt: null },
+      },
+      include: { owner: true, category: true },
+      orderBy: { entryNumber: "asc" },
+    });
+
+    // Group vehicle entries by owner so multi-car owners get one combined email
+    const byOwner = new Map<string, typeof vehicles>();
+    for (const vehicle of vehicles) {
+      const group = byOwner.get(vehicle.ownerId) ?? [];
+      group.push(vehicle);
+      byOwner.set(vehicle.ownerId, group);
+    }
+
+    let sent = 0;
+    let errors = 0;
+    for (const ownerVehicles of byOwner.values()) {
+      const owner = ownerVehicles[0].owner;
+      if (!owner.email) continue;
+      try {
+        const message = await buildOwnerInviteEmail({
+          firstName: owner.firstName,
+          lastName: owner.lastName,
+          email: owner.email,
+          portalUrl: config.ownerPortalUrl,
+          vehicles: ownerVehicles.map((v) => ({
+            entryNumber: String(v.entryNumber).padStart(3, "0"),
+            vehicleName: `${v.year} ${v.make} ${v.model}`,
+            category: v.category.name,
+            accessCode: v.ownerAccessCode,
+          })),
+        });
+        await deps.emailProvider.send(message);
+        await prisma.owner.update({
+          where: { id: owner.id },
+          data: { ownerInviteSentAt: new Date() },
+        });
+        sent++;
+      } catch {
+        errors++;
+      }
+    }
+
+    const [alreadySent, noEmail] = await Promise.all([
+      prisma.owner.count({
+        where: {
+          ownerInviteSentAt: { not: null },
+          vehicleEntries: {
+            some: {
+              eventId,
+              ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
+            },
+          },
+        },
+      }),
+      prisma.owner.count({
+        where: {
+          email: null,
+          vehicleEntries: {
+            some: {
+              eventId,
+              ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
+            },
+          },
+        },
+      }),
+    ]);
+
+    return { sent, errors, alreadySent, skipped: noEmail };
   });
 }

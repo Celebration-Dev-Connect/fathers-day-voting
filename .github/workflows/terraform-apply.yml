@@ -64,6 +64,10 @@ jobs:
           TF_TEST_JUDGE_WEB_URL:         ${{ secrets.TF_TEST_JUDGE_WEB_URL }}
           TF_TEST_WEBGUIDE_USERNAME:     ${{ secrets.TF_TEST_WEBGUIDE_USERNAME }}
           TF_TEST_WEBGUIDE_PASSWORD:     ${{ secrets.TF_TEST_WEBGUIDE_PASSWORD }}
+          TF_TEST_EMAIL_SMTP_USERNAME:   ${{ secrets.TF_TEST_EMAIL_SMTP_USERNAME }}
+          TF_TEST_EMAIL_SMTP_PASSWORD:   ${{ secrets.TF_TEST_EMAIL_SMTP_PASSWORD }}
+          TF_TEST_EMAIL_FROM_ADDRESS:    ${{ secrets.TF_TEST_EMAIL_FROM_ADDRESS }}
+          TF_TEST_OWNER_PORTAL_URL:      ${{ secrets.TF_TEST_OWNER_PORTAL_URL }}
           # ── Perf (infra-nonprod) ─────────────────────────────────────────
           TF_PERF_REGION:                ${{ secrets.TF_PERF_REGION }}
           TF_PERF_PROJECT:               ${{ secrets.TF_PERF_PROJECT }}
@@ -93,6 +97,10 @@ jobs:
           TF_PERF_JUDGE_WEB_URL:         ${{ secrets.TF_PERF_JUDGE_WEB_URL }}
           TF_PERF_WEBGUIDE_USERNAME:     ${{ secrets.TF_PERF_WEBGUIDE_USERNAME }}
           TF_PERF_WEBGUIDE_PASSWORD:     ${{ secrets.TF_PERF_WEBGUIDE_PASSWORD }}
+          TF_PERF_EMAIL_SMTP_USERNAME:   ${{ secrets.TF_PERF_EMAIL_SMTP_USERNAME }}
+          TF_PERF_EMAIL_SMTP_PASSWORD:   ${{ secrets.TF_PERF_EMAIL_SMTP_PASSWORD }}
+          TF_PERF_EMAIL_FROM_ADDRESS:    ${{ secrets.TF_PERF_EMAIL_FROM_ADDRESS }}
+          TF_PERF_OWNER_PORTAL_URL:      ${{ secrets.TF_PERF_OWNER_PORTAL_URL }}
           # ── Prod (infra-prod) ────────────────────────────────────────────
           TF_PROD_REGION:                ${{ secrets.TF_PROD_REGION }}
           TF_PROD_PROJECT:               ${{ secrets.TF_PROD_PROJECT }}
@@ -123,6 +131,10 @@ jobs:
           TF_PROD_WEBGUIDE_USERNAME:     ${{ secrets.TF_PROD_WEBGUIDE_USERNAME }}
           TF_PROD_WEBGUIDE_PASSWORD:     ${{ secrets.TF_PROD_WEBGUIDE_PASSWORD }}
           TF_PROD_CLOUDFRONT_CUSTOM_DOMAIN: ${{ secrets.TF_PROD_CLOUDFRONT_CUSTOM_DOMAIN }}
+          TF_PROD_EMAIL_SMTP_USERNAME:   ${{ secrets.TF_PROD_EMAIL_SMTP_USERNAME }}
+          TF_PROD_EMAIL_SMTP_PASSWORD:   ${{ secrets.TF_PROD_EMAIL_SMTP_PASSWORD }}
+          TF_PROD_EMAIL_FROM_ADDRESS:    ${{ secrets.TF_PROD_EMAIL_FROM_ADDRESS }}
+          TF_PROD_OWNER_PORTAL_URL:      ${{ secrets.TF_PROD_OWNER_PORTAL_URL }}
         run: |
           case "${{ inputs.environment }}" in
             test)
@@ -150,8 +162,12 @@ jobs:
           pco_team_name     = "$TF_TEST_PCO_TEAM_NAME"
           admin_web_url     = "$TF_TEST_ADMIN_WEB_URL"
           judge_web_url     = "$TF_TEST_JUDGE_WEB_URL"
-          webguide_username = "$TF_TEST_WEBGUIDE_USERNAME"
-          webguide_password = "$TF_TEST_WEBGUIDE_PASSWORD"
+          webguide_username   = "$TF_TEST_WEBGUIDE_USERNAME"
+          webguide_password   = "$TF_TEST_WEBGUIDE_PASSWORD"
+          email_smtp_username = "$TF_TEST_EMAIL_SMTP_USERNAME"
+          email_smtp_password = "$TF_TEST_EMAIL_SMTP_PASSWORD"
+          email_from_address  = "$TF_TEST_EMAIL_FROM_ADDRESS"
+          owner_portal_url    = "$TF_TEST_OWNER_PORTAL_URL"
           EOF
               ;;
             perf)
@@ -182,8 +198,12 @@ jobs:
           pco_team_name     = "$TF_PERF_PCO_TEAM_NAME"
           admin_web_url     = "$TF_PERF_ADMIN_WEB_URL"
           judge_web_url     = "$TF_PERF_JUDGE_WEB_URL"
-          webguide_username = "$TF_PERF_WEBGUIDE_USERNAME"
-          webguide_password = "$TF_PERF_WEBGUIDE_PASSWORD"
+          webguide_username   = "$TF_PERF_WEBGUIDE_USERNAME"
+          webguide_password   = "$TF_PERF_WEBGUIDE_PASSWORD"
+          email_smtp_username = "$TF_PERF_EMAIL_SMTP_USERNAME"
+          email_smtp_password = "$TF_PERF_EMAIL_SMTP_PASSWORD"
+          email_from_address  = "$TF_PERF_EMAIL_FROM_ADDRESS"
+          owner_portal_url    = "$TF_PERF_OWNER_PORTAL_URL"
           EOF
               ;;
             prod)
@@ -215,8 +235,12 @@ jobs:
           pco_team_name     = "$TF_PROD_PCO_TEAM_NAME"
           admin_web_url     = "$TF_PROD_ADMIN_WEB_URL"
           judge_web_url     = "$TF_PROD_JUDGE_WEB_URL"
-          webguide_username = "$TF_PROD_WEBGUIDE_USERNAME"
-          webguide_password = "$TF_PROD_WEBGUIDE_PASSWORD"
+          webguide_username   = "$TF_PROD_WEBGUIDE_USERNAME"
+          webguide_password   = "$TF_PROD_WEBGUIDE_PASSWORD"
+          email_smtp_username = "$TF_PROD_EMAIL_SMTP_USERNAME"
+          email_smtp_password = "$TF_PROD_EMAIL_SMTP_PASSWORD"
+          email_from_address  = "$TF_PROD_EMAIL_FROM_ADDRESS"
+          owner_portal_url    = "$TF_PROD_OWNER_PORTAL_URL"
           EOF
               ;;
           esac

@@ -144,6 +144,32 @@ variable "webguide_password" {
   sensitive   = true
 }
 
+variable "email_smtp_username" {
+  description = "AWS SES SMTP username for sending owner invite emails."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "email_smtp_password" {
+  description = "AWS SES SMTP password for sending owner invite emails."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "email_from_address" {
+  description = "From address for outbound emails (must be SES-verified)."
+  type        = string
+  default     = "mail@celebrationedmonton.com"
+}
+
+variable "owner_portal_url" {
+  description = "Public URL of the owner portal, embedded in invite emails."
+  type        = string
+  default     = "https://visit.fathersdaycarshow.ca/owner"
+}
+
 variable "pco_callback_url" {
   description = "Full public callback URL registered in the PCO OAuth app (e.g. https://example.com/api/auth/planning-center/callback)."
   type        = string

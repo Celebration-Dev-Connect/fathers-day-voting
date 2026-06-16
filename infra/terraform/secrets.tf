@@ -100,3 +100,33 @@ resource "aws_secretsmanager_secret_version" "webguide_password" {
   secret_id     = aws_secretsmanager_secret.webguide_password.id
   secret_string = var.webguide_password
 }
+
+resource "aws_secretsmanager_secret" "email_smtp_username" {
+  name                    = "${var.project}/${var.environment}/email-smtp-username"
+  recovery_window_in_days = 0
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "email_smtp_username" {
+  secret_id     = aws_secretsmanager_secret.email_smtp_username.id
+  secret_string = var.email_smtp_username
+}
+
+resource "aws_secretsmanager_secret" "email_smtp_password" {
+  name                    = "${var.project}/${var.environment}/email-smtp-password"
+  recovery_window_in_days = 0
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "email_smtp_password" {
+  secret_id     = aws_secretsmanager_secret.email_smtp_password.id
+  secret_string = var.email_smtp_password
+}

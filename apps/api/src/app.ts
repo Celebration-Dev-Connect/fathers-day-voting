@@ -7,6 +7,7 @@ import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import Fastify from "fastify";
 import { config } from "./config.js";
+import type { EmailProvider } from "./email/index.js";
 import type { ImageModerator } from "./media/moderation/index.js";
 import type { PhotoStorage } from "./media/storage/index.js";
 import type { TextModerator } from "./text/moderation/index.js";
@@ -26,9 +27,10 @@ export type AppDeps = {
   storage: PhotoStorage;
   moderator: ImageModerator;
   textModerator: TextModerator;
+  emailProvider: EmailProvider;
 };
 
-export async function buildApp({ storage, moderator, textModerator }: AppDeps) {
+export async function buildApp({ storage, moderator, textModerator, emailProvider }: AppDeps) {
   const app = Fastify({ logger: true, trustProxy: true });
 
   // When an explicit allowlist is configured (prod), restrict to it; otherwise
@@ -73,7 +75,7 @@ export async function buildApp({ storage, moderator, textModerator }: AppDeps) {
   await registerCategoryRoutes(app);
   await registerVotingRoutes(app);
   await registerJudgingRoutes(app);
-  await registerRegistrationRoutes(app, { storage, importWorker });
+  await registerRegistrationRoutes(app, { storage, importWorker, emailProvider });
   await registerQrCardRoutes(app);
   await registerOwnerRoutes(app, { textModerator });
   await registerPhotosRoutes(app, { storage, worker });

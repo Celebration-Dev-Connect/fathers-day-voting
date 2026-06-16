@@ -40,3 +40,9 @@ pco_callback_url  = ""
 pco_team_name     = "carshow"
 admin_web_url     = ""
 judge_web_url     = ""
+
+# ── Email (SES SMTP) ──
+# email_from_address  = "mail@celebrationedmonton.com"
+# owner_portal_url    = "https://visit.fathersdaycarshow.ca/owner"
+# email_smtp_username = ""   # sensitive — store in GitHub secrets, never commit
+# email_smtp_password = ""   # sensitive — store in GitHub secrets, never commit

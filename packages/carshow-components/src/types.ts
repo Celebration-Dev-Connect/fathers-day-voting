@@ -64,6 +64,7 @@ export type Owner = {
   publicName?: string | null;
   publicNameOptIn: boolean;
   waiverAccepted: boolean;
+  ownerInviteSentAt?: string | null;
 };
 
 export type QrCard = {

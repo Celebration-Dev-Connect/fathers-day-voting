@@ -218,7 +218,6 @@
         "ec2:DescribeSecurityGroups",
         "ec2:DescribeSubnets",
         "ec2:DescribeTags",
-        "ec2:DescribeSubnetAttribute",
         "ec2:DescribeVpcAttribute",
         "ec2:DescribeVpcEndpoints",
         "ec2:DescribeVpcEndpointServices",

@@ -17,9 +17,12 @@ export interface OwnerInviteOptions {
 }
 
 export async function buildOwnerInviteEmail(options: OwnerInviteOptions): Promise<EmailMessage> {
+  const logoUrl = new URL(options.portalUrl).origin + "/logo-header.png";
+
   const { html, text } = await renderTemplate("owner-invite", {
     firstName: options.firstName,
     portalUrl: options.portalUrl,
+    logoUrl,
     vehicles: options.vehicles,
   });
 

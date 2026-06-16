@@ -4462,6 +4462,7 @@ html.landing .public-app {
   width: calc(100% + 80px);
   height: calc(100% + 80px);
   object-fit: cover;
+  image-orientation: from-image;
   filter: blur(34px) brightness(0.45) saturate(1.2);
   transform: scale(1.04);
 }
@@ -4473,11 +4474,11 @@ html.landing .public-app {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  image-orientation: from-image;
 }
 
 .ceremony-prepublish-overlay,
-.ceremony-winner-panel,
-.ceremony-operator-counter {
+.ceremony-winner-panel {
   position: absolute;
   z-index: 3;
 }
@@ -4506,6 +4507,10 @@ html.landing .public-app {
 .ceremony-prepublish-overlay div {
   min-width: 0;
   text-align: right;
+}
+
+.ceremony-winner-banner {
+  background: linear-gradient(90deg, rgba(185, 10, 41, 0.9), rgba(12, 14, 18, 0.78));
 }
 
 .ceremony-prepublish-overlay p,
@@ -4595,17 +4600,6 @@ html.landing .public-app {
   border: 1px solid rgba(255, 255, 255, 0.22);
   color: var(--pure-white);
   font-size: clamp(18px, 1.6vw, 26px);
-}
-
-.ceremony-operator-counter {
-  top: 24px;
-  right: 28px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.52);
-  color: rgba(255, 255, 255, 0.78);
-  font-weight: 900;
-  letter-spacing: 0.08em;
 }
 
 .ceremony-missing-photo {

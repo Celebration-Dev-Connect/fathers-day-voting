@@ -26,7 +26,7 @@ function samePhotoSet(first: CeremonyPhotoSlide[], second: CeremonyPhotoSlide[])
 
 function photoSource(photo: PublicPhoto | CeremonyPhotoSlide | null | undefined) {
   if (!photo) return null;
-  return photo.mediumUrl ?? photo.url ?? photo.thumbUrl;
+  return photo.url ?? photo.mediumUrl ?? photo.thumbUrl;
 }
 
 function vehicleName(vehicle: CeremonyWinnerSlide["vehicle"] | CeremonyPhotoSlide["vehicle"]) {
@@ -128,7 +128,7 @@ export function CeremonyView() {
         {error ? <CeremonyNotice title="Ceremony unavailable" message={error} /> : null}
         {!error && !data ? <CeremonyNotice title="Loading ceremony" message="Preparing the broadcast view..." /> : null}
         {!error && data && !data.event.resultsPublished ? (
-          <PrePublishSlide photo={prePublishPhoto} photoCount={photoSlides.length} />
+          <PrePublishSlide photo={prePublishPhoto} />
         ) : null}
         {!error && data?.event.resultsPublished && !currentWinner ? (
           <LogoSlide winnerCount={data.winnerSlides.length} />
@@ -137,8 +137,6 @@ export function CeremonyView() {
           <WinnerSlide
             slide={currentWinner}
             photoIndex={winnerPhotoIndex}
-            winnerIndex={winnerIndex}
-            winnerCount={data?.winnerSlides.length ?? 0}
           />
         ) : null}
       </section>
@@ -156,7 +154,7 @@ function CeremonyNotice({ title, message }: { title: string; message: string }) 
   );
 }
 
-function PrePublishSlide({ photo, photoCount }: { photo: CeremonyPhotoSlide | undefined; photoCount: number }) {
+function PrePublishSlide({ photo }: { photo: CeremonyPhotoSlide | undefined }) {
   const src = photoSource(photo);
   if (!photo || !src) {
     return <CeremonyNotice title="Results coming soon" message="Waiting for approved vehicle photos." />;
@@ -172,7 +170,7 @@ function PrePublishSlide({ photo, photoCount }: { photo: CeremonyPhotoSlide | un
           <h1>{vehicleName(photo.vehicle)}</h1>
           <span>
             Entry #{photo.vehicle.entryNumber.toString().padStart(4, "0")}
-            {photoCount > 1 ? ` / ${photoCount} approved photos` : ""}
+            {photo.vehicle.ownerName ? ` / Owner: ${photo.vehicle.ownerName}` : ""}
           </span>
         </div>
       </div>
@@ -194,13 +192,9 @@ function LogoSlide({ winnerCount }: { winnerCount: number }) {
 function WinnerSlide({
   slide,
   photoIndex,
-  winnerIndex,
-  winnerCount,
 }: {
   slide: CeremonyWinnerSlide;
   photoIndex: number;
-  winnerIndex: number;
-  winnerCount: number;
 }) {
   const photo = slide.vehicle.photos[photoIndex] ?? slide.vehicle.photos[0];
   const src = photoSource(photo);
@@ -212,18 +206,17 @@ function WinnerSlide({
       ) : (
         <div className="ceremony-missing-photo">Photo coming soon</div>
       )}
-      <div className="ceremony-winner-panel">
-        <p>{slide.label}</p>
-        <span>{slide.resultLabel}</span>
-        <h1>{vehicleName(slide.vehicle)}</h1>
-        <div className="ceremony-winner-meta">
-          <strong>Entry #{slide.vehicle.entryNumber.toString().padStart(4, "0")}</strong>
-          {slide.vehicle.ownerName ? <strong>Owner: {slide.vehicle.ownerName}</strong> : null}
-          <strong>{slide.vehicle.category.name}</strong>
+      <div className="ceremony-prepublish-overlay ceremony-winner-banner">
+        <img src={logoHero} alt="Father's Day Car Show" />
+        <div>
+          <p>{slide.label} / {slide.resultLabel}</p>
+          <h1>{vehicleName(slide.vehicle)}</h1>
+          <span>
+            Entry #{slide.vehicle.entryNumber.toString().padStart(4, "0")}
+            {slide.vehicle.ownerName ? ` / Owner: ${slide.vehicle.ownerName}` : ""}
+            {slide.vehicle.category.name ? ` / ${slide.vehicle.category.name}` : ""}
+          </span>
         </div>
-      </div>
-      <div className="ceremony-operator-counter">
-        {winnerIndex + 1} / {winnerCount}
       </div>
     </div>
   );

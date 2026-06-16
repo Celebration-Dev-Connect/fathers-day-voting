@@ -7,6 +7,8 @@ const PRE_PUBLISH_PHOTO_MS = 5_000;
 const HERO_PHOTO_MS = 10_000;
 const SECONDARY_PHOTO_MS = 5_000;
 const REFRESH_MS = 30_000;
+const ceremonyRefreshChannelName = "carshow-ceremony-refresh";
+const ceremonyRefreshStorageKey = "carshow:ceremony-refresh";
 
 function shufflePhotos(photos: CeremonyPhotoSlide[]) {
   const shuffled = [...photos];
@@ -62,6 +64,23 @@ export function CeremonyView() {
     void loadCeremony();
     const refresh = window.setInterval(() => void loadCeremony(), REFRESH_MS);
     return () => window.clearInterval(refresh);
+  }, [loadCeremony]);
+
+  useEffect(() => {
+    const refreshCeremony = () => void loadCeremony();
+    const channel = "BroadcastChannel" in window ? new BroadcastChannel(ceremonyRefreshChannelName) : null;
+    channel?.addEventListener("message", refreshCeremony);
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key === ceremonyRefreshStorageKey) refreshCeremony();
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      channel?.removeEventListener("message", refreshCeremony);
+      channel?.close();
+      window.removeEventListener("storage", handleStorage);
+    };
   }, [loadCeremony]);
 
   useEffect(() => {

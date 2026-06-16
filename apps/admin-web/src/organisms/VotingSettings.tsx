@@ -30,6 +30,9 @@ import { TallyGrid } from "./voting/TallyGrid";
 import { VotingControls } from "./voting/VotingControls";
 import { WinnerDrawer } from "./voting/WinnerDrawer";
 
+const ceremonyRefreshChannelName = "carshow-ceremony-refresh";
+const ceremonyRefreshStorageKey = "carshow:ceremony-refresh";
+
 export function VotingSettings({ staff }: { staff: StaffUser }) {
   const [settings, setSettings] = useState<VotingSettingsType | null>(null);
   const [cutoff, setCutoff] = useState("");
@@ -141,6 +144,7 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
       const result = await publishVotingResults();
       setSettings(result.event);
       await refreshVoting();
+      notifyCeremonyRefresh();
       setMessage(result.event.resultsPublished ? "Results published to the public site." : "Results updated.");
     } catch (publishError) {
       setError(publishError instanceof Error ? publishError.message : "Could not publish results");
@@ -285,6 +289,16 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
       {showJudgingGuide ? <JudgingGuideDrawer onClose={() => setShowJudgingGuide(false)} /> : null}
     </section>
   );
+}
+
+function notifyCeremonyRefresh() {
+  const payload = Date.now().toString();
+  window.localStorage.setItem(ceremonyRefreshStorageKey, payload);
+  if ("BroadcastChannel" in window) {
+    const channel = new BroadcastChannel(ceremonyRefreshChannelName);
+    channel.postMessage({ type: "refresh", payload });
+    channel.close();
+  }
 }
 
 function SpecialAwardsResults({

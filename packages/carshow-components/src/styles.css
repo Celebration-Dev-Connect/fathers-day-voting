@@ -4426,3 +4426,198 @@ html.landing .public-app {
   color: var(--primary);
   font-size: 20px;
 }
+
+.ceremony-page {
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: #000;
+  color: var(--pure-white);
+  cursor: none;
+}
+
+.ceremony-stage {
+  position: relative;
+  width: min(100vw, calc(100dvh * 16 / 9));
+  max-height: 100dvh;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #050509;
+  box-shadow: 0 0 80px rgba(0, 0, 0, 0.8);
+}
+
+.ceremony-photo-slide,
+.ceremony-winner-slide,
+.ceremony-broadcast-image {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.ceremony-broadcast-backdrop {
+  position: absolute;
+  inset: -40px;
+  width: calc(100% + 80px);
+  height: calc(100% + 80px);
+  object-fit: cover;
+  filter: blur(34px) brightness(0.45) saturate(1.2);
+  transform: scale(1.04);
+}
+
+.ceremony-broadcast-foreground {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ceremony-prepublish-overlay,
+.ceremony-winner-panel,
+.ceremony-operator-counter {
+  position: absolute;
+  z-index: 3;
+}
+
+.ceremony-prepublish-overlay {
+  left: 56px;
+  right: 56px;
+  bottom: 44px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 36px;
+  padding: 26px 30px;
+  background: linear-gradient(90deg, rgba(185, 10, 41, 0.88), rgba(12, 14, 18, 0.72));
+  border-left: 8px solid var(--pure-white);
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.55);
+}
+
+.ceremony-prepublish-overlay img {
+  width: 180px;
+  height: auto;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 5px 18px rgba(0, 0, 0, 0.5));
+}
+
+.ceremony-prepublish-overlay div {
+  min-width: 0;
+  text-align: right;
+}
+
+.ceremony-prepublish-overlay p,
+.ceremony-winner-panel p,
+.ceremony-logo-slide p,
+.ceremony-notice p {
+  margin: 0 0 8px;
+  color: #ffd8df;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.ceremony-prepublish-overlay h1,
+.ceremony-winner-panel h1,
+.ceremony-logo-slide h1,
+.ceremony-notice h1 {
+  margin: 0;
+  color: var(--pure-white);
+  font-size: clamp(42px, 5.3vw, 88px);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.ceremony-prepublish-overlay span,
+.ceremony-logo-slide span,
+.ceremony-winner-panel span {
+  display: block;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(18px, 1.8vw, 28px);
+  font-weight: 800;
+}
+
+.ceremony-logo-slide,
+.ceremony-notice {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 80px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(185, 10, 41, 0.28), transparent 34%),
+    linear-gradient(135deg, #07080b, #171b22 55%, #08090c);
+  text-align: center;
+}
+
+.ceremony-logo-slide img,
+.ceremony-notice img {
+  width: min(440px, 38vw);
+  height: auto;
+  margin: 0 auto 26px;
+  filter: drop-shadow(0 8px 28px rgba(0, 0, 0, 0.6));
+}
+
+.ceremony-logo-slide > *,
+.ceremony-notice > * {
+  grid-column: 1;
+}
+
+.ceremony-winner-panel {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 44px 60px 50px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.9) 34%, rgba(185, 10, 41, 0.9));
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.8);
+}
+
+.ceremony-winner-panel p {
+  color: #ffd8df;
+}
+
+.ceremony-winner-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.ceremony-winner-meta strong {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--pure-white);
+  font-size: clamp(18px, 1.6vw, 26px);
+}
+
+.ceremony-operator-counter {
+  top: 24px;
+  right: 28px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.52);
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.ceremony-missing-photo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at center, rgba(185, 10, 41, 0.18), transparent 36%),
+    #08090c;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(36px, 5vw, 76px);
+  font-weight: 950;
+  text-transform: uppercase;
+}

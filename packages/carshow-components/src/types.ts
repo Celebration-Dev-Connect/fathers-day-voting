@@ -329,3 +329,43 @@ export type PublishedVehiclePlacement = {
   label: string;
   rank: number;
 };
+
+export type CeremonyEvent = {
+  peopleChoiceCutoff: string | null;
+  resultsPublished: boolean;
+  resultsPublishedAt?: string | null;
+};
+
+export type CeremonyPhotoSlide = {
+  id: string;
+  url: string;
+  mediumUrl: string | null;
+  thumbUrl: string | null;
+  altText: string | null;
+  vehicle: {
+    id: string;
+    entryNumber: number;
+    year: number;
+    make: string;
+    model: string;
+    ownerName: string | null;
+    category: PublicCategory;
+  };
+};
+
+export type CeremonyWinnerSlide = {
+  id: string;
+  kind: "CATEGORY" | "SPECIAL_AWARD";
+  label: string;
+  resultLabel: string;
+  rank: number;
+  votes?: number;
+  judgePoints?: number;
+  vehicle: PublicVehicle;
+};
+
+export type CeremonyData = {
+  event: CeremonyEvent;
+  photoSlides: CeremonyPhotoSlide[];
+  winnerSlides: CeremonyWinnerSlide[];
+};

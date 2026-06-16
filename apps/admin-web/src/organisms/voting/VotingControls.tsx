@@ -1,4 +1,4 @@
-import { CalendarClock, Gavel, Save, Send, EyeOff, Trophy } from "lucide-react";
+import { CalendarClock, Gavel, MonitorPlay, Save, Send, EyeOff, Trophy } from "lucide-react";
 import {
   Button,
   formatDateTime,
@@ -21,7 +21,9 @@ export function VotingControls({
   onSave,
   onPublish,
   onUnpublish,
+  onOpenCeremony,
   publishDisabledReason,
+  ceremonyDisabledReason,
 }: {
   settings: VotingSettingsType | null;
   cutoff: string;
@@ -32,7 +34,9 @@ export function VotingControls({
   onSave: () => void;
   onPublish: () => void;
   onUnpublish: () => void;
+  onOpenCeremony: () => void;
   publishDisabledReason: string;
+  ceremonyDisabledReason: string;
 }) {
   return (
     <div className="voting-settings">
@@ -96,6 +100,14 @@ export function VotingControls({
       </Button>
       <Button
         variant="secondary"
+        onClick={onOpenCeremony}
+        disabled={!canManage || saving || !settings || Boolean(ceremonyDisabledReason)}
+      >
+        <MonitorPlay size={20} />
+        Open Ceremony Page
+      </Button>
+      <Button
+        variant="secondary"
         onClick={onPublish}
         disabled={!canManage || saving || !settings || Boolean(publishDisabledReason)}
       >
@@ -112,6 +124,7 @@ export function VotingControls({
           Unpublish Results
         </Button>
       ) : null}
+      {canManage && ceremonyDisabledReason ? <span className="muted-copy">{ceremonyDisabledReason}</span> : null}
       {canManage && publishDisabledReason ? <span className="muted-copy">{publishDisabledReason}</span> : null}
     </div>
   );

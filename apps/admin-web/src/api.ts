@@ -2,6 +2,7 @@ import type {
   AuditLog,
   Category,
   CategoryVotingTally,
+  CeremonyData,
   DashboardMetrics,
   JudgeCategoryCompletion,
   PhotoModerationStatus,
@@ -313,6 +314,10 @@ export async function initializeEvent() {
 
 export async function getVotingSettings() {
   return request<{ event: VotingSettings }>("/voting/settings");
+}
+
+export async function getCeremonyData() {
+  return request<CeremonyData>("/voting/ceremony");
 }
 
 export async function updateVotingSettings(

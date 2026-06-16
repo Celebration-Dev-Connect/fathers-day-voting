@@ -22,6 +22,90 @@ const eventControlsSelect = {
   peopleChoiceCutoff: true,
 };
 
+type CeremonyPublishedPhoto = {
+  id: string;
+  url: string | null;
+  mediumUrl: string | null;
+  thumbUrl: string | null;
+  altText: string | null;
+  sortOrder: number;
+  isPrimary?: boolean;
+};
+
+type CeremonyPublishedVehicle = {
+  id: string;
+  entryNumber: number;
+  year: number;
+  make: string;
+  model: string;
+  nickname: string | null;
+  exteriorColor: string | null;
+  buildStory: string | null;
+  category: { id: string; name: string; slug: string };
+  ownerName: string | null;
+  primaryPhotoId?: string | null;
+  photos: CeremonyPublishedPhoto[];
+};
+
+type CeremonyPublishedEntry = {
+  rank: number;
+  vehicle: CeremonyPublishedVehicle;
+  votes?: number;
+  judgePoints?: number;
+};
+
+type CeremonyPublishedSnapshot = {
+  judgesVotingEnabled: boolean;
+  categories?: Array<{
+    category: { id: string; name: string; slug: string };
+    official?: CeremonyPublishedEntry[];
+    peopleChoice?: CeremonyPublishedEntry[];
+  }>;
+  specialAwards?: Array<{
+    specialAward: { id: string; name: string; description: string | null };
+    results?: CeremonyPublishedEntry[];
+  }>;
+};
+
+export function publishedSnapshot(value: unknown): CeremonyPublishedSnapshot | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as CeremonyPublishedSnapshot;
+}
+
+export function winnerSlidesFromSnapshot(snapshot: CeremonyPublishedSnapshot | null) {
+  if (!snapshot) return [];
+  return [
+    ...(snapshot.categories ?? []).flatMap((category) => {
+      const entry = (snapshot.judgesVotingEnabled ? category.official?.[0] : null) ?? category.peopleChoice?.[0];
+      if (!entry) return [];
+      return [{
+        id: `category-${category.category.id}`,
+        kind: "CATEGORY" as const,
+        label: category.category.name,
+        resultLabel: snapshot.judgesVotingEnabled ? "Category Winner" : "People's Choice Winner",
+        rank: entry.rank,
+        votes: entry.votes,
+        judgePoints: entry.judgePoints,
+        vehicle: entry.vehicle,
+      }];
+    }),
+    ...(snapshot.specialAwards ?? []).flatMap((award) => {
+      const entry = award.results?.[0];
+      if (!entry) return [];
+      return [{
+        id: `special-award-${award.specialAward.id}`,
+        kind: "SPECIAL_AWARD" as const,
+        label: award.specialAward.name,
+        resultLabel: "Special Award Winner",
+        rank: entry.rank,
+        votes: entry.votes,
+        judgePoints: entry.judgePoints,
+        vehicle: entry.vehicle,
+      }];
+    }),
+  ];
+}
+
 export async function registerVotingRoutes(app: FastifyInstance) {
   app.post("/voting/initialize-event", async (request) => {
     await requireAdmin(app, request);
@@ -51,6 +135,89 @@ export async function registerVotingRoutes(app: FastifyInstance) {
 
     if (!event) throw app.httpErrors.notFound("Event not found");
     return { event };
+  });
+
+  app.get("/voting/ceremony", async (request) => {
+    await requireAdmin(app, request);
+
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        peopleChoiceCutoff: true,
+        resultsPublished: true,
+        resultsPublishedAt: true,
+        resultsSnapshot: true,
+      },
+    });
+
+    if (!event) throw app.httpErrors.notFound("Event not found");
+
+    const photos = await prisma.vehiclePhoto.findMany({
+      where: {
+        moderationStatus: "APPROVED",
+        vehicleEntry: {
+          eventId,
+          status: VehicleStatus.CHECKED_IN,
+        },
+      },
+      include: {
+        vehicleEntry: {
+          include: {
+            owner: true,
+            category: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: "asc" }],
+    });
+
+    const photoSlides = photos
+      .sort((first, second) => {
+        if (first.vehicleEntry.entryNumber !== second.vehicleEntry.entryNumber) {
+          return first.vehicleEntry.entryNumber - second.vehicleEntry.entryNumber;
+        }
+        if (first.sortOrder !== second.sortOrder) return first.sortOrder - second.sortOrder;
+        return first.createdAt.getTime() - second.createdAt.getTime();
+      })
+      .flatMap((photo) => {
+        const url = photo.webUrl ?? photo.url ?? photo.mediumUrl ?? photo.thumbUrl;
+        if (!url) return [];
+        const vehicle = photo.vehicleEntry;
+        return [{
+          id: photo.id,
+          url,
+          mediumUrl: photo.mediumUrl,
+          thumbUrl: photo.thumbUrl,
+          altText: photo.altText,
+          vehicle: {
+            id: vehicle.id,
+            entryNumber: vehicle.entryNumber,
+            year: vehicle.year,
+            make: vehicle.make,
+            model: vehicle.model,
+            ownerName: vehicle.owner.publicNameOptIn
+              ? vehicle.owner.publicName || `${vehicle.owner.firstName} ${vehicle.owner.lastName}`
+              : null,
+            category: {
+              id: vehicle.category.id,
+              name: vehicle.category.name,
+              slug: vehicle.category.slug,
+            },
+          },
+        }];
+      });
+
+    return {
+      event: {
+        peopleChoiceCutoff: event.peopleChoiceCutoff,
+        resultsPublished: event.resultsPublished && event.resultsSnapshot !== null,
+        resultsPublishedAt: event.resultsPublishedAt,
+      },
+      photoSlides,
+      winnerSlides: event.resultsPublished
+        ? winnerSlidesFromSnapshot(publishedSnapshot(event.resultsSnapshot))
+        : [],
+    };
   });
 
   app.patch("/voting/settings", async (request) => {

@@ -173,6 +173,17 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
         ? "Close judging before publishing results."
         : "";
 
+  const ceremonyDisabledReason = !settings?.peopleChoiceCutoff
+    ? "Set a voting cutoff before opening the ceremony page."
+    : now < new Date(settings.peopleChoiceCutoff).getTime()
+      ? "Ceremony page opens after the voting cutoff."
+      : "";
+
+  function openCeremonyPage() {
+    const basePath = window.location.pathname.startsWith("/admin") ? "/admin" : "";
+    window.open(`${window.location.origin}${basePath}/ceremony`, "_blank", "noopener,noreferrer");
+  }
+
   async function saveManualWinners(
     tally: CategoryVotingTally,
     winners: Array<{ vehicleEntryId: string; rank: number }>,
@@ -241,7 +252,9 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
         onSave={saveSettings}
         onPublish={publishResults}
         onUnpublish={unpublishResults}
+        onOpenCeremony={openCeremonyPage}
         publishDisabledReason={publishDisabledReason}
+        ceremonyDisabledReason={ceremonyDisabledReason}
       />
 
       {!loading && settings?.judgesVotingEnabled ? <JudgeCompletionPanel categories={judgeCompletion} /> : null}

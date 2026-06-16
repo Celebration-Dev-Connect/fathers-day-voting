@@ -32,6 +32,9 @@ const VotingView = lazy(() =>
 const HelpView = lazy(() =>
   import("./views/HelpView").then(({ HelpView }) => ({ default: HelpView })),
 );
+const CeremonyView = lazy(() =>
+  import("./views/CeremonyView").then(({ CeremonyView }) => ({ default: CeremonyView })),
+);
 
 export type View = "dashboard" | "registrations" | "qr-cards" | "categories" | "photo-review" | "voting" | "help";
 
@@ -72,6 +75,14 @@ export function App() {
         error={loginError}
         planningCenterUrl={`${API_URL}/auth/planning-center/start?app=admin`}
       />
+    );
+  }
+
+  if (window.location.pathname.replace(/\/$/, "").endsWith("/ceremony")) {
+    return (
+      <Suspense fallback={<div className="boot">Loading ceremony...</div>}>
+        <CeremonyView />
+      </Suspense>
     );
   }
 

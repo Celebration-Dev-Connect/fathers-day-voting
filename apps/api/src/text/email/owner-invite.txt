@@ -3,16 +3,19 @@ Celebration Church — Sunday, June 21 — 7215 Argyll Road, Edmonton, AB
 
 Hey {{firstName}},
 
-You're registered for the Father's Day Car Show! Before show day, use
-the Owner Portal below to upload photos, write your build story, and
-set up your profile — this is what attendees will see when they scan
-your QR card and vote for your vehicle.
+You're registered for the Father's Day Car Show! Use the Owner Portal
+below to upload photos, share your build story, and complete your
+profile. This information will be displayed to attendees when they scan
+your vehicle's QR code and cast their vote.
 
-⚠️  IMPORTANT — ACTION REQUIRED ON SHOW DAY
-Even though you're pre-registered, you must stop by the lobby when you
-arrive to finalize your registration and pick up your QR Code card for
-your vehicle. The QR card is how attendees find and vote for your car —
-don't skip this step!
+⚠️  IMPORTANT — CHECK-IN IS REQUIRED ON SHOW DAY
+Pre-registration does not complete your event check-in. When you
+arrive, you must stop by the lobby to finalize your registration and
+pick up your vehicle's QR Code card. Vehicles that do not check in and
+receive their QR Code card will not be eligible for attendee voting.
+Your QR Code card is required for attendees to view your vehicle
+profile and submit votes, so please make the lobby your first stop
+upon arrival!
 
 YOUR VEHICLE(S)
 ───────────────────────────────────────────────────────────

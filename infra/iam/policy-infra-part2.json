@@ -64,6 +64,7 @@
         "cloudfront:GetCachePolicy",
         "cloudfront:GetDistribution",
         "cloudfront:GetDistributionConfig",
+        "cloudfront:DescribeFunction",
         "cloudfront:GetFunction",
         "cloudfront:GetOriginAccessControl",
         "cloudfront:GetOriginRequestPolicy",

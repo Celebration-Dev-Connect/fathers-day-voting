@@ -285,14 +285,15 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Behavior 4 (priority 4): /api/public/entries/* → cached 30s
-  # Vehicle detail page — called on every QR scan and browse click. Static
-  # public data (no per-user fields), safe to cache at the edge.
+  # Behavior 4 (priority 4): /api/public/entries/* → cached 30s for GET/HEAD
+  # Vehicle detail page — called on every QR scan and browse click. This pattern
+  # also matches nested vote endpoints (/vote and /special-awards/*/vote), so all
+  # HTTP methods must be allowed while only GET/HEAD are cached at the edge.
   ordered_cache_behavior {
     path_pattern             = "/api/public/entries/*"
     target_origin_id         = "api"
     viewer_protocol_policy   = "redirect-to-https"
-    allowed_methods          = ["GET", "HEAD"]
+    allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods           = ["GET", "HEAD"]
     cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id

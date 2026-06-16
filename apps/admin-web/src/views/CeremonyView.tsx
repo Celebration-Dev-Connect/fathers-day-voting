@@ -32,7 +32,8 @@ function photoSource(photo: PublicPhoto | CeremonyPhotoSlide | null | undefined)
 }
 
 function vehicleName(vehicle: CeremonyWinnerSlide["vehicle"] | CeremonyPhotoSlide["vehicle"]) {
-  return `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
+  const model = vehicle.model.trim().split(/\s+/)[0] ?? vehicle.model;
+  return `${vehicle.year} ${vehicle.make} ${model}`;
 }
 
 export function CeremonyView() {

@@ -1,4 +1,4 @@
-import { VehicleStatus, prisma } from "@carshow/db";
+import { Prisma, VehicleStatus, prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAdmin, requireStaff } from "../auth.js";
@@ -207,14 +207,15 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         }];
       });
 
+    const resultsPublished = event.resultsPublished && event.resultsSnapshot !== null;
     return {
       event: {
         peopleChoiceCutoff: event.peopleChoiceCutoff,
-        resultsPublished: event.resultsPublished && event.resultsSnapshot !== null,
-        resultsPublishedAt: event.resultsPublishedAt,
+        resultsPublished,
+        resultsPublishedAt: resultsPublished ? event.resultsPublishedAt : null,
       },
       photoSlides,
-      winnerSlides: event.resultsPublished
+      winnerSlides: resultsPublished
         ? winnerSlidesFromSnapshot(publishedSnapshot(event.resultsSnapshot))
         : [],
     };
@@ -291,7 +292,12 @@ export async function registerVotingRoutes(app: FastifyInstance) {
     await requireAdmin(app, request);
     const updated = await prisma.event.update({
       where: { id: eventId },
-      data: { resultsPublished: false },
+      data: {
+        resultsPublished: false,
+        resultsPublishedAt: null,
+        resultsPublishedById: null,
+        resultsSnapshot: Prisma.DbNull,
+      },
       select: eventControlsSelect,
     });
     return { event: updated };

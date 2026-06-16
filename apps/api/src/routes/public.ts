@@ -77,6 +77,7 @@ export async function registerPublicRoutes(app: FastifyInstance) {
       }),
     ]);
 
+    const resultsPublished = event.resultsPublished && event.resultsSnapshot !== null;
     return {
       event: {
         name: event.name,
@@ -84,8 +85,8 @@ export async function registerPublicRoutes(app: FastifyInstance) {
         venueName: event.venueName,
         votingOpen: event.votingOpen,
         peopleChoiceCutoff: event.peopleChoiceCutoff,
-        resultsPublished: event.resultsPublished && event.resultsSnapshot !== null,
-        resultsPublishedAt: event.resultsPublishedAt,
+        resultsPublished,
+        resultsPublishedAt: resultsPublished ? event.resultsPublishedAt : null,
       },
       categories,
       specialAwards,

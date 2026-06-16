@@ -82,6 +82,7 @@ export function RegistrationEditor({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
   const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [downloadingPhotos, setDownloadingPhotos] = useState(false);
@@ -261,6 +262,21 @@ export function RegistrationEditor({
     }
   }
 
+  async function resendEmail() {
+    if (!registration) return;
+    setResendingEmail(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await sendOwnerInviteEmail(registration.id, true);
+      setMessage(result.sent ? "Access code email resent." : (result.reason ?? "Email not sent."));
+    } catch (emailError) {
+      setError(emailError instanceof Error ? emailError.message : "Could not resend email");
+    } finally {
+      setResendingEmail(false);
+    }
+  }
+
   return (
     <form className="editor-panel" onSubmit={save}>
       <div className="editor-header">
@@ -273,15 +289,27 @@ export function RegistrationEditor({
             Cancel
           </Button>
           {registration?.owner.email ? (
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={sendingEmail || Boolean(registration.owner.ownerInviteSentAt)}
-              onClick={() => void sendEmail()}
-            >
-              {sendingEmail ? <Loader2 size={20} className="spin" /> : <Mail size={20} />}
-              {sendingEmail ? "Sending..." : registration.owner.ownerInviteSentAt ? "Email Sent" : "Send Access Code"}
-            </Button>
+            registration.owner.ownerInviteSentAt ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={resendingEmail}
+                onClick={() => void resendEmail()}
+              >
+                {resendingEmail ? <Loader2 size={20} className="spin" /> : <Mail size={20} />}
+                {resendingEmail ? "Sending..." : "Resend Email"}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={sendingEmail}
+                onClick={() => void sendEmail()}
+              >
+                {sendingEmail ? <Loader2 size={20} className="spin" /> : <Mail size={20} />}
+                {sendingEmail ? "Sending..." : "Send Access Code"}
+              </Button>
+            )
           ) : null}
           <Button type="submit" disabled={saving}>
             <Save size={20} />

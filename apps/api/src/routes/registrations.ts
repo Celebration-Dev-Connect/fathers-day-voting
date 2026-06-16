@@ -1663,6 +1663,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
   app.post("/registrations/:id/send-owner-invite", async (request) => {
     await requireAdmin(app, request);
     const params = z.object({ id: z.string() }).parse(request.params);
+    const query = z.object({ force: z.coerce.boolean().optional() }).parse(request.query);
 
     const vehicle = await prisma.vehicleEntry.findFirst({
       where: { id: params.id, eventId },
@@ -1672,7 +1673,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
     if (!vehicle.owner.email) {
       return { sent: false, reason: "Owner has no email address on file" };
     }
-    if (vehicle.owner.ownerInviteSentAt) {
+    if (vehicle.owner.ownerInviteSentAt && !query.force) {
       return {
         sent: false,
         reason: `Already sent on ${vehicle.owner.ownerInviteSentAt.toISOString()}`,

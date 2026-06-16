@@ -390,11 +390,9 @@ export async function updatePhotoReviewStatus(id: string, status: Extract<PhotoM
   });
 }
 
-export async function sendOwnerInviteEmail(id: string) {
-  return request<{ sent: boolean; reason?: string; sentAt?: string }>(
-    `/registrations/${encodeURIComponent(id)}/send-owner-invite`,
-    { method: "POST" },
-  );
+export async function sendOwnerInviteEmail(id: string, force = false) {
+  const url = `/registrations/${encodeURIComponent(id)}/send-owner-invite${force ? "?force=true" : ""}`;
+  return request<{ sent: boolean; reason?: string; sentAt?: string }>(url, { method: "POST" });
 }
 
 export async function sendBulkOwnerInviteEmails(vehicleEntryIds?: string[]) {

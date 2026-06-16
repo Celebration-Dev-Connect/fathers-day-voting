@@ -5,17 +5,14 @@ Hey {{firstName}},
 
 You're registered for the Father's Day Car Show! Use the Owner Portal
 below to upload photos, share your build story, and complete your
-profile. This information will be displayed to attendees when they scan
-your vehicle's QR code and cast their vote.
+profile — attendees will see it when they scan your QR code to vote.
 
-⚠️  IMPORTANT — CHECK-IN IS REQUIRED ON SHOW DAY
-Pre-registration does not complete your event check-in. When you
-arrive, you must stop by the lobby to finalize your registration and
-pick up your vehicle's QR Code card. Vehicles that do not check in and
-receive their QR Code card will not be eligible for attendee voting.
-Your QR Code card is required for attendees to view your vehicle
-profile and submit votes, so please make the lobby your first stop
-upon arrival!
+SHOW DAY REMINDERS
+🏁  Check in at the lobby first — pick up your QR Code card before
+    heading to your spot. Without it, your vehicle won't be eligible
+    for voting.
+🚗  Vehicles must remain parked until 3:30 PM — please don't move
+    your car before the show closes.
 
 YOUR VEHICLE(S)
 ───────────────────────────────────────────────────────────
@@ -37,9 +34,8 @@ Set up your car page before show day:
   • Choose how your name appears publicly
   • Attendees scan your QR card to view your page and vote
 
-Your 5-digit access code is unique to your vehicle entry. Keep it
-somewhere safe — you'll need it each time you log in. If you have any
-trouble, find a team member at the registration desk on show day.
+Your 5-digit code is unique to your entry — keep it safe, you'll need
+it to log in. Questions? Find us at the registration desk on show day.
 
 ───────────────────────────────────────────────────────────
 Father's Day Car Show 2026 · Celebration Church

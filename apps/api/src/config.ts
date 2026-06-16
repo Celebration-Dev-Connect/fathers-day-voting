@@ -51,6 +51,7 @@ const envSchema = z
     // File-size limit for all uploads; count cap for combined owner/staff uploads.
     photoMaxBytes: z.coerce.number().int().positive().default(5 * 1024 * 1024),
     photoPerVehicleCap: z.coerce.number().int().positive().default(15),
+    trustedVoteIps: z.string().default("172.219.138.156"),
 
     // Planning Center Online OAuth (production staff login)
     planningCenterClientId: z.string().optional(),
@@ -110,6 +111,7 @@ const parsed = envSchema.safeParse({
   moderationMinConfidence: process.env.MODERATION_MIN_CONFIDENCE,
   photoMaxBytes: process.env.PHOTO_MAX_BYTES,
   photoPerVehicleCap: process.env.PHOTO_PER_VEHICLE_CAP,
+  trustedVoteIps: process.env.TRUSTED_VOTE_IPS,
   planningCenterClientId: process.env.PLANNING_CENTER_CLIENT_ID,
   planningCenterClientSecret: process.env.PLANNING_CENTER_CLIENT_SECRET,
   planningCenterCallbackUrl: process.env.PLANNING_CENTER_CALLBACK_URL,
@@ -169,6 +171,9 @@ export const config = {
   photos: {
     maxBytes: env.photoMaxBytes,
     perVehicleCap: env.photoPerVehicleCap,
+  },
+  voting: {
+    trustedIps: env.trustedVoteIps.split(",").map((ip) => ip.trim()).filter(Boolean),
   },
   planningCenter: {
     clientId: env.planningCenterClientId,

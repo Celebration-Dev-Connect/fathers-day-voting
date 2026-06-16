@@ -20,6 +20,7 @@ import {
   publishVotingResults,
   unpublishVotingResults,
   updateCategoryWinners,
+  type VoteReviewContext,
   updateVotingSettings,
 } from "../api";
 import { EventStatusBanner } from "./voting/EventStatusBanner";
@@ -33,7 +34,13 @@ import { WinnerDrawer } from "./voting/WinnerDrawer";
 const ceremonyRefreshChannelName = "carshow-ceremony-refresh";
 const ceremonyRefreshStorageKey = "carshow:ceremony-refresh";
 
-export function VotingSettings({ staff }: { staff: StaffUser }) {
+export function VotingSettings({
+  staff,
+  onOpenRegistration,
+}: {
+  staff: StaffUser;
+  onOpenRegistration: (registration: Registration) => void;
+}) {
   const [settings, setSettings] = useState<VotingSettingsType | null>(null);
   const [cutoff, setCutoff] = useState("");
   const [tallies, setTallies] = useState<CategoryVotingTally[]>([]);
@@ -44,7 +51,10 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [eventMissing, setEventMissing] = useState(false);
-  const [selectedWinner, setSelectedWinner] = useState<Registration | null>(null);
+  const [selectedWinner, setSelectedWinner] = useState<{
+    registration: Registration;
+    context: VoteReviewContext;
+  } | null>(null);
   const [manualCategory, setManualCategory] = useState<CategoryVotingTally | null>(null);
   const [showJudgingGuide, setShowJudgingGuide] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -208,6 +218,10 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
     }
   }
 
+  function selectWinner(registration: Registration, context: VoteReviewContext) {
+    setSelectedWinner({ registration, context });
+  }
+
   return (
     <section>
       <div className="page-header">
@@ -265,19 +279,31 @@ export function VotingSettings({ staff }: { staff: StaffUser }) {
 
       {loading ? <div className="empty-state">Loading voting tallies...</div> : null}
       {!loading ? (
-        <SpecialAwardsResults specialAwards={specialAwards} onSelectWinner={setSelectedWinner} />
+        <SpecialAwardsResults specialAwards={specialAwards} onSelectWinner={selectWinner} />
       ) : null}
       {!loading ? (
         <TallyGrid
           tallies={tallies}
           judgesVotingEnabled={settings?.judgesVotingEnabled ?? true}
           canManage={canManage}
-          onSelectWinner={setSelectedWinner}
+          onSelectWinner={selectWinner}
           onFinalizeWinners={setManualCategory}
         />
       ) : null}
 
-      {selectedWinner ? <WinnerDrawer registration={selectedWinner} onClose={() => setSelectedWinner(null)} /> : null}
+      {selectedWinner ? (
+        <WinnerDrawer
+          registration={selectedWinner.registration}
+          context={selectedWinner.context}
+          canManage={canManage}
+          onOpenRegistration={() => {
+            onOpenRegistration(selectedWinner.registration);
+            setSelectedWinner(null);
+          }}
+          onVotesChanged={refreshVoting}
+          onClose={() => setSelectedWinner(null)}
+        />
+      ) : null}
       {manualCategory ? (
         <ManualWinnersDrawer
           tally={manualCategory}
@@ -306,7 +332,7 @@ function SpecialAwardsResults({
   onSelectWinner,
 }: {
   specialAwards: SpecialAwardVotingTally[];
-  onSelectWinner: (registration: Registration) => void;
+  onSelectWinner: (registration: Registration, context: VoteReviewContext) => void;
 }) {
   if (!specialAwards.length) return null;
 
@@ -337,7 +363,11 @@ function SpecialAwardsResults({
                     type="button"
                     className="rank-row winner-row"
                     key={item.registration.id}
-                    onClick={() => onSelectWinner(item.registration)}
+                    onClick={() => onSelectWinner(item.registration, {
+                      kind: "special-award",
+                      label: award.specialAward.name,
+                      specialAwardId: award.specialAward.id,
+                    })}
                   >
                     <span className="rank-badge">{item.rank}</span>
                     <div>

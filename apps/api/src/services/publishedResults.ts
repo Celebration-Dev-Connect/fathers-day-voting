@@ -61,6 +61,7 @@ export async function buildPublishedResultsSnapshot(publishedByName: string) {
         by: ["vehicleEntryId"],
         where: {
           eventId,
+          excludedAt: null,
           createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
         },
         _count: { _all: true },
@@ -90,6 +91,7 @@ export async function buildPublishedResultsSnapshot(publishedByName: string) {
         by: ["specialAwardId", "vehicleEntryId"],
         where: {
           eventId,
+          excludedAt: null,
           createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
         },
         _count: { _all: true },

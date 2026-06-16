@@ -358,6 +358,59 @@ export async function getVotingTallies() {
   }>("/voting/tallies");
 }
 
+export type VoteReviewContext = {
+  kind: "people-choice" | "special-award" | "judge";
+  label: string;
+  categoryId?: string;
+  specialAwardId?: string;
+};
+
+export type VoteReviewVote = {
+  id: string;
+  kind: "PEOPLE_CHOICE" | "SPECIAL_AWARD";
+  label: string;
+  voterKey: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  trustedIp: boolean;
+  createdAt: string;
+  excludedAt: string | null;
+  excludedReason: string | null;
+  excludedBy: string | null;
+  flags: string[];
+  flagDetails: Array<{ flag: string; detail: string; ballots?: string[] }>;
+};
+
+export type VoteReview = {
+  vehicleEntryId: string;
+  context: { categoryId: string | null; specialAwardId: string | null };
+  resultsPublished: boolean;
+  summary: { total: number; included: number; excluded: number; flagged: number };
+  votes: VoteReviewVote[];
+};
+
+export async function getVehicleVoteReview(vehicleEntryId: string, context: VoteReviewContext) {
+  const params = new URLSearchParams();
+  if (context.categoryId) params.set("categoryId", context.categoryId);
+  if (context.specialAwardId) params.set("specialAwardId", context.specialAwardId);
+  const query = params.toString();
+  return request<VoteReview>(
+    `/voting/vehicles/${encodeURIComponent(vehicleEntryId)}/vote-review${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function updateVoteExclusion(
+  kind: "PEOPLE_CHOICE" | "SPECIAL_AWARD",
+  id: string,
+  excluded: boolean,
+  reason?: string,
+) {
+  return request<{ ok: true }>(`/voting/votes/${kind === "PEOPLE_CHOICE" ? "people-choice" : "special-award"}/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ excluded, reason }),
+  });
+}
+
 export async function getJudgeCompletion() {
   return request<{ categories: JudgeCategoryCompletion[] }>("/voting/judge-completion");
 }

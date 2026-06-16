@@ -1,5 +1,6 @@
 import { ClipboardList, Clock, Trophy } from "lucide-react";
 import { Button, vehicleName, type CategoryVotingTally, type Registration } from "@carshow/carshow-components";
+import type { VoteReviewContext } from "../../api";
 
 export function TallyGrid({
   tallies,
@@ -11,7 +12,7 @@ export function TallyGrid({
   tallies: CategoryVotingTally[];
   judgesVotingEnabled: boolean;
   canManage: boolean;
-  onSelectWinner: (registration: Registration) => void;
+  onSelectWinner: (registration: Registration, context: VoteReviewContext) => void;
   onFinalizeWinners: (tally: CategoryVotingTally) => void;
 }) {
   return (
@@ -50,7 +51,7 @@ function PeopleChoiceSection({
   onSelectWinner,
 }: {
   tally: CategoryVotingTally;
-  onSelectWinner: (registration: Registration) => void;
+  onSelectWinner: (registration: Registration, context: VoteReviewContext) => void;
 }) {
   return (
     <section className="tally-section">
@@ -65,7 +66,11 @@ function PeopleChoiceSection({
               type="button"
               className="rank-row winner-row"
               key={item.registration.id}
-              onClick={() => onSelectWinner(item.registration)}
+              onClick={() => onSelectWinner(item.registration, {
+                kind: "people-choice",
+                label: `${tally.category.name} People's Choice`,
+                categoryId: tally.category.id,
+              })}
             >
               <span className="rank-badge">{index + 1}</span>
               <div>
@@ -92,7 +97,7 @@ function JudgeTop3Section({
 }: {
   tally: CategoryVotingTally;
   canManage: boolean;
-  onSelectWinner: (registration: Registration) => void;
+  onSelectWinner: (registration: Registration, context: VoteReviewContext) => void;
   onFinalizeWinners: (tally: CategoryVotingTally) => void;
 }) {
   return (
@@ -113,7 +118,11 @@ function JudgeTop3Section({
               type="button"
               className="rank-row winner-row"
               key={pick.registration.id}
-              onClick={() => onSelectWinner(pick.registration)}
+              onClick={() => onSelectWinner(pick.registration, {
+                kind: "judge",
+                label: `${tally.category.name} Judge Winner`,
+                categoryId: tally.category.id,
+              })}
             >
               <span className="rank-badge">{pick.rank}</span>
               <div>
@@ -138,7 +147,7 @@ function JudgingRankingSection({
   onSelectWinner,
 }: {
   tally: CategoryVotingTally;
-  onSelectWinner: (registration: Registration) => void;
+  onSelectWinner: (registration: Registration, context: VoteReviewContext) => void;
 }) {
   if (!tally.judgeRanking.length) return null;
 
@@ -154,7 +163,11 @@ function JudgingRankingSection({
             type="button"
             className="ranking-row winner-row"
             key={`ranking-${pick.registration.id}`}
-            onClick={() => onSelectWinner(pick.registration)}
+            onClick={() => onSelectWinner(pick.registration, {
+              kind: "judge",
+              label: `${tally.category.name} Judging Ranking`,
+              categoryId: tally.category.id,
+            })}
           >
             <span>{pick.rank}</span>
             <strong>{vehicleName(pick.registration)}</strong>

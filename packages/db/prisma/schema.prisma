@@ -97,6 +97,8 @@ model StaffUser {
   auditLogs              QrAssignmentAuditLog[]   @relation("QrAuditStaff")
   winnerOverrides        CategoryWinnerOverride[]
   registrationImportJobs RegistrationImportJob[]
+  excludedPeopleChoiceVotes PeopleChoiceVote[]     @relation("PeopleChoiceVoteExcludedBy")
+  excludedSpecialAwardVotes SpecialAwardVote[]     @relation("SpecialAwardVoteExcludedBy")
 }
 
 model Category {
@@ -264,19 +266,28 @@ model RegistrationImportItem {
 }
 
 model PeopleChoiceVote {
-  id             String       @id @default(cuid())
-  eventId        String
-  vehicleEntryId String
-  categoryId     String
-  voterKey       String?
-  createdAt      DateTime     @default(now())
-  event          Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
-  category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  id                String       @id @default(cuid())
+  eventId           String
+  vehicleEntryId    String
+  categoryId        String
+  voterKey          String?
+  ipAddress         String?
+  userAgent         String?
+  excludedAt        DateTime?
+  excludedReason    String?
+  excludedByStaffId String?
+  createdAt         DateTime     @default(now())
+  event             Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vehicleEntry      VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  category          Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  excludedByStaff   StaffUser?   @relation("PeopleChoiceVoteExcludedBy", fields: [excludedByStaffId], references: [id])
 
   @@unique([eventId, categoryId, voterKey])
   @@index([eventId, vehicleEntryId])
   @@index([eventId, createdAt])
+  @@index([eventId, excludedAt])
+  @@index([eventId, ipAddress])
+  @@index([eventId, voterKey])
 }
 
 model SpecialAward {
@@ -296,19 +307,29 @@ model SpecialAward {
 }
 
 model SpecialAwardVote {
-  id             String       @id @default(cuid())
-  eventId        String
-  specialAwardId String
-  vehicleEntryId String
-  voterKey       String?
-  createdAt      DateTime     @default(now())
-  event          Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  specialAward   SpecialAward @relation(fields: [specialAwardId], references: [id], onDelete: Cascade)
-  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  id                String       @id @default(cuid())
+  eventId           String
+  specialAwardId    String
+  vehicleEntryId    String
+  voterKey          String?
+  ipAddress         String?
+  userAgent         String?
+  excludedAt        DateTime?
+  excludedReason    String?
+  excludedByStaffId String?
+  createdAt         DateTime     @default(now())
+  event             Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  specialAward      SpecialAward @relation(fields: [specialAwardId], references: [id], onDelete: Cascade)
+  vehicleEntry      VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  excludedByStaff   StaffUser?   @relation("SpecialAwardVoteExcludedBy", fields: [excludedByStaffId], references: [id])
 
   @@unique([eventId, specialAwardId, voterKey])
   @@index([eventId, specialAwardId])
   @@index([eventId, vehicleEntryId])
+  @@index([eventId, createdAt])
+  @@index([eventId, excludedAt])
+  @@index([eventId, ipAddress])
+  @@index([eventId, voterKey])
 }
 
 model JudgeCategoryPick {

@@ -2,7 +2,7 @@ import { Prisma, VehicleStatus, prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAdmin, requireStaff } from "../auth.js";
-import { eventId } from "../config.js";
+import { config, eventId } from "../config.js";
 import {
   buildSpecialAwardTallies,
   buildVotingTallies,
@@ -104,6 +104,157 @@ export function winnerSlidesFromSnapshot(snapshot: CeremonyPublishedSnapshot | n
       }];
     }),
   ];
+}
+
+const cutoffBurstWindowMs = 15 * 60 * 1000;
+const rapidVoteWindowMs = 2 * 60 * 1000;
+const sameIpFlagThreshold = 5;
+
+type VoteActivity = {
+  kind: "PEOPLE_CHOICE" | "SPECIAL_AWARD";
+  id: string;
+  voterKey: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  vehicleEntryId: string;
+  createdAt: Date;
+  category?: { id: string; name: string } | null;
+  specialAward?: { id: string; name: string } | null;
+};
+
+type VoteReviewRecord = VoteActivity & {
+  category?: { id: string; name: string } | null;
+  specialAward?: { id: string; name: string } | null;
+  excludedAt: Date | null;
+  excludedReason: string | null;
+  excludedByStaff?: { displayName: string } | null;
+};
+
+type VoteFlagDetail = {
+  flag: string;
+  detail: string;
+  ballots?: string[];
+};
+
+function summarizeCount<T>(items: T[], keyFor: (item: T) => string | null) {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    const key = keyFor(item);
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function rapidVoteKeys(votes: VoteActivity[]) {
+  const byKey = new Map<string, VoteActivity[]>();
+  for (const vote of votes) {
+    if (!vote.voterKey) continue;
+    const list = byKey.get(vote.voterKey) ?? [];
+    list.push(vote);
+    byKey.set(vote.voterKey, list);
+  }
+
+  const flagged = new Set<string>();
+  for (const [key, list] of byKey.entries()) {
+    const sorted = [...list].sort((first, second) => first.createdAt.getTime() - second.createdAt.getTime());
+    for (let index = 1; index < sorted.length; index += 1) {
+      if (sorted[index].createdAt.getTime() - sorted[index - 1].createdAt.getTime() <= rapidVoteWindowMs) {
+        flagged.add(key);
+        break;
+      }
+    }
+  }
+  return flagged;
+}
+
+function publicVoterKey(voterKey: string | null) {
+  if (!voterKey) return "Unknown voter";
+  if (voterKey.length <= 10) return voterKey;
+  return `${voterKey.slice(0, 4)}...${voterKey.slice(-4)}`;
+}
+
+function buildVoteReviewRows({
+  votes,
+  allVotes,
+  cutoff,
+  trustedIps,
+}: {
+  votes: VoteReviewRecord[];
+  allVotes: VoteActivity[];
+  cutoff: Date | null;
+  trustedIps: Set<string>;
+}) {
+  const voterKeyCounts = summarizeCount(allVotes, (vote) => vote.voterKey);
+  const voterKeyVehicleIds = new Map<string, Set<string>>();
+  const voterKeyBallots = new Map<string, string[]>();
+  const ipCounts = summarizeCount(allVotes, (vote) => vote.ipAddress);
+  const ipVoterKeys = new Map<string, Set<string>>();
+  for (const vote of allVotes) {
+    if (vote.voterKey) {
+      const vehicles = voterKeyVehicleIds.get(vote.voterKey) ?? new Set<string>();
+      vehicles.add(vote.vehicleEntryId);
+      voterKeyVehicleIds.set(vote.voterKey, vehicles);
+      const ballots = voterKeyBallots.get(vote.voterKey) ?? [];
+      const label = vote.kind === "PEOPLE_CHOICE"
+        ? `PC: ${vote.category?.name ?? "Category"}`
+        : `SA: ${vote.specialAward?.name ?? "Award"}`;
+      if (!ballots.includes(label)) ballots.push(label);
+      voterKeyBallots.set(vote.voterKey, ballots);
+    }
+    if (!vote.ipAddress || trustedIps.has(vote.ipAddress) || !vote.voterKey) continue;
+    const set = ipVoterKeys.get(vote.ipAddress) ?? new Set<string>();
+    set.add(vote.voterKey);
+    ipVoterKeys.set(vote.ipAddress, set);
+  }
+  const rapidKeys = rapidVoteKeys(allVotes);
+
+  return votes.map((vote) => {
+    const flags: string[] = [];
+    const flagDetails: VoteFlagDetail[] = [];
+    if (!vote.ipAddress || !vote.userAgent) flags.push("Metadata unavailable");
+    if (vote.ipAddress && trustedIps.has(vote.ipAddress)) flags.push("Church Wi-Fi IP");
+    if (cutoff && vote.createdAt <= cutoff && cutoff.getTime() - vote.createdAt.getTime() <= cutoffBurstWindowMs) {
+      flags.push("Close to cutoff");
+    }
+    if (
+      vote.voterKey &&
+      (voterKeyCounts.get(vote.voterKey) ?? 0) > 1 &&
+      (voterKeyVehicleIds.get(vote.voterKey)?.size ?? 0) === 1
+    ) {
+      flags.push("Single-vehicle voter");
+      flagDetails.push({
+        flag: "Single-vehicle voter",
+        detail: "This voter key has multiple ballot records and every one selected this same vehicle.",
+        ballots: voterKeyBallots.get(vote.voterKey) ?? [],
+      });
+    }
+    if (vote.voterKey && rapidKeys.has(vote.voterKey)) flags.push("Rapid voter activity");
+    if (vote.ipAddress && !trustedIps.has(vote.ipAddress) && (ipCounts.get(vote.ipAddress) ?? 0) >= sameIpFlagThreshold) {
+      flags.push("Many votes from same IP");
+    }
+    if (vote.ipAddress && (ipVoterKeys.get(vote.ipAddress)?.size ?? 0) >= sameIpFlagThreshold) {
+      flags.push("Many voter keys from same IP");
+    }
+
+    return {
+      id: vote.id,
+      kind: vote.kind,
+      label: vote.kind === "PEOPLE_CHOICE"
+        ? vote.category?.name ?? "People's Choice"
+        : vote.specialAward?.name ?? "Special Award",
+      voterKey: publicVoterKey(vote.voterKey),
+      ipAddress: vote.ipAddress,
+      userAgent: vote.userAgent,
+      trustedIp: Boolean(vote.ipAddress && trustedIps.has(vote.ipAddress)),
+      createdAt: vote.createdAt,
+      excludedAt: vote.excludedAt,
+      excludedReason: vote.excludedReason,
+      excludedBy: vote.excludedByStaff?.displayName ?? null,
+      flags,
+      flagDetails,
+    };
+  });
 }
 
 export async function registerVotingRoutes(app: FastifyInstance) {
@@ -335,6 +486,7 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         by: ["vehicleEntryId"],
         where: {
           eventId,
+          excludedAt: null,
           createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
         },
         _count: { _all: true },
@@ -364,6 +516,7 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         by: ["specialAwardId", "vehicleEntryId"],
         where: {
           eventId,
+          excludedAt: null,
           createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
         },
         _count: { _all: true },
@@ -395,6 +548,146 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         votedVehicles,
       }),
     };
+  });
+
+  app.get("/voting/vehicles/:vehicleEntryId/vote-review", async (request) => {
+    await requireStaff(app, request);
+    const params = z.object({ vehicleEntryId: z.string().trim().min(1) }).parse(request.params);
+    const query = z
+      .object({
+        categoryId: z.string().trim().min(1).optional(),
+        specialAwardId: z.string().trim().min(1).optional(),
+      })
+      .parse(request.query);
+
+    const [event, vehicle] = await Promise.all([
+      prisma.event.findUnique({ where: { id: eventId }, select: { peopleChoiceCutoff: true, resultsPublished: true } }),
+      prisma.vehicleEntry.findFirst({
+        where: { id: params.vehicleEntryId, eventId },
+        select: { id: true, categoryId: true },
+      }),
+    ]);
+    if (!event) throw app.httpErrors.notFound("Event not found");
+    if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
+
+    const [peopleChoiceVotes, specialAwardVotes, allPeopleChoiceVotes, allSpecialAwardVotes] = await Promise.all([
+      query.specialAwardId
+        ? Promise.resolve([])
+        : prisma.peopleChoiceVote.findMany({
+            where: {
+              eventId,
+              vehicleEntryId: vehicle.id,
+              categoryId: query.categoryId ?? vehicle.categoryId,
+              createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
+            },
+            include: {
+              category: { select: { id: true, name: true } },
+              excludedByStaff: { select: { displayName: true } },
+            },
+            orderBy: { createdAt: "asc" },
+          }),
+      query.specialAwardId
+        ? prisma.specialAwardVote.findMany({
+            where: {
+              eventId,
+              vehicleEntryId: vehicle.id,
+              specialAwardId: query.specialAwardId,
+              createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
+            },
+            include: {
+              specialAward: { select: { id: true, name: true } },
+              excludedByStaff: { select: { displayName: true } },
+            },
+            orderBy: { createdAt: "asc" },
+          })
+        : Promise.resolve([]),
+      prisma.peopleChoiceVote.findMany({
+        where: {
+          eventId,
+          createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
+        },
+        include: { category: { select: { id: true, name: true } } },
+      }),
+      prisma.specialAwardVote.findMany({
+        where: {
+          eventId,
+          createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
+        },
+        include: { specialAward: { select: { id: true, name: true } } },
+      }),
+    ]);
+
+    const selectedVotes: VoteReviewRecord[] = [
+      ...peopleChoiceVotes.map((vote) => ({ ...vote, kind: "PEOPLE_CHOICE" as const })),
+      ...specialAwardVotes.map((vote) => ({ ...vote, kind: "SPECIAL_AWARD" as const })),
+    ].sort((first, second) => first.createdAt.getTime() - second.createdAt.getTime());
+
+    const allVotes: VoteActivity[] = [
+      ...allPeopleChoiceVotes.map((vote) => ({ ...vote, kind: "PEOPLE_CHOICE" as const })),
+      ...allSpecialAwardVotes.map((vote) => ({ ...vote, kind: "SPECIAL_AWARD" as const })),
+    ];
+
+    const trustedIps = new Set(config.voting.trustedIps);
+    const rows = buildVoteReviewRows({
+      votes: selectedVotes,
+      allVotes,
+      cutoff: event.peopleChoiceCutoff,
+      trustedIps,
+    });
+    const includedCount = rows.filter((vote) => !vote.excludedAt).length;
+    const excludedCount = rows.length - includedCount;
+
+    return {
+      vehicleEntryId: vehicle.id,
+      context: {
+        categoryId: query.categoryId ?? vehicle.categoryId,
+        specialAwardId: query.specialAwardId ?? null,
+      },
+      resultsPublished: event.resultsPublished,
+      summary: {
+        total: rows.length,
+        included: includedCount,
+        excluded: excludedCount,
+        flagged: rows.filter((vote) => vote.flags.some((flag) => flag !== "Church Wi-Fi IP")).length,
+      },
+      votes: rows,
+    };
+  });
+
+  app.patch("/voting/votes/:kind/:id", async (request) => {
+    const staff = await requireAdmin(app, request);
+    const params = z
+      .object({
+        kind: z.enum(["people-choice", "special-award"]),
+        id: z.string().trim().min(1),
+      })
+      .parse(request.params);
+    const body = z
+      .object({
+        excluded: z.boolean(),
+        reason: z.string().trim().max(300).optional(),
+      })
+      .parse(request.body);
+
+    const data = body.excluded
+      ? {
+          excludedAt: new Date(),
+          excludedReason: body.reason || "Admin review exclusion",
+          excludedByStaffId: staff.id,
+        }
+      : {
+          excludedAt: null,
+          excludedReason: null,
+          excludedByStaffId: null,
+        };
+
+    const result = params.kind === "people-choice"
+      ? await prisma.peopleChoiceVote.updateMany({ where: { id: params.id, eventId }, data })
+      : await prisma.specialAwardVote.updateMany({ where: { id: params.id, eventId }, data });
+
+    if (result.count === 0) throw app.httpErrors.notFound("Vote not found");
+
+    return { ok: true };
   });
 
   app.get("/voting/judge-completion", async (request) => {

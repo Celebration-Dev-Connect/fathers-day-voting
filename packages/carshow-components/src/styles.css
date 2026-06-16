@@ -1184,6 +1184,10 @@ textarea:focus {
   gap: 18px;
 }
 
+.winner-review-drawer {
+  width: min(1180px, 100%);
+}
+
 .drawer-header {
   display: flex;
   align-items: start;
@@ -1255,6 +1259,200 @@ textarea:focus {
 
 .drawer-note.muted {
   color: var(--muted-grey);
+}
+
+.winner-review-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.winner-review-profile,
+.vote-review-panel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.vote-review-panel {
+  border: 1px solid var(--border-grey);
+  border-radius: 8px;
+  padding: 16px;
+  background: #fbfbfc;
+}
+
+.vote-review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+
+.vote-review-header h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.vote-review-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.vote-review-summary div {
+  border: 1px solid var(--border-grey);
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--pure-white);
+}
+
+.vote-review-summary span,
+.vote-review-meta dt {
+  display: block;
+  color: var(--muted-grey);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vote-review-summary strong {
+  display: block;
+  font-size: 24px;
+}
+
+.vote-review-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vote-review-filters button {
+  border: 1px solid var(--border-grey);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--pure-white);
+  color: var(--on-surface);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.vote-review-filters button.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--pure-white);
+}
+
+.vote-review-error {
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fce1e1;
+  color: var(--primary);
+}
+
+.vote-review-list {
+  display: grid;
+  gap: 10px;
+}
+
+.vote-review-row {
+  border: 1px solid var(--border-grey);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--pure-white);
+  display: grid;
+  gap: 10px;
+}
+
+.vote-review-row.excluded {
+  opacity: 0.72;
+  background: var(--light-grey);
+}
+
+.vote-review-row-main {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vote-review-row-main strong,
+.vote-review-row-main span {
+  display: block;
+}
+
+.vote-review-row-main span {
+  color: var(--muted-grey);
+  font-size: 13px;
+}
+
+.vote-review-meta {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.45fr) 1fr;
+  gap: 10px;
+  margin: 0;
+}
+
+.vote-review-meta div {
+  min-width: 0;
+}
+
+.vote-review-meta dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: var(--on-surface);
+}
+
+.vote-flag-list,
+.vote-ballot-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vote-flag,
+.vote-ballot-tags span {
+  border: 1px solid #d5e4d8;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: #e6f8ea;
+  color: #0f6b2d;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vote-flag.suspicious {
+  border-color: #f0c2c7;
+  background: #fff1f3;
+  color: var(--primary);
+}
+
+.vote-flag-detail {
+  border-left: 4px solid var(--primary);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fff7f8;
+  display: grid;
+  gap: 8px;
+}
+
+.vote-flag-detail p,
+.vote-excluded-note {
+  margin: 0;
+  color: var(--muted-grey);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.vote-ballot-tags span {
+  border-color: var(--border-grey);
+  background: var(--pure-white);
+  color: var(--on-surface);
 }
 
 .guide-section {
@@ -2252,6 +2450,17 @@ textarea:focus {
     max-width: none;
     border-radius: 0;
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .winner-review-layout,
+  .vote-review-meta,
+  .vote-review-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .vote-review-row-main,
+  .vote-review-header {
+    display: grid;
   }
 }
 

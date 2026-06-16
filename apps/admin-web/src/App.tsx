@@ -179,7 +179,16 @@ function AdminShellConnected({
           />
         ) : null}
         {view === "photo-review" ? <PhotoReviewView /> : null}
-        {view === "voting" ? <VotingView staff={staff} /> : null}
+        {view === "voting" ? (
+          <VotingView
+            staff={staff}
+            onOpenRegistration={(registration) => {
+              setSelected(registration);
+              setSearch(registration.entryNumber.toString());
+              setView("registrations");
+            }}
+          />
+        ) : null}
         {view === "help" ? <HelpView staff={staff} onNavigate={setView} /> : null}
       </Suspense>
     </AdminShellTemplate>

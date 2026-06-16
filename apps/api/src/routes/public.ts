@@ -6,6 +6,16 @@ import { placementsForVehicle } from "../services/publishedResults.js";
 
 const PAGE_SIZE = 12;
 
+function voteMetadata(request: { ip: string; headers: Record<string, string | string[] | undefined> }) {
+  const forwardedFor = request.headers["x-forwarded-for"];
+  const firstForwardedIp = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+  const userAgent = request.headers["user-agent"];
+  return {
+    ipAddress: (firstForwardedIp?.split(",")[0]?.trim() || request.ip || null) as string | null,
+    userAgent: (Array.isArray(userAgent) ? userAgent[0] : userAgent) ?? null,
+  };
+}
+
 function toPublicVehicle(
   vehicle: Prisma.VehicleEntryGetPayload<{
     include: { owner: true; category: true; photos: true };
@@ -188,10 +198,11 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     if (!qrCard?.vehicleEntry) throw app.httpErrors.notFound("Vehicle not found");
     const vehicle = qrCard.vehicleEntry;
 
+    const metadata = voteMetadata(request);
     await prisma.peopleChoiceVote.upsert({
       where: { eventId_categoryId_voterKey: { eventId, categoryId: vehicle.categoryId, voterKey: body.voterKey } },
-      create: { eventId, vehicleEntryId: vehicle.id, categoryId: vehicle.categoryId, voterKey: body.voterKey },
-      update: { vehicleEntryId: vehicle.id },
+      create: { eventId, vehicleEntryId: vehicle.id, categoryId: vehicle.categoryId, voterKey: body.voterKey, ...metadata },
+      update: { vehicleEntryId: vehicle.id, ...metadata },
     });
 
     return { ok: true, categoryName: vehicle.category.name };
@@ -288,10 +299,11 @@ export async function registerPublicRoutes(app: FastifyInstance) {
     });
     if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
 
+    const metadata = voteMetadata(request);
     await prisma.peopleChoiceVote.upsert({
       where: { eventId_categoryId_voterKey: { eventId, categoryId: vehicle.categoryId, voterKey: body.voterKey } },
-      create: { eventId, vehicleEntryId: vehicle.id, categoryId: vehicle.categoryId, voterKey: body.voterKey },
-      update: { vehicleEntryId: vehicle.id },
+      create: { eventId, vehicleEntryId: vehicle.id, categoryId: vehicle.categoryId, voterKey: body.voterKey, ...metadata },
+      update: { vehicleEntryId: vehicle.id, ...metadata },
     });
 
     return { ok: true as const, categoryName: vehicle.category.name };
@@ -340,10 +352,11 @@ export async function registerPublicRoutes(app: FastifyInstance) {
       if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
       if (!specialAward) throw app.httpErrors.notFound("Special award not found");
 
+      const metadata = voteMetadata(request);
       await prisma.specialAwardVote.upsert({
         where: { eventId_specialAwardId_voterKey: { eventId, specialAwardId: specialAward.id, voterKey: body.voterKey } },
-        create: { eventId, specialAwardId: specialAward.id, vehicleEntryId: vehicle.id, voterKey: body.voterKey },
-        update: { vehicleEntryId: vehicle.id },
+        create: { eventId, specialAwardId: specialAward.id, vehicleEntryId: vehicle.id, voterKey: body.voterKey, ...metadata },
+        update: { vehicleEntryId: vehicle.id, ...metadata },
       });
 
       return { ok: true as const, specialAwardName: specialAward.name };

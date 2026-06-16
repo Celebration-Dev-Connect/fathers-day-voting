@@ -202,6 +202,17 @@ resource "aws_security_group_rule" "ecs_egress_https" {
   description       = "HTTPS to AWS APIs and ECR"
 }
 
+# ECS tasks: SMTP SSL egress for SES email delivery
+resource "aws_security_group_rule" "ecs_egress_smtp" {
+  type              = "egress"
+  from_port         = 465
+  to_port           = 465
+  protocol          = "tcp"
+  security_group_id = aws_security_group.ecs_tasks.id
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "SMTP SSL to SES"
+}
+
 # RDS: inbound from ECS tasks
 resource "aws_security_group_rule" "rds_ingress" {
   type                     = "ingress"

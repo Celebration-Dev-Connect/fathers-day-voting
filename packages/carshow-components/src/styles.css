@@ -1354,16 +1354,16 @@ textarea:focus {
 
 .vote-review-list {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .vote-review-row {
   border: 1px solid var(--border-grey);
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 6px;
+  padding: 8px 10px;
   background: var(--pure-white);
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .vote-review-row.excluded {
@@ -1372,9 +1372,9 @@ textarea:focus {
 }
 
 .vote-review-row-main {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(160px, 1.25fr) auto;
+  align-items: center;
   gap: 12px;
 }
 
@@ -1385,7 +1385,7 @@ textarea:focus {
 
 .vote-review-row-main span {
   color: var(--muted-grey);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .vote-review-meta {
@@ -1406,6 +1406,25 @@ textarea:focus {
   color: var(--on-surface);
 }
 
+.vote-review-expanded {
+  border-top: 1px solid var(--border-grey);
+  padding-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.vote-detail-toggle {
+  width: max-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .vote-flag-list,
 .vote-ballot-tags {
   display: flex;
@@ -1413,17 +1432,27 @@ textarea:focus {
   gap: 6px;
 }
 
+.vote-flag-list.compact {
+  align-items: center;
+}
+
 .vote-flag,
 .vote-ballot-tags span {
   border: 1px solid #d5e4d8;
   border-radius: 999px;
-  padding: 5px 8px;
+  padding: 4px 7px;
   background: #e6f8ea;
   color: #0f6b2d;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.vote-flag-more {
+  color: var(--muted-grey);
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .vote-flag.suspicious {
@@ -1947,7 +1976,8 @@ textarea:focus {
   display: grid;
   place-items: center;
   min-height: 210px;
-  aspect-ratio: 4 / 3;
+  width: 100%;
+  aspect-ratio: 3 / 4;
   max-height: 75svh;
   background: #0d0d0d;
   color: var(--muted-grey);
@@ -1956,9 +1986,13 @@ textarea:focus {
 }
 
 .photo-review-preview.large {
-  aspect-ratio: 3 / 4;
   min-height: 320px;
   max-height: 75svh;
+}
+
+.photo-review-preview .vehicle-profile-photos,
+.photo-review-preview .vehicle-profile-photo-wrap {
+  width: 100%;
 }
 
 .photo-review-preview img {
@@ -1970,15 +2004,6 @@ textarea:focus {
   max-height: inherit;
   object-fit: contain;
   object-position: center;
-}
-
-.photo-review-preview-bg {
-  position: absolute;
-  inset: 0;
-  background-position: center;
-  background-size: cover;
-  filter: blur(24px) brightness(0.5) saturate(1.2);
-  transform: scale(1.1);
 }
 
 .photo-review-preview.is-empty,
@@ -3462,7 +3487,15 @@ textarea:focus {
 .vehicle-profile-no-photo {
   width: 100%;
   aspect-ratio: 3 / 4;
+  display: grid;
+  place-items: center;
   background: var(--light-grey);
+  color: var(--muted-grey);
+}
+
+.vehicle-profile-no-photo svg {
+  width: 64px;
+  height: 64px;
 }
 
 .vehicle-profile-body {

@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, ImageOff, RefreshCw, ShieldCheck, X } from "lucide-react";
-import { Alert, Button, PageHeader, Pagination, formatDateTime } from "@carshow/carshow-components";
+import { Alert, Button, PageHeader, Pagination, VehiclePhotoViewer, formatDateTime } from "@carshow/carshow-components";
 import type { PhotoModerationStatus, PhotoReviewItem } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
 import { getPhotoReviewImageUrl, listPhotoReviews, type PhotoReviewQueue, updatePhotoReviewStatus } from "../api";
@@ -109,8 +109,14 @@ function PhotoPreview({ photo, large = false }: { photo: PhotoReviewItem; large?
 
   return (
     <div className={`photo-review-preview ${large ? "large" : ""}`}>
-      <div className="photo-review-preview-bg" aria-hidden="true" style={{ backgroundImage: `url(${previewUrl})` }} />
-      <img src={previewUrl} alt={photo.altText ?? vehicleTitle(photo)} onError={handleImageError} />
+      <VehiclePhotoViewer
+        photos={[{ id: photo.id, url: previewUrl, altText: photo.altText ?? vehicleTitle(photo) }]}
+        title={vehicleTitle(photo)}
+        autoAdvance={false}
+        showThumbnails={false}
+        className="photo-review-viewer"
+        onImageError={handleImageError}
+      />
     </div>
   );
 }

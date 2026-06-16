@@ -1,7 +1,7 @@
 import { Camera, CheckCircle2, CircleAlert, CloudUpload, Loader2, LogOut, Save, Star, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Route, Routes } from "react-router-dom";
-import { compressImage, formatPhone } from "@carshow/carshow-components";
+import { VehiclePhotoViewer, compressImage, formatPhone } from "@carshow/carshow-components";
 import {
   createOwnerSession,
   deleteOwnerPhoto,
@@ -420,14 +420,6 @@ function OwnerPortal() {
     };
   }, [session?.token, session?.vehicleId]);
 
-  const selectedPhoto = useMemo(
-    () =>
-      vehicle?.photos.find((photo) => photo.id === selectedPhotoId && photo.url) ??
-      vehicle?.photos.find((photo) => photo.id === vehicle.primaryPhotoId && photo.url) ??
-      vehicle?.photos.find((photo) => photo.url),
-    [selectedPhotoId, vehicle],
-  );
-
   const hasChanges =
     vehicle !== null &&
     (buildStory !== vehicle.buildStory ||
@@ -580,18 +572,16 @@ function OwnerPortal() {
             ) : null}
 
             <section className="owner-profile-card">
-              <div className="owner-hero-photo">
-                {selectedPhoto?.url ? (
-                  <>
-                    <div className="owner-hero-photo-bg" aria-hidden="true" style={{ backgroundImage: `url(${selectedPhoto.url})` }} />
-                    <img src={selectedPhoto.url} alt={selectedPhoto.altText ?? `${vehicle.year} ${vehicle.make} ${vehicle.model}`} />
-                  </>
-                ) : (
-                  <div className="owner-photo-placeholder">
-                    <Camera aria-hidden="true" />
-                  </div>
+              <VehiclePhotoViewer
+                photos={vehicle.photos.flatMap((photo) =>
+                  photo.url ? [{ id: photo.id, url: photo.url, altText: photo.altText }] : [],
                 )}
-              </div>
+                title={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                autoAdvance
+                selectedPhotoId={selectedPhotoId}
+                onSelectPhoto={setSelectedPhotoId}
+                emptyContent={<Camera aria-hidden="true" />}
+              />
               <div className="owner-profile-body">
                 <div className="owner-entry-meta">
                   <span>{vehicle.category.name}</span>

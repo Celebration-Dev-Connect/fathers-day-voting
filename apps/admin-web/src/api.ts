@@ -386,13 +386,21 @@ export type VoteReview = {
   context: { categoryId: string | null; specialAwardId: string | null };
   resultsPublished: boolean;
   summary: { total: number; included: number; excluded: number; flagged: number };
+  pagination: { page: number; pageSize: number; total: number; pageCount: number };
   votes: VoteReviewVote[];
 };
 
-export async function getVehicleVoteReview(vehicleEntryId: string, context: VoteReviewContext) {
+export async function getVehicleVoteReview(
+  vehicleEntryId: string,
+  context: VoteReviewContext,
+  options: { filter?: "all" | "flagged" | "excluded"; page?: number; pageSize?: number } = {},
+) {
   const params = new URLSearchParams();
   if (context.categoryId) params.set("categoryId", context.categoryId);
   if (context.specialAwardId) params.set("specialAwardId", context.specialAwardId);
+  if (options.filter) params.set("filter", options.filter);
+  if (options.page !== undefined) params.set("page", options.page.toString());
+  if (options.pageSize !== undefined) params.set("pageSize", options.pageSize.toString());
   const query = params.toString();
   return request<VoteReview>(
     `/voting/vehicles/${encodeURIComponent(vehicleEntryId)}/vote-review${query ? `?${query}` : ""}`,

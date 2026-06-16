@@ -5,6 +5,7 @@ import {
   EntryCard,
   LoginCard,
   PageHeader,
+  VehiclePhotoViewer,
   vehicleName,
 } from "@carshow/carshow-components";
 import type {
@@ -683,64 +684,19 @@ function JudgeVehicleProfileCard({
   vehicle: PublicVehicle;
   onAddPhoto: () => void;
 }) {
-  const [photoIndex, setPhotoIndex] = useState(0);
-  const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
   const photos = vehicle.photos;
-  const currentPhoto = photos[photoIndex] ?? photos[0];
-  const currentLoaded = loadedIds.has(currentPhoto?.id ?? "");
   const title = vehicle.nickname
     ? `${vehicle.year} ${vehicle.make} ${vehicle.model} — "${vehicle.nickname}"`
     : `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
 
-  useEffect(() => {
-    setPhotoIndex(0);
-  }, [vehicle.id]);
-
-  function markLoaded(id: string) {
-    setLoadedIds((prev) => new Set([...prev, id]));
-  }
-
   return (
     <article className="vehicle-profile judge-profile-card">
-      <div className="vehicle-profile-photos">
-        <div className="vehicle-profile-photo-wrap">
-          {photos.length > 0 && currentPhoto ? (
-            <>
-              {!currentLoaded && <div className="img-shimmer" aria-hidden="true" />}
-              <img
-                key={currentPhoto.id}
-                className="vehicle-profile-main-photo"
-                src={currentPhoto.url}
-                alt={currentPhoto.altText ?? title}
-                style={{ opacity: currentLoaded ? 1 : 0, transition: "opacity 0.3s ease" }}
-                onLoad={() => markLoaded(currentPhoto.id)}
-              />
-            </>
-          ) : (
-            <div className="vehicle-profile-no-photo" />
-          )}
-        </div>
-        <div
-          className={`vehicle-profile-thumbs judge-photo-strip${photos.length === 0 ? " no-photos" : ""}`}
-          aria-label="Vehicle photos"
-        >
-          {photos.map((photo, index) => (
-            <button
-              key={photo.id}
-              className={`vehicle-profile-thumb${index === photoIndex ? " active" : ""}`}
-              onClick={() => setPhotoIndex(index)}
-              aria-label={`Photo ${index + 1}`}
-              type="button"
-            >
-              {!loadedIds.has(photo.id) && <div className="img-shimmer" aria-hidden="true" />}
-              <img
-                src={photo.url}
-                alt=""
-                style={{ opacity: loadedIds.has(photo.id) ? 1 : 0, transition: "opacity 0.25s ease" }}
-                onLoad={() => markLoaded(photo.id)}
-              />
-            </button>
-          ))}
+      <VehiclePhotoViewer
+        photos={photos}
+        title={title}
+        autoAdvance
+        className="judge-photo-viewer"
+        uploadButton={
           <button
             className="vehicle-profile-thumb vehicle-profile-add-photo"
             onClick={onAddPhoto}
@@ -749,8 +705,8 @@ function JudgeVehicleProfileCard({
           >
             <Camera size={26} />
           </button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="vehicle-profile-body">
         <div className="vehicle-profile-meta">

@@ -557,6 +557,9 @@ export async function registerVotingRoutes(app: FastifyInstance) {
       .object({
         categoryId: z.string().trim().min(1).optional(),
         specialAwardId: z.string().trim().min(1).optional(),
+        filter: z.enum(["all", "flagged", "excluded"]).default("all"),
+        page: z.coerce.number().int().min(0).default(0),
+        pageSize: z.coerce.number().int().min(10).max(100).default(25),
       })
       .parse(request.query);
 
@@ -636,6 +639,15 @@ export async function registerVotingRoutes(app: FastifyInstance) {
     });
     const includedCount = rows.filter((vote) => !vote.excludedAt).length;
     const excludedCount = rows.length - includedCount;
+    const flaggedCount = rows.filter((vote) => vote.flags.some((flag) => flag !== "Church Wi-Fi IP")).length;
+    const filteredRows = rows.filter((vote) => {
+      if (query.filter === "flagged") return vote.flags.some((flag) => flag !== "Church Wi-Fi IP");
+      if (query.filter === "excluded") return Boolean(vote.excludedAt);
+      return true;
+    });
+    const pageCount = Math.max(1, Math.ceil(filteredRows.length / query.pageSize));
+    const page = Math.min(query.page, pageCount - 1);
+    const start = page * query.pageSize;
 
     return {
       vehicleEntryId: vehicle.id,
@@ -648,9 +660,15 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         total: rows.length,
         included: includedCount,
         excluded: excludedCount,
-        flagged: rows.filter((vote) => vote.flags.some((flag) => flag !== "Church Wi-Fi IP")).length,
+        flagged: flaggedCount,
       },
-      votes: rows,
+      pagination: {
+        page,
+        pageSize: query.pageSize,
+        total: filteredRows.length,
+        pageCount,
+      },
+      votes: filteredRows.slice(start, start + query.pageSize),
     };
   });
 

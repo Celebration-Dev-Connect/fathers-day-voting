@@ -1,6 +1,6 @@
 import { ExternalLink, RefreshCw, X } from "lucide-react";
-import { Button, vehicleName, type Registration, type VehiclePhoto } from "@carshow/carshow-components";
-import { useEffect, useMemo, useState } from "react";
+import { Button, Pagination, vehicleName, type Registration, type VehiclePhoto } from "@carshow/carshow-components";
+import { useEffect, useState } from "react";
 import {
   getVehicleVoteReview,
   updateVoteExclusion,
@@ -11,6 +11,7 @@ import {
 
 type PhotoWithUrl = VehiclePhoto & { url: string };
 type VoteFilter = "all" | "flagged" | "excluded";
+const voteReviewPageSize = 25;
 
 function hasPhotoUrl(photo: VehiclePhoto): photo is PhotoWithUrl {
   return Boolean(photo.url);
@@ -49,14 +50,19 @@ export function WinnerDrawer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<VoteFilter>("all");
+  const [page, setPage] = useState(0);
   const [savingVoteId, setSavingVoteId] = useState<string | null>(null);
   const [expandedVoteId, setExpandedVoteId] = useState<string | null>(null);
 
-  async function loadReview() {
+  async function loadReview(targetPage = page) {
     setLoading(true);
     setError("");
     try {
-      setReview(await getVehicleVoteReview(registration.id, context));
+      setReview(await getVehicleVoteReview(registration.id, context, {
+        filter,
+        page: targetPage,
+        pageSize: voteReviewPageSize,
+      }));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load vote review");
     } finally {
@@ -66,16 +72,7 @@ export function WinnerDrawer({
 
   useEffect(() => {
     void loadReview();
-  }, [registration.id, context.categoryId, context.specialAwardId]);
-
-  const filteredVotes = useMemo(() => {
-    const votes = review?.votes ?? [];
-    if (filter === "flagged") {
-      return votes.filter((vote) => vote.flags.some(flagIsSuspicious));
-    }
-    if (filter === "excluded") return votes.filter((vote) => vote.excludedAt);
-    return votes;
-  }, [filter, review]);
+  }, [registration.id, context.categoryId, context.specialAwardId, filter, page]);
 
   async function toggleVote(vote: VoteReviewVote) {
     setSavingVoteId(vote.id);
@@ -87,7 +84,7 @@ export function WinnerDrawer({
         !vote.excludedAt,
         vote.excludedAt ? undefined : "Removed during winner review",
       );
-      await loadReview();
+      await loadReview(page);
       await onVotesChanged();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Could not update vote");
@@ -169,7 +166,7 @@ export function WinnerDrawer({
                   <p className="muted-copy">Republish results after changes to update the public snapshot.</p>
                 ) : null}
               </div>
-              <Button variant="secondary" onClick={loadReview} disabled={loading}>
+              <Button variant="secondary" onClick={() => loadReview()} disabled={loading}>
                 <RefreshCw size={18} />
                 Refresh
               </Button>
@@ -198,7 +195,11 @@ export function WinnerDrawer({
                   key={value}
                   type="button"
                   className={filter === value ? "active" : ""}
-                  onClick={() => setFilter(value)}
+                  onClick={() => {
+                    setPage(0);
+                    setExpandedVoteId(null);
+                    setFilter(value);
+                  }}
                 >
                   {value}
                 </button>
@@ -208,13 +209,13 @@ export function WinnerDrawer({
             {error ? <div className="vote-review-error">{error}</div> : null}
             {loading ? <div className="empty-state">Loading vote review...</div> : null}
 
-            {!loading && !filteredVotes.length ? (
+            {!loading && !review?.votes.length ? (
               <div className="empty-state">No votes match this review filter.</div>
             ) : null}
 
-            {!loading && filteredVotes.length ? (
+            {!loading && review?.votes.length ? (
               <div className="vote-review-list">
-                {filteredVotes.map((vote) => (
+                {review.votes.map((vote) => (
                   <article className={vote.excludedAt ? "vote-review-row excluded" : "vote-review-row"} key={vote.id}>
                     <div className="vote-review-row-main">
                       <div>
@@ -223,6 +224,21 @@ export function WinnerDrawer({
                           {formatDate(vote.createdAt)} · {vote.voterKey}
                         </span>
                       </div>
+                      {vote.flags.length ? (
+                        <div className="vote-flag-list compact">
+                          {vote.flags.slice(0, 3).map((flag) => (
+                            <button
+                              type="button"
+                              className={flagIsSuspicious(flag) ? "vote-flag suspicious" : "vote-flag"}
+                              key={flag}
+                              onClick={() => setExpandedVoteId(expandedVoteId === vote.id ? null : vote.id)}
+                            >
+                              {flag}
+                            </button>
+                          ))}
+                          {vote.flags.length > 3 ? <span className="vote-flag-more">+{vote.flags.length - 3}</span> : null}
+                        </div>
+                      ) : null}
                       {canManage ? (
                         <Button
                           variant={vote.excludedAt ? "secondary" : "primary"}
@@ -234,51 +250,55 @@ export function WinnerDrawer({
                       ) : null}
                     </div>
 
-                    <dl className="vote-review-meta">
-                      <div>
-                        <dt>IP</dt>
-                        <dd>{vote.ipAddress ?? "Unavailable"}</dd>
-                      </div>
-                      <div>
-                        <dt>Browser</dt>
-                        <dd>{vote.userAgent ?? "Unavailable"}</dd>
-                      </div>
-                    </dl>
-
-                    {vote.flags.length ? (
-                      <div className="vote-flag-list">
-                        {vote.flags.map((flag) => (
-                          <button
-                            type="button"
-                            className={flagIsSuspicious(flag) ? "vote-flag suspicious" : "vote-flag"}
-                            key={flag}
-                            onClick={() => setExpandedVoteId(expandedVoteId === vote.id ? null : vote.id)}
-                          >
-                            {flag}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
+                    <button
+                      type="button"
+                      className="vote-detail-toggle"
+                      onClick={() => setExpandedVoteId(expandedVoteId === vote.id ? null : vote.id)}
+                    >
+                      {expandedVoteId === vote.id ? "Hide details" : "Show details"}
+                    </button>
 
                     {expandedVoteId === vote.id ? (
-                      <div className="vote-flag-detail">
+                      <div className="vote-review-expanded">
+                        <dl className="vote-review-meta">
+                          <div>
+                            <dt>IP</dt>
+                            <dd>{vote.ipAddress ?? "Unavailable"}</dd>
+                          </div>
+                          <div>
+                            <dt>Browser</dt>
+                            <dd>{vote.userAgent ?? "Unavailable"}</dd>
+                          </div>
+                        </dl>
+                        {vote.flags.length ? (
+                          <div className="vote-flag-list">
+                            {vote.flags.map((flag) => (
+                              <span
+                                className={flagIsSuspicious(flag) ? "vote-flag suspicious" : "vote-flag"}
+                                key={flag}
+                              >
+                                {flag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                         {vote.flagDetails.length ? (
-                          vote.flagDetails.map((detail) => (
-                            <div key={detail.flag}>
-                              <strong>{detail.flag}</strong>
-                              <p>{detail.detail}</p>
-                              {detail.ballots?.length ? (
-                                <div className="vote-ballot-tags">
-                                  {detail.ballots.map((ballot) => (
-                                    <span key={ballot}>{ballot}</span>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-                          ))
-                        ) : (
-                          <p>No extra detail is available for this flag yet.</p>
-                        )}
+                          <div className="vote-flag-detail">
+                            {vote.flagDetails.map((detail) => (
+                              <div key={detail.flag}>
+                                <strong>{detail.flag}</strong>
+                                <p>{detail.detail}</p>
+                                {detail.ballots?.length ? (
+                                  <div className="vote-ballot-tags">
+                                    {detail.ballots.map((ballot) => (
+                                      <span key={ballot}>{ballot}</span>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
 
@@ -291,6 +311,19 @@ export function WinnerDrawer({
                   </article>
                 ))}
               </div>
+            ) : null}
+
+            {review?.pagination ? (
+              <Pagination
+                page={review.pagination.page}
+                pageCount={review.pagination.pageCount}
+                total={review.pagination.total}
+                pageSize={review.pagination.pageSize}
+                onChange={(nextPage) => {
+                  setExpandedVoteId(null);
+                  setPage(nextPage);
+                }}
+              />
             ) : null}
           </section>
         </div>

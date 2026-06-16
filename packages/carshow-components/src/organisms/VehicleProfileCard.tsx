@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
 import { Camera } from "lucide-react";
 import { Button } from "../atoms/Button.js";
 import { VoteSuccess } from "../molecules/VoteSuccess.js";
 import type { PublicVehicle } from "../types.js";
+import { VehiclePhotoViewer } from "./VehiclePhotoViewer.js";
 
 type Props = {
   vehicle: PublicVehicle;
@@ -25,22 +25,8 @@ export function VehicleProfileCard({
   showVoting = true,
   onUploadPhoto,
 }: Props) {
-  const [photoIndex, setPhotoIndex] = useState(0);
-  const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
   const photos = vehicle.photos;
-  const currentPhoto = photos[photoIndex];
-  const currentLoaded = loadedIds.has(currentPhoto?.id ?? "");
   const showThumbStrip = photos.length > 1 || onUploadPhoto !== undefined;
-
-  useEffect(() => {
-    if (photos.length <= 1) return;
-    const id = setInterval(() => setPhotoIndex((i) => (i + 1) % photos.length), 5000);
-    return () => clearInterval(id);
-  }, [photos.length]);
-
-  function markLoaded(id: string) {
-    setLoadedIds((prev) => new Set([...prev, id]));
-  }
 
   const title = vehicle.nickname
     ? `${vehicle.year} ${vehicle.make} ${vehicle.model} — "${vehicle.nickname}"`
@@ -48,60 +34,22 @@ export function VehicleProfileCard({
 
   return (
     <article className="vehicle-profile">
-      <div className="vehicle-profile-photos">
-        {photos.length > 0 && currentPhoto ? (
-          <div className="vehicle-profile-photo-wrap">
-            <div
-              className="vehicle-profile-photo-bg"
-              aria-hidden="true"
-              style={{ backgroundImage: `url(${currentPhoto.url})` }}
-            />
-            {!currentLoaded && <div className="img-shimmer" aria-hidden="true" />}
-            <img
-              key={currentPhoto.id}
-              className="vehicle-profile-main-photo"
-              src={currentPhoto.url}
-              alt={currentPhoto.altText ?? title}
-              style={{ opacity: currentLoaded ? 1 : 0, transition: "opacity 0.3s ease" }}
-              onLoad={() => markLoaded(currentPhoto.id)}
-            />
-          </div>
-        ) : (
-          <div className="vehicle-profile-no-photo" />
+      <VehiclePhotoViewer
+        photos={photos}
+        title={title}
+        autoAdvance
+        showThumbnails={showThumbStrip}
+        uploadButton={onUploadPhoto && (
+          <button
+            className="vehicle-profile-thumb vehicle-profile-upload-btn"
+            onClick={onUploadPhoto}
+            aria-label="Add your photo"
+            type="button"
+          >
+            <Camera size={22} />
+          </button>
         )}
-        {showThumbStrip && (
-          <div className="vehicle-profile-thumb-row">
-            <div className="vehicle-profile-thumbs">
-              {photos.map((p, i) => (
-                <button
-                  key={p.id}
-                  className={`vehicle-profile-thumb${i === photoIndex ? " active" : ""}`}
-                  onClick={() => setPhotoIndex(i)}
-                  aria-label={`Photo ${i + 1}`}
-                >
-                  {!loadedIds.has(p.id) && <div className="img-shimmer" aria-hidden="true" />}
-                  <img
-                    src={p.thumbUrl ?? p.url}
-                    alt=""
-                    style={{ opacity: loadedIds.has(p.id) ? 1 : 0, transition: "opacity 0.25s ease" }}
-                    onLoad={() => markLoaded(p.id)}
-                  />
-                </button>
-              ))}
-            </div>
-            {onUploadPhoto && (
-              <button
-                className="vehicle-profile-thumb vehicle-profile-upload-btn"
-                onClick={onUploadPhoto}
-                aria-label="Add your photo"
-                type="button"
-              >
-                <Camera size={22} />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      />
 
       <div className="vehicle-profile-body">
         <div className="vehicle-profile-meta">

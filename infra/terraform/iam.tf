@@ -84,8 +84,8 @@ data "aws_iam_policy_document" "ecs_task" {
   }
 
   statement {
-    sid       = "PhotosPublicWrite"
-    actions   = ["s3:PutObject", "s3:DeleteObject"]
+    sid       = "PhotosPublicReadWrite"
+    actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
     resources = ["${aws_s3_bucket.photos.arn}/public/*"]
   }
 

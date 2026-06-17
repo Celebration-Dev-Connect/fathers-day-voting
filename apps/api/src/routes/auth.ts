@@ -120,22 +120,37 @@ async function resolvePcoRole(
     if (positions !== null) positionsByTeam.set(teamName, positions);
   }
 
+  const matchedRoles = matchMappedRoles(mappings, positionsByTeam);
+  const role = pickHighestRole(matchedRoles);
+  log.info({ pcoPersonId, matchedRoles, role }, "PCO role resolved from team mappings");
+  return role;
+}
+
+type TeamRoleMapping = { pcoTeamName: string; positionName: string | null; role: StaffRole };
+
+/**
+ * Given the position names a person holds per team, return the roles they qualify for.
+ * A whole-team mapping (positionName === null) matches any member; a positioned mapping
+ * matches only that position. A person is a member of a team only if they hold at least
+ * one position in it — an empty/absent position list never matches.
+ */
+export function matchMappedRoles(
+  mappings: TeamRoleMapping[],
+  positionsByTeam: Map<string, string[]>,
+): StaffRole[] {
   const matchedRoles: StaffRole[] = [];
   for (const mapping of mappings) {
     const memberPositions = positionsByTeam.get(mapping.pcoTeamName);
-    if (!memberPositions) continue; // not a member of this team (or team lookup failed)
+    if (!memberPositions || memberPositions.length === 0) continue;
     if (mapping.positionName === null) {
-      matchedRoles.push(mapping.role); // whole-team mapping
+      matchedRoles.push(mapping.role);
     } else if (
       memberPositions.some((name) => name.toLowerCase() === mapping.positionName!.toLowerCase())
     ) {
       matchedRoles.push(mapping.role);
     }
   }
-
-  const role = pickHighestRole(matchedRoles);
-  log.info({ pcoPersonId, matchedRoles, role }, "PCO role resolved from team mappings");
-  return role;
+  return matchedRoles;
 }
 
 export async function registerAuthRoutes(app: FastifyInstance) {

@@ -101,7 +101,7 @@ export type VehiclePhoto = {
 };
 
 export type PhotoModerationStatus = "PENDING" | "PROCESSING" | "HUMAN_REVIEW" | "APPROVED" | "REJECTED" | "FAILED";
-export type PhotoSource = "STAFF" | "VISITOR";
+export type PhotoSource = "STAFF" | "OWNER" | "VISITOR";
 
 export type PhotoReviewItem = {
   id: string;

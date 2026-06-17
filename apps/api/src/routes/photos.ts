@@ -32,7 +32,7 @@ async function createPendingPhoto(
   { storage, worker }: PhotosDeps,
   vehicleEntryId: string,
   uploadedBy: string,
-  source: "STAFF" | "VISITOR",
+  source: "STAFF" | "OWNER" | "VISITOR",
   image: { bytes: Buffer; contentType: string },
   enforceManagedPhotoCap: boolean,
 ) {

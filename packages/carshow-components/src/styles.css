@@ -202,6 +202,10 @@ textarea:focus {
   gap: 8px;
 }
 
+.sidebar-help-nav-item {
+  display: contents;
+}
+
 .sidebar nav button {
   min-height: 56px;
   border: 0;
@@ -2279,6 +2283,12 @@ textarea:focus {
     text-transform: uppercase;
   }
 
+  .mobile-admin-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .mobile-admin-bar button {
     width: 44px;
     height: 44px;
@@ -2290,6 +2300,15 @@ textarea:focus {
     place-items: center;
   }
 
+  .mobile-admin-bar button.active {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .sidebar-help-nav-item {
+    display: none;
+  }
+
   .sidebar nav {
     position: fixed;
     z-index: 40;
@@ -2298,7 +2317,7 @@ textarea:focus {
     bottom: 0;
     padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
     display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 4px;
     background: var(--inverse-surface);
     box-shadow: 0 -8px 20px rgb(0 0 0 / 18%);

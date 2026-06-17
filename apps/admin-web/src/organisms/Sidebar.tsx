@@ -32,9 +32,14 @@ export function Sidebar({
           <div className="brand-mark">CELEBRATION CHURCH</div>
           <p>{viewLabels[view]}</p>
         </div>
-        <button type="button" onClick={onLogout} aria-label="Log out">
-          <LogOut size={22} />
-        </button>
+        <div className="mobile-admin-bar-actions">
+          <button type="button" className={view === "help" ? "active" : ""} onClick={() => onNavigate("help")} aria-label="Help Guide">
+            <CircleHelp size={22} />
+          </button>
+          <button type="button" onClick={onLogout} aria-label="Log out">
+            <LogOut size={22} />
+          </button>
+        </div>
       </div>
 
       <div className="sidebar-brand">
@@ -84,10 +89,12 @@ export function Sidebar({
             <span>Teams</span>
           </SidebarNavButton>
         ) : null}
-        <SidebarNavButton active={view === "help"} onClick={() => onNavigate("help")} aria-label="Help Guide">
-          <CircleHelp size={22} />
-          <span>Help</span>
-        </SidebarNavButton>
+        <div className="sidebar-help-nav-item">
+          <SidebarNavButton active={view === "help"} onClick={() => onNavigate("help")} aria-label="Help Guide">
+            <CircleHelp size={22} />
+            <span>Help</span>
+          </SidebarNavButton>
+        </div>
       </nav>
       <StaffCard staff={staff} onLogout={onLogout} />
     </>

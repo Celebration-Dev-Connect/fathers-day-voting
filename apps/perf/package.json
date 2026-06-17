@@ -9,7 +9,8 @@
     "perf:browse": "artillery run --output reports/browse.json artillery/browse.yml",
     "perf:vote": "artillery run --output reports/vote.json artillery/vote.yml",
     "perf:upload": "artillery run --output reports/upload.json artillery/upload.yml",
-    "perf:report": "artillery report reports/browse.json reports/vote.json reports/upload.json"
+    "perf:report": "artillery report reports/browse.json reports/vote.json reports/upload.json",
+    "typecheck": "echo 'no TypeScript sources to check'"
   },
   "dependencies": {
     "@carshow/db": "file:../../packages/db"

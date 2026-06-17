@@ -82,7 +82,7 @@ export function TeamAccessView() {
       </p>
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
-      <form className="inline-form inline-form-stacked" onSubmit={addMapping}>
+      <form className="inline-form inline-form-stacked" style={{ marginTop: 20 }} onSubmit={addMapping}>
         <input
           value={teamName}
           onChange={(event) => setTeamName(event.target.value)}

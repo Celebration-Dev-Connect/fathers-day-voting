@@ -2298,7 +2298,7 @@ textarea:focus {
     bottom: 0;
     padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
     gap: 4px;
     background: var(--inverse-surface);
     box-shadow: 0 -8px 20px rgb(0 0 0 / 18%);
@@ -2355,12 +2355,25 @@ textarea:focus {
   .inline-form,
   .inline-form-stacked {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
 
 @media (max-width: 760px) {
   body {
     min-width: 0;
+  }
+
+  .category-card {
+    flex-direction: column;
+    align-items: flex-start;
+    min-height: 0;
+    gap: 12px;
+  }
+
+  .card-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .csv-preview-header {

@@ -3,8 +3,46 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { eventId } from "../config.js";
 import { placementsForVehicle } from "../services/publishedResults.js";
+import { normalizeSearch } from "../utils.js";
 
 const PAGE_SIZE = 12;
+
+function searchTokens(search: string) {
+  return search.split(/\s+/).map((token) => token.trim()).filter(Boolean);
+}
+
+function publicVehicleSearchFilter(search: string): Prisma.VehicleEntryWhereInput {
+  const numericSearch = Number(search.replace(/^#/, ""));
+  const tokenFilters = searchTokens(search).map((token): Prisma.VehicleEntryWhereInput => {
+    const numericToken = Number(token.replace(/^#/, ""));
+    return {
+      OR: [
+        ...(Number.isFinite(numericToken) ? [{ entryNumber: numericToken }, { year: numericToken }] : []),
+        { make: { contains: token, mode: "insensitive" } },
+        { model: { contains: token, mode: "insensitive" } },
+        { nickname: { contains: token, mode: "insensitive" } },
+        { exteriorColor: { contains: token, mode: "insensitive" } },
+        { owner: { publicNameOptIn: true, firstName: { contains: token, mode: "insensitive" } } },
+        { owner: { publicNameOptIn: true, lastName: { contains: token, mode: "insensitive" } } },
+        { owner: { publicNameOptIn: true, publicName: { contains: token, mode: "insensitive" } } },
+      ],
+    };
+  });
+
+  return {
+    OR: [
+      ...(Number.isFinite(numericSearch) ? [{ entryNumber: numericSearch }, { year: numericSearch }] : []),
+      { make: { contains: search, mode: "insensitive" } },
+      { model: { contains: search, mode: "insensitive" } },
+      { nickname: { contains: search, mode: "insensitive" } },
+      { exteriorColor: { contains: search, mode: "insensitive" } },
+      { owner: { publicNameOptIn: true, firstName: { contains: search, mode: "insensitive" } } },
+      { owner: { publicNameOptIn: true, lastName: { contains: search, mode: "insensitive" } } },
+      { owner: { publicNameOptIn: true, publicName: { contains: search, mode: "insensitive" } } },
+      ...(tokenFilters.length > 1 ? [{ AND: tokenFilters }] : []),
+    ],
+  };
+}
 
 function voteMetadata(request: { ip: string; headers: Record<string, string | string[] | undefined> }) {
   const forwardedFor = request.headers["x-forwarded-for"];
@@ -365,14 +403,20 @@ export async function registerPublicRoutes(app: FastifyInstance) {
 
   app.get("/public/categories/:slug/entries", async (request) => {
     const params = z.object({ slug: z.string().trim().min(1) }).parse(request.params);
-    const query = z.object({ page: z.coerce.number().int().min(1).default(1) }).parse(request.query);
+    const query = z.object({ page: z.coerce.number().int().min(1).default(1), search: z.string().optional() }).parse(request.query);
+    const search = normalizeSearch(query.search);
 
     const category = await prisma.category.findFirst({
       where: { eventId, slug: params.slug, active: true },
     });
     if (!category) throw app.httpErrors.notFound("Category not found");
 
-    const where = { eventId, categoryId: category.id, status: VehicleStatus.CHECKED_IN };
+    const where: Prisma.VehicleEntryWhereInput = {
+      eventId,
+      categoryId: category.id,
+      status: VehicleStatus.CHECKED_IN,
+      ...(search ? publicVehicleSearchFilter(search) : {}),
+    };
     const [total, vehicles] = await Promise.all([
       prisma.vehicleEntry.count({ where }),
       prisma.vehicleEntry.findMany({
@@ -389,6 +433,36 @@ export async function registerPublicRoutes(app: FastifyInstance) {
 
     return {
       category: { id: category.id, name: category.name, slug: category.slug },
+      entries: vehicles.map(toPublicVehicle),
+      pagination: { page, pageSize: PAGE_SIZE, total, totalPages, hasNext: page < totalPages, hasPrev: page > 1 },
+    };
+  });
+
+  app.get("/public/entries", async (request) => {
+    const query = z.object({ page: z.coerce.number().int().min(1).default(1), search: z.string().optional() }).parse(request.query);
+    const search = normalizeSearch(query.search);
+
+    const where: Prisma.VehicleEntryWhereInput = {
+      eventId,
+      status: VehicleStatus.CHECKED_IN,
+      ...(search ? publicVehicleSearchFilter(search) : {}),
+    };
+
+    const [total, vehicles] = await Promise.all([
+      prisma.vehicleEntry.count({ where }),
+      prisma.vehicleEntry.findMany({
+        where,
+        include: { owner: true, category: true, photos: { where: { moderationStatus: "APPROVED" }, orderBy: { sortOrder: "asc" } } },
+        orderBy: { entryNumber: "asc" },
+        skip: (query.page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const page = Math.min(query.page, totalPages);
+
+    return {
       entries: vehicles.map(toPublicVehicle),
       pagination: { page, pageSize: PAGE_SIZE, total, totalPages, hasNext: page < totalPages, hasPrev: page > 1 },
     };

@@ -62,9 +62,24 @@ export async function castVote(token: string, voterKey: string) {
 }
 
 export async function getCategoryEntries(slug: string, page: number) {
+  const params = new URLSearchParams({ page: String(page) });
   return request<{ category: PublicCategory; entries: PublicEntry[]; pagination: Pagination }>(
-    `/public/categories/${encodeURIComponent(slug)}/entries?page=${page}`,
+    `/public/categories/${encodeURIComponent(slug)}/entries?${params.toString()}`,
   );
+}
+
+export async function searchCategoryEntries(slug: string, page: number, search: string) {
+  const params = new URLSearchParams({ page: String(page) });
+  if (search.trim()) params.set("search", search.trim());
+  return request<{ category: PublicCategory; entries: PublicEntry[]; pagination: Pagination }>(
+    `/public/categories/${encodeURIComponent(slug)}/entries?${params.toString()}`,
+  );
+}
+
+export async function searchPublicEntries(page: number, search: string) {
+  const params = new URLSearchParams({ page: String(page) });
+  if (search.trim()) params.set("search", search.trim());
+  return request<{ entries: PublicEntry[]; pagination: Pagination }>(`/public/entries?${params.toString()}`);
 }
 
 export async function getEntryByNumber(entryNumber: number) {

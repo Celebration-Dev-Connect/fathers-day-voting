@@ -2,7 +2,7 @@ import { Alert, EntryCard } from "@carshow/carshow-components";
 import type { PublicCategory, PublicEntry } from "@carshow/carshow-components";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { getCategoryEntries, type Pagination } from "../api";
+import { searchCategoryEntries, type Pagination } from "../api";
 import { EntrySearch } from "../components/EntrySearch";
 
 export function CategoryView() {
@@ -11,6 +11,8 @@ export function CategoryView() {
   const [entries, setEntries] = useState<PublicEntry[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
+  const [vehicleSearch, setVehicleSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -18,13 +20,24 @@ export function CategoryView() {
 
   useEffect(() => {
     setPage(1);
+    setVehicleSearch("");
+    setDebouncedSearch("");
   }, [slug]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(vehicleSearch.trim());
+      setPage(1);
+    }, 180);
+
+    return () => window.clearTimeout(timeout);
+  }, [vehicleSearch]);
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
     setError("");
-    getCategoryEntries(slug, page)
+    searchCategoryEntries(slug, page, debouncedSearch)
       .then(({ category, entries, pagination }) => {
         setCategory(category);
         setEntries(entries);
@@ -33,7 +46,7 @@ export function CategoryView() {
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [slug, page]);
+  }, [slug, page, debouncedSearch]);
 
   function goToPage(next: number) {
     setPage(next);
@@ -43,12 +56,23 @@ export function CategoryView() {
     <div className="public-content" ref={topRef}>
       <EntrySearch onSearch={(num) => navigate(`/browse/entry/${num}`)} />
       {category ? <h1 className="public-page-title">{category.name}</h1> : null}
+      <label className="vehicle-search-field">
+        <span>Search vehicles in this category</span>
+        <input
+          type="search"
+          placeholder="Owner, make, model, colour, or entry #"
+          value={vehicleSearch}
+          onChange={(e) => setVehicleSearch(e.target.value)}
+        />
+      </label>
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {loading ? (
         <p className="muted-copy">Loading…</p>
       ) : entries.length === 0 && !error ? (
-        <p className="muted-copy">No entries checked in yet.</p>
+        <p className="muted-copy">
+          {debouncedSearch ? `No entries found for “${debouncedSearch}”.` : "No entries checked in yet."}
+        </p>
       ) : (
         <div className="entry-grid">
           {entries.map((entry) => (
@@ -103,7 +127,7 @@ export function CategoryView() {
         </nav>
       ) : null}
 
-      {pagination ? (
+      {pagination && pagination.total > 0 ? (
         <p className="pagination-summary">
           Showing {(pagination.page - 1) * pagination.pageSize + 1}–
           {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total} entries

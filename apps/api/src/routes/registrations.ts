@@ -62,6 +62,50 @@ export function shouldImportCsvPhoto(existing: ExistingImportVehicle | undefined
   return Boolean(photoLink) && (!existing || (!existing.primaryPhotoId && existing.photoCount === 0));
 }
 
+function searchTokens(search: string) {
+  return search.split(/\s+/).map((token) => token.trim()).filter(Boolean);
+}
+
+function textSearchFilter(search: string): Prisma.VehicleEntryWhereInput[] {
+  const numericSearch = Number(search.replace(/^#/, ""));
+  const tokenFilters = searchTokens(search).map((token): Prisma.VehicleEntryWhereInput => {
+    const numericToken = Number(token.replace(/^#/, ""));
+    return {
+      OR: [
+        ...(Number.isFinite(numericToken) ? [{ entryNumber: numericToken }, { year: numericToken }] : []),
+        { make: { contains: token, mode: "insensitive" } },
+        { model: { contains: token, mode: "insensitive" } },
+        { nickname: { contains: token, mode: "insensitive" } },
+        { plateNumber: { contains: token, mode: "insensitive" } },
+        { exteriorColor: { contains: token, mode: "insensitive" } },
+        { owner: { firstName: { contains: token, mode: "insensitive" } } },
+        { owner: { lastName: { contains: token, mode: "insensitive" } } },
+        { owner: { publicName: { contains: token, mode: "insensitive" } } },
+        { owner: { phone: { contains: token, mode: "insensitive" } } },
+        { owner: { email: { contains: token, mode: "insensitive" } } },
+      ],
+    };
+  });
+
+  return [
+    ...(Number.isFinite(numericSearch) ? [{ entryNumber: numericSearch }, { year: numericSearch }] : []),
+    { make: { contains: search, mode: "insensitive" } },
+    { model: { contains: search, mode: "insensitive" } },
+    { nickname: { contains: search, mode: "insensitive" } },
+    { plateNumber: { contains: search, mode: "insensitive" } },
+    { exteriorColor: { contains: search, mode: "insensitive" } },
+    { owner: { firstName: { contains: search, mode: "insensitive" } } },
+    { owner: { lastName: { contains: search, mode: "insensitive" } } },
+    { owner: { publicName: { contains: search, mode: "insensitive" } } },
+    { owner: { phone: { contains: search, mode: "insensitive" } } },
+    { owner: { email: { contains: search, mode: "insensitive" } } },
+    { ownerAccessCode: { contains: search } },
+    { qrCard: { visibleCode: { contains: search, mode: "insensitive" } } },
+    { qrCard: { publicToken: { contains: search, mode: "insensitive" } } },
+    ...(tokenFilters.length > 1 ? [{ AND: tokenFilters }] : []),
+  ];
+}
+
 async function nextEntryNumber() {
   const latest = await prisma.vehicleEntry.findFirst({
     where: { eventId },
@@ -977,23 +1021,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
     await requireStaff(app, request);
     const query = z.object({ search: z.string().optional() }).parse(request.query);
     const search = normalizeSearch(query.search);
-    const numericSearch = Number(search.replace(/^#/, ""));
-
-    const searchFilters: Prisma.VehicleEntryWhereInput[] | undefined = search
-      ? [
-          ...(Number.isFinite(numericSearch) ? [{ entryNumber: numericSearch }] : []),
-          { make: { contains: search, mode: "insensitive" } },
-          { model: { contains: search, mode: "insensitive" } },
-          { plateNumber: { contains: search, mode: "insensitive" } },
-          { owner: { firstName: { contains: search, mode: "insensitive" } } },
-          { owner: { lastName: { contains: search, mode: "insensitive" } } },
-          { owner: { phone: { contains: search, mode: "insensitive" } } },
-          { owner: { email: { contains: search, mode: "insensitive" } } },
-          { ownerAccessCode: { contains: search } },
-          { qrCard: { visibleCode: { contains: search, mode: "insensitive" } } },
-          { qrCard: { publicToken: { contains: search, mode: "insensitive" } } },
-        ]
-      : undefined;
+    const searchFilters = search ? textSearchFilter(search) : undefined;
 
     const registrations = await prisma.vehicleEntry.findMany({
       where: {

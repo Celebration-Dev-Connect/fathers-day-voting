@@ -10,7 +10,7 @@ const viewLabels: Record<View, string> = {
   categories: "Categories",
   "photo-review": "Photo Review",
   voting: "Voting",
-  "team-access": "Team Access",
+  "team-access": "Teams",
   help: "Help Guide",
 };
 
@@ -81,7 +81,7 @@ export function Sidebar({
             aria-label="Team Access"
           >
             <ShieldCheck size={22} />
-            <span>Team Access</span>
+            <span>Teams</span>
           </SidebarNavButton>
         ) : null}
         <SidebarNavButton active={view === "help"} onClick={() => onNavigate("help")} aria-label="Help Guide">

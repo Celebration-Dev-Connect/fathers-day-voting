@@ -95,20 +95,21 @@ export function RegistrationsView({
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const [showSendAllConfirm, setShowSendAllConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isAdmin = staff.role === "ADMIN";
 
   useEffect(() => {
     setPage(0);
   }, [registrations]);
 
   useEffect(() => {
-    if (staff.role !== "ADMIN") return;
+    if (!isAdmin) return;
     getLatestRegistrationImport()
       .then(({ job }) => {
         setActiveImport(job);
         setShowImportProgress(Boolean(job && ["PENDING", "PROCESSING"].includes(job.status)));
       })
       .catch(() => {});
-  }, [staff.role]);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!activeImport || !["PENDING", "PROCESSING"].includes(activeImport.status)) return;
@@ -234,14 +235,16 @@ export function RegistrationsView({
                 className="visually-hidden"
                 onChange={(event) => void previewCsv(event.target.files?.[0] ?? null)}
               />
-              <Button
-                variant="secondary"
-                disabled={sendingBulkEmail || staff.role !== "ADMIN"}
-                onClick={() => setShowSendAllConfirm(true)}
-              >
-                <Mail size={20} />
-                {sendingBulkEmail ? "Sending..." : "Send All Emails"}
-              </Button>
+              {isAdmin ? (
+                <Button
+                  variant="secondary"
+                  disabled={sendingBulkEmail}
+                  onClick={() => setShowSendAllConfirm(true)}
+                >
+                  <Mail size={20} />
+                  {sendingBulkEmail ? "Sending..." : "Send All Emails"}
+                </Button>
+              ) : null}
               <Button
                 variant="secondary"
                 disabled={importing || staff.role !== "ADMIN"}
@@ -391,7 +394,7 @@ export function RegistrationsView({
           />
         </div>
       </div>
-      {showSendAllConfirm ? (
+      {isAdmin && showSendAllConfirm ? (
         <div className="import-status-overlay" role="presentation" onClick={() => setShowSendAllConfirm(false)}>
           <section
             className="confirm-dialog"

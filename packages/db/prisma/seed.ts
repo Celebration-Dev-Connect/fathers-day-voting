@@ -164,22 +164,6 @@ async function main() {
     });
   }
 
-  // Default admin team: members of the configured PCO team get ADMIN.
-  const defaultAdminTeamName = process.env.PCO_TEAM_NAME ?? "carshow";
-  const existingAdminTeam = await prisma.pcoTeamRole.findFirst({
-    where: { pcoTeamName: defaultAdminTeamName, positionName: null },
-  });
-  if (existingAdminTeam) {
-    await prisma.pcoTeamRole.update({
-      where: { id: existingAdminTeam.id },
-      data: { role: StaffRole.ADMIN, active: true },
-    });
-  } else {
-    await prisma.pcoTeamRole.create({
-      data: { pcoTeamName: defaultAdminTeamName, positionName: null, role: StaffRole.ADMIN },
-    });
-  }
-
   for (let index = 1; index <= 150; index += 1) {
     const visibleCode = index.toString().padStart(4, "0");
     await prisma.qrCard.upsert({

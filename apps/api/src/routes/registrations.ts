@@ -259,20 +259,33 @@ function webGuideHeaders(jar: Map<string, string>) {
   };
 }
 
+function webGuidePhotoHeaders(jar: Map<string, string>, referer: string) {
+  return {
+    ...webGuideHeaders(jar),
+    Accept: "image/avif,image/webp,image/*,*/*;q=0.8",
+    Referer: referer,
+  };
+}
+
 function followRedirectLocation(response: Response, fromUrl: string) {
   const location = response.headers.get("location");
   if (!location) return null;
   return new URL(location, fromUrl).toString();
 }
 
-async function getWithCookies(url: string, jar: Map<string, string>, timeoutMs = 20_000) {
+async function getWithCookies(
+  url: string,
+  jar: Map<string, string>,
+  timeoutMs = 20_000,
+  headersForRequest: (requestUrl: string) => ReturnType<typeof webGuideHeaders> = () => webGuideHeaders(jar),
+) {
   let currentUrl = url;
   for (let redirectCount = 0; redirectCount < 6; redirectCount += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const response = await fetch(currentUrl, {
       method: "GET",
-      headers: webGuideHeaders(jar),
+      headers: headersForRequest(currentUrl),
       redirect: "manual",
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
@@ -368,10 +381,45 @@ function detectImageType(bytes: Buffer) {
   return null;
 }
 
-function normalizeImageContentType(contentType: string | null, bytes: Buffer) {
+function looksLikeHtml(bytes: Buffer) {
+  const prefix = bytes.subarray(0, 512).toString("utf8").trimStart().toLowerCase();
+  return prefix.startsWith("<!doctype html") || prefix.startsWith("<html") || prefix.includes("<body");
+}
+
+function mimeTypeForSharpFormat(format: string | undefined) {
+  switch (format) {
+    case "jpeg":
+    case "jpg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    case "avif":
+      return "image/avif";
+    case "heif":
+      return "image/heif";
+    case "tiff":
+      return "image/tiff";
+    default:
+      return null;
+  }
+}
+
+export async function resolveDownloadedPhotoContentType(contentType: string | null, bytes: Buffer) {
+  if (looksLikeHtml(bytes)) return null;
   const parsed = contentType?.split(";")[0]?.trim().toLowerCase() ?? "";
-  if (parsed.startsWith("image/")) return parsed;
-  return detectImageType(bytes) ?? null;
+  const detected = detectImageType(bytes);
+  const headerType = parsed.startsWith("image/") ? parsed : null;
+
+  try {
+    const metadata = await sharp(bytes, { failOn: "none" }).metadata();
+    return headerType ?? detected ?? mimeTypeForSharpFormat(metadata.format);
+  } catch {
+    return detected;
+  }
 }
 
 async function downloadWebGuidePhoto(
@@ -392,7 +440,9 @@ async function downloadWebGuidePhoto(
     );
   }
 
-  const response = await getWithCookies(url.toString(), session.jar);
+  const response = await getWithCookies(url.toString(), session.jar, 20_000, () =>
+    webGuidePhotoHeaders(session.jar, config.webGuide.baseUrl),
+  );
   if (!response.ok) {
     throw app.httpErrors.badGateway(`Entry ${target.entryNumber} photo download failed (HTTP ${response.status})`);
   }
@@ -405,7 +455,13 @@ async function downloadWebGuidePhoto(
     );
   }
 
-  const contentType = normalizeImageContentType(response.headers.get("content-type"), bytes);
+  if (looksLikeHtml(bytes)) {
+    throw app.httpErrors.badGateway(
+      `Entry ${target.entryNumber} photo URL returned a WebGuide page instead of an image. Check the photo link or WebGuide credentials.`,
+    );
+  }
+
+  const contentType = await resolveDownloadedPhotoContentType(response.headers.get("content-type"), bytes);
   if (!contentType) {
     throw app.httpErrors.badGateway(`Entry ${target.entryNumber} photo URL did not return an image`);
   }

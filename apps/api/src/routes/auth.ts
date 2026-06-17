@@ -37,29 +37,36 @@ const pcoAssignmentsSchema = z.object({
   ),
 });
 
-const POSITION_ROLE_MAP: Record<string, StaffRole> = {
-  admin: StaffRole.ADMIN,
-  judge: StaffRole.JUDGE,
-  registrar: StaffRole.REGISTRAR,
+const ROLE_PRIORITY: Record<StaffRole, number> = {
+  [StaffRole.ADMIN]: 3,
+  [StaffRole.REGISTRAR]: 2,
+  [StaffRole.JUDGE]: 1,
 };
 
-async function resolvePcoRole(
+/** Pick the highest-privilege role from a set of matched roles (ADMIN > REGISTRAR > JUDGE). */
+export function pickHighestRole(roles: StaffRole[]): StaffRole | null {
+  return roles.reduce<StaffRole | null>(
+    (best, role) => (best === null || ROLE_PRIORITY[role] > ROLE_PRIORITY[best] ? role : best),
+    null,
+  );
+}
+
+/** Fetch the position names the given person holds within a single PCO team. */
+async function fetchPersonPositionsInTeam(
   pcoPersonId: string,
   accessToken: string,
   teamName: string,
   log: FastifyBaseLogger,
-): Promise<StaffRole | null> {
+): Promise<string[] | null> {
   const teamsRes = await fetch(
     `https://api.planningcenteronline.com/services/v2/teams?where[name]=${encodeURIComponent(teamName)}&per_page=1`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
   if (!teamsRes.ok) {
-    log.error({ status: teamsRes.status }, "PCO teams fetch failed");
+    log.error({ status: teamsRes.status, teamName }, "PCO teams fetch failed");
     return null;
   }
-  const teamsBody = await teamsRes.json();
-  log.info({ teamName, teamsBody }, "PCO teams response");
-  const teams = pcoTeamsSchema.parse(teamsBody);
+  const teams = pcoTeamsSchema.parse(await teamsRes.json());
   const teamId = teams.data[0]?.id;
   if (!teamId) {
     log.warn({ teamName }, "PCO team not found — check team name matches exactly in PCO Services");
@@ -71,36 +78,63 @@ async function resolvePcoRole(
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
   if (!assignRes.ok) {
-    log.error({ status: assignRes.status }, "PCO PTPA fetch failed");
+    log.error({ status: assignRes.status, teamId }, "PCO PTPA fetch failed");
     return null;
   }
-  const assignBody = await assignRes.json();
-  const allPersonIds = (assignBody as any).data?.map((a: any) => a.relationships?.person?.data?.id);
-  const allPositions = (assignBody as any).included?.filter((i: any) => i.type === "TeamPosition").map((i: any) => ({ id: i.id, name: i.attributes?.name }));
-  log.info({ teamId, pcoPersonId, allPersonIds, allPositions }, "PCO team assignments");
+  const assignments = pcoAssignmentsSchema.parse(await assignRes.json());
 
-  const assignments = pcoAssignmentsSchema.parse(assignBody);
-
-  const myAssignment = assignments.data.find(
+  const myAssignments = assignments.data.filter(
     (a) => a.relationships.person.data.id === pcoPersonId,
   );
-  if (!myAssignment) {
-    log.warn({ pcoPersonId, allPersonIds }, "PCO person not found in team assignments");
+  const positionNames = myAssignments
+    .map((a) => {
+      const tpId = a.relationships.team_position.data.id;
+      return assignments.included.find((i) => i.type === "TeamPosition" && i.id === tpId)?.attributes
+        .name;
+    })
+    .filter((name): name is string => Boolean(name));
+  log.info({ teamName, teamId, pcoPersonId, positionNames }, "PCO team membership resolved");
+  return positionNames;
+}
+
+/**
+ * Resolve a staff role from the admin-managed PcoTeamRole mappings. A mapping with no
+ * positionName grants its role to any member of the team; one with a positionName grants
+ * its role only to people holding that position. Highest privilege across all matches wins.
+ */
+async function resolvePcoRole(
+  pcoPersonId: string,
+  accessToken: string,
+  log: FastifyBaseLogger,
+): Promise<StaffRole | null> {
+  const mappings = await prisma.pcoTeamRole.findMany({ where: { active: true } });
+  if (mappings.length === 0) {
+    log.warn("No active PCO team-role mappings configured — no staff can sign in via Planning Center");
     return null;
   }
 
-  const tpId = myAssignment.relationships.team_position.data.id;
-  const position = assignments.included.find(
-    (i) => i.type === "TeamPosition" && i.id === tpId,
-  );
-  if (!position) {
-    log.warn({ tpId, allPositions }, "PCO team position not found in included data");
-    return null;
+  const teamNames = [...new Set(mappings.map((m) => m.pcoTeamName))];
+  const positionsByTeam = new Map<string, string[]>();
+  for (const teamName of teamNames) {
+    const positions = await fetchPersonPositionsInTeam(pcoPersonId, accessToken, teamName, log);
+    if (positions !== null) positionsByTeam.set(teamName, positions);
   }
 
-  const positionName = position.attributes.name;
-  const role = POSITION_ROLE_MAP[positionName.toLowerCase()] ?? null;
-  log.info({ positionName, role }, "PCO position resolved");
+  const matchedRoles: StaffRole[] = [];
+  for (const mapping of mappings) {
+    const memberPositions = positionsByTeam.get(mapping.pcoTeamName);
+    if (!memberPositions) continue; // not a member of this team (or team lookup failed)
+    if (mapping.positionName === null) {
+      matchedRoles.push(mapping.role); // whole-team mapping
+    } else if (
+      memberPositions.some((name) => name.toLowerCase() === mapping.positionName!.toLowerCase())
+    ) {
+      matchedRoles.push(mapping.role);
+    }
+  }
+
+  const role = pickHighestRole(matchedRoles);
+  log.info({ pcoPersonId, matchedRoles, role }, "PCO role resolved from team mappings");
   return role;
 }
 
@@ -176,7 +210,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       reply.clearCookie("pco_target_app", { path: "/" });
       const spaUrl = targetApp === "judge" ? (config.judgeWebUrl ?? "") : (config.adminWebUrl ?? "");
 
-      const role = await resolvePcoRole(pcoPersonId, accessToken, config.planningCenter.teamName, app.log);
+      const role = await resolvePcoRole(pcoPersonId, accessToken, app.log);
       if (!role) {
         return reply.redirect(`${spaUrl}/#error=unauthorized`);
       }

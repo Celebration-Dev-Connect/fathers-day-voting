@@ -8,6 +8,16 @@ export type StaffUser = {
   role: StaffRole;
 };
 
+export type PcoTeamRole = {
+  id: string;
+  pcoTeamName: string;
+  positionName: string | null;
+  role: StaffRole;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Category = {
   id: string;
   name: string;

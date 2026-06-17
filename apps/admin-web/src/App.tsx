@@ -35,8 +35,19 @@ const HelpView = lazy(() =>
 const CeremonyView = lazy(() =>
   import("./views/CeremonyView").then(({ CeremonyView }) => ({ default: CeremonyView })),
 );
+const TeamAccessView = lazy(() =>
+  import("./views/TeamAccessView").then(({ TeamAccessView }) => ({ default: TeamAccessView })),
+);
 
-export type View = "dashboard" | "registrations" | "qr-cards" | "categories" | "photo-review" | "voting" | "help";
+export type View =
+  | "dashboard"
+  | "registrations"
+  | "qr-cards"
+  | "categories"
+  | "photo-review"
+  | "voting"
+  | "team-access"
+  | "help";
 
 export function App() {
   const [staff, setStaff] = useState<StaffUser | null>(null);
@@ -189,6 +200,7 @@ function AdminShellConnected({
             }}
           />
         ) : null}
+        {view === "team-access" && staff.role === "ADMIN" ? <TeamAccessView /> : null}
         {view === "help" ? <HelpView staff={staff} onNavigate={setView} /> : null}
       </Suspense>
     </AdminShellTemplate>

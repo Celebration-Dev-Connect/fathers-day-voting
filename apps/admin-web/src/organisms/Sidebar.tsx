@@ -1,4 +1,4 @@
-import { Car, CircleHelp, ClipboardList, Images, LogOut, QrCode, Tags, Trophy } from "lucide-react";
+import { Car, CircleHelp, ClipboardList, Images, LogOut, QrCode, ShieldCheck, Tags, Trophy } from "lucide-react";
 import { SidebarNavButton, StaffCard } from "@carshow/carshow-components";
 import type { StaffUser } from "@carshow/carshow-components";
 import type { View } from "../App";
@@ -10,6 +10,7 @@ const viewLabels: Record<View, string> = {
   categories: "Categories",
   "photo-review": "Photo Review",
   voting: "Voting",
+  "team-access": "Team Access",
   help: "Help Guide",
 };
 
@@ -73,6 +74,16 @@ export function Sidebar({
           <Trophy size={22} />
           <span>Voting</span>
         </SidebarNavButton>
+        {staff.role === "ADMIN" ? (
+          <SidebarNavButton
+            active={view === "team-access"}
+            onClick={() => onNavigate("team-access")}
+            aria-label="Team Access"
+          >
+            <ShieldCheck size={22} />
+            <span>Team Access</span>
+          </SidebarNavButton>
+        ) : null}
         <SidebarNavButton active={view === "help"} onClick={() => onNavigate("help")} aria-label="Help Guide">
           <CircleHelp size={22} />
           <span>Help</span>

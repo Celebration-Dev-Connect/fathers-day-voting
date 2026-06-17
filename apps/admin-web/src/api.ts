@@ -5,11 +5,13 @@ import type {
   CeremonyData,
   DashboardMetrics,
   JudgeCategoryCompletion,
+  PcoTeamRole,
   PhotoModerationStatus,
   PhotoReviewItem,
   QrCard,
   Registration,
   RegistrationPayload,
+  StaffRole,
   StaffUser,
   SpecialAward,
   SpecialAwardVotingTally,
@@ -118,6 +120,37 @@ export async function updateSpecialAward(
 
 export async function deleteSpecialAward(id: string) {
   return request<{ ok: true }>(`/special-awards/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function listTeamRoles() {
+  return request<{ teamRoles: PcoTeamRole[] }>("/admin/pco-team-roles");
+}
+
+export async function createTeamRole(input: {
+  pcoTeamName: string;
+  positionName?: string | null;
+  role: StaffRole;
+}) {
+  return request<{ teamRole: PcoTeamRole }>("/admin/pco-team-roles", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateTeamRole(
+  id: string,
+  input: Partial<Pick<PcoTeamRole, "role" | "active">>,
+) {
+  return request<{ teamRole: PcoTeamRole }>(`/admin/pco-team-roles/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteTeamRole(id: string) {
+  return request<{ ok: true }>(`/admin/pco-team-roles/${id}`, {
     method: "DELETE",
   });
 }

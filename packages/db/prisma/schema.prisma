@@ -83,6 +83,18 @@ model Event {
   registrationImportJobs RegistrationImportJob[]
 }
 
+model PcoTeamRole {
+  id           String    @id @default(cuid())
+  pcoTeamName  String
+  positionName String?
+  role         StaffRole
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([pcoTeamName, positionName])
+}
+
 model StaffUser {
   id                     String                   @id @default(cuid())
   email                  String                   @unique

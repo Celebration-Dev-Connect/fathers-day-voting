@@ -17,6 +17,7 @@ import { registerCategoryRoutes } from "./routes/categories.js";
 import { registerInternalRoutes } from "./routes/internal.js";
 import { registerJudgingRoutes } from "./routes/judging.js";
 import { registerOwnerRoutes } from "./routes/owner.js";
+import { registerPcoTeamRoleRoutes } from "./routes/pcoTeamRoles.js";
 import { registerPhotosRoutes } from "./routes/photos.js";
 import { registerPublicRoutes } from "./routes/public.js";
 import { registerQrCardRoutes } from "./routes/qrCards.js";
@@ -71,6 +72,7 @@ export async function buildApp({ storage, moderator, textModerator, emailProvide
   app.get("/health", async () => ({ ok: true }));
 
   await registerAuthRoutes(app);
+  await registerPcoTeamRoleRoutes(app);
   await registerInternalRoutes(app);
   await registerCategoryRoutes(app);
   await registerVotingRoutes(app);

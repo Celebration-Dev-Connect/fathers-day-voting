@@ -52,7 +52,7 @@ export type OwnerVehicleSummary = {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers: options.body instanceof FormData ? options.headers : { "Content-Type": "application/json", ...options.headers },
+    headers: options.body == null || options.body instanceof FormData ? options.headers : { "Content-Type": "application/json", ...options.headers },
   });
 
   if (!response.ok) {

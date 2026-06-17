@@ -2,22 +2,46 @@ import { type FormEvent, useState } from "react";
 
 type Props = {
   onSearch: (entryNumber: number) => void;
+  onTextSearch?: (search: string) => void;
+  placeholder?: string;
+  value?: string;
 };
 
-export function EntrySearch({ onSearch }: Props) {
-  const [value, setValue] = useState("");
+export function EntrySearch({
+  onSearch,
+  onTextSearch,
+  placeholder = "Find by entry # (e.g. 1001)",
+  value,
+}: Props) {
+  const [localValue, setLocalValue] = useState("");
   const [error, setError] = useState("");
+  const searchValue = value ?? localValue;
+
+  function updateValue(nextValue: string) {
+    if (value === undefined) setLocalValue(nextValue);
+    onTextSearch?.(nextValue);
+    setError("");
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const raw = value.trim().replace(/^#/, "");
+    const trimmed = searchValue.trim();
+    const raw = trimmed.replace(/^#/, "");
     const num = parseInt(raw, 10);
-    if (!num || num <= 0) {
-      setError("Enter a valid entry number");
+
+    if (num > 0 && String(num) === raw) {
+      setError("");
+      onSearch(num);
       return;
     }
-    setError("");
-    onSearch(num);
+
+    if (onTextSearch) {
+      setError("");
+      onTextSearch(trimmed);
+      return;
+    }
+
+    setError("Enter a valid entry number");
   }
 
   return (
@@ -25,14 +49,11 @@ export function EntrySearch({ onSearch }: Props) {
       <div className="entry-search-field">
         <input
           type="text"
-          inputMode="numeric"
-          placeholder="Find by entry # (e.g. 1001)"
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            setError("");
-          }}
-          aria-label="Entry number"
+          inputMode={onTextSearch ? "search" : "numeric"}
+          placeholder={placeholder}
+          value={searchValue}
+          onChange={(e) => updateValue(e.target.value)}
+          aria-label={onTextSearch ? "Search vehicles" : "Entry number"}
         />
         {error ? <p className="entry-search-error">{error}</p> : null}
       </div>

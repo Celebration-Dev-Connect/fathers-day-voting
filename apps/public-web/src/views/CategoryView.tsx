@@ -54,17 +54,14 @@ export function CategoryView() {
 
   return (
     <div className="public-content" ref={topRef}>
-      <EntrySearch onSearch={(num) => navigate(`/browse/entry/${num}`)} />
+      <Link to="/browse" className="back-link">← Back to browse</Link>
+      <EntrySearch
+        onSearch={(num) => navigate(`/browse/entry/${num}`)}
+        onTextSearch={setVehicleSearch}
+        placeholder="Find by entry #, owner, make, or model"
+        value={vehicleSearch}
+      />
       {category ? <h1 className="public-page-title">{category.name}</h1> : null}
-      <label className="vehicle-search-field">
-        <span>Search vehicles in this category</span>
-        <input
-          type="search"
-          placeholder="Owner, make, model, colour, or entry #"
-          value={vehicleSearch}
-          onChange={(e) => setVehicleSearch(e.target.value)}
-        />
-      </label>
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {loading ? (

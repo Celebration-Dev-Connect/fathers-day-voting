@@ -61,17 +61,13 @@ export function BrowseView() {
 
   return (
     <div className="public-content">
-      <EntrySearch onSearch={(num) => navigate(`/browse/entry/${num}`)} />
+      <EntrySearch
+        onSearch={(num) => navigate(`/browse/entry/${num}`)}
+        onTextSearch={setVehicleSearch}
+        placeholder="Find by entry #, owner, make, or model"
+        value={vehicleSearch}
+      />
       <h1 className="public-page-title">Browse by Category</h1>
-      <label className="vehicle-search-field">
-        <span>Search all vehicles</span>
-        <input
-          type="search"
-          placeholder="Owner, make, model, colour, or entry #"
-          value={vehicleSearch}
-          onChange={(e) => setVehicleSearch(e.target.value)}
-        />
-      </label>
       {error ? <Alert variant="danger">{error}</Alert> : null}
       {debouncedSearch ? (
         <>

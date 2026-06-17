@@ -4330,24 +4330,6 @@ html.landing .public-app {
   background: var(--deep-red);
 }
 
-.vehicle-search-field {
-  display: grid;
-  gap: 6px;
-  margin: 0 0 20px;
-}
-
-.vehicle-search-field span {
-  color: var(--muted-grey);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.vehicle-search-field input {
-  margin: 0;
-}
-
 /* Clickable entry card link */
 
 .entry-card-link {

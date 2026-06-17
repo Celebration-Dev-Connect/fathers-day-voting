@@ -63,6 +63,16 @@ function ownerAccessCodeFor(registration: Registration) {
   return registration.ownerAccessCode;
 }
 
+function hasProcessingPhotos(registration: Registration | null) {
+  return (registration?.photos ?? []).some((photo) => photo.moderationStatus === "PENDING" || photo.moderationStatus === "PROCESSING");
+}
+
+function photoProcessingSignature(registration: Registration | null) {
+  return (registration?.photos ?? [])
+    .map((photo) => `${photo.id}:${photo.moderationStatus}:${photo.url ?? ""}:${photo.isPrimary ? "primary" : ""}`)
+    .join("|");
+}
+
 export function RegistrationEditor({
   categories,
   registration,
@@ -100,6 +110,24 @@ export function RegistrationEditor({
       }));
     }
   }, [categories, payload.vehicle.categoryId]);
+
+  useEffect(() => {
+    if (!registration || !hasProcessingPhotos(registration)) return;
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      getRegistration(registration.id)
+        .then((result) => {
+          if (!cancelled) onSaved(result.registration);
+        })
+        .catch(() => {
+          // Keep the editor quiet while background processing catches up.
+        });
+    }, 2500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [registration?.id, onSaved, photoProcessingSignature(registration)]);
 
   function updateOwner<Key extends keyof RegistrationPayload["owner"]>(
     key: Key,

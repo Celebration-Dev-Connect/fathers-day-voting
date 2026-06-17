@@ -1,7 +1,7 @@
 import { ArrowLeft, Check, ImageOff, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { Alert, Button, PageHeader, Pagination, VehiclePhotoViewer, formatDateTime } from "@carshow/carshow-components";
 import type { PhotoModerationStatus, PhotoReviewItem } from "@carshow/carshow-components";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getPhotoReviewImageUrl, listPhotoReviews, type PhotoReviewQueue, updatePhotoReviewStatus } from "../api";
 
 const QUEUES: Array<{ key: PhotoReviewQueue; label: string }> = [
@@ -265,10 +265,10 @@ export function PhotoReviewView() {
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    setLoading(true);
+  const loadPhotos = useCallback((showLoading = false) => {
+    if (showLoading) setLoading(true);
     setError("");
-    listPhotoReviews(queue, page, PAGE_SIZE)
+    return listPhotoReviews(queue, page, PAGE_SIZE)
       .then(({ photos, pagination }) => {
         if (!photos.length && page > 0 && pagination.total > 0) {
           setPage(Math.max(0, pagination.pageCount - 1));
@@ -279,7 +279,18 @@ export function PhotoReviewView() {
         setSelected((current) => current ? photos.find((photo) => photo.id === current.id) ?? null : null);
       })
       .catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Could not load photos"))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (showLoading) setLoading(false);
+      });
+  }, [page, queue]);
+
+  useEffect(() => {
+    void loadPhotos(true);
+  }, [loadPhotos, refreshKey]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => void loadPhotos(false), 10_000);
+    return () => window.clearInterval(interval);
   }, [page, queue, refreshKey]);
 
   async function changeStatus(photo: PhotoReviewItem, status: "APPROVED" | "REJECTED") {

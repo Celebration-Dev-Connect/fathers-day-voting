@@ -18,6 +18,7 @@ const OWNER_SESSION_KEY = "carshow-owner-session";
 const COMPRESSION_TARGET_BYTES = 4.5 * 1024 * 1024;
 const MANAGED_PHOTO_LIMIT = 15;
 const ACTIVE_PHOTO_STATUSES = new Set<OwnerPhoto["moderationStatus"]>(["PENDING", "PROCESSING", "HUMAN_REVIEW", "APPROVED"]);
+const PROCESSING_PHOTO_STATUSES = new Set<OwnerPhoto["moderationStatus"]>(["PENDING", "PROCESSING"]);
 
 type StoredOwnerSession = {
   token: string;
@@ -112,6 +113,16 @@ function statusLabel(status: OwnerPhoto["moderationStatus"]) {
   if (status === "REJECTED") return "Rejected";
   if (status === "FAILED") return "Needs review";
   return "Pending review";
+}
+
+function hasProcessingOwnerPhotos(vehicle: OwnerVehicle | null) {
+  return (vehicle?.photos ?? []).some((photo) => PROCESSING_PHOTO_STATUSES.has(photo.moderationStatus));
+}
+
+function ownerPhotoSignature(vehicle: OwnerVehicle | null) {
+  return (vehicle?.photos ?? [])
+    .map((photo) => `${photo.id}:${photo.moderationStatus}:${photo.url ?? ""}:${photo.isPrimary ? "primary" : ""}`)
+    .join("|");
 }
 
 function PhotoManager({
@@ -419,6 +430,31 @@ function OwnerPortal() {
       ignore = true;
     };
   }, [session?.token, session?.vehicleId]);
+
+  useEffect(() => {
+    if (!session || !vehicle || !hasProcessingOwnerPhotos(vehicle)) return;
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      getOwnerVehicle(vehicle.id, session.token)
+        .then(({ vehicle: nextVehicle, vehicles: nextVehicles }) => {
+          if (cancelled) return;
+          setVehicle((current) =>
+            current && current.id === nextVehicle.id
+              ? { ...current, photos: nextVehicle.photos, primaryPhotoId: nextVehicle.primaryPhotoId }
+              : current,
+          );
+          setVehicles(nextVehicles);
+          setSelectedPhotoId((current) =>
+            current ?? nextVehicle.primaryPhotoId ?? nextVehicle.photos.find((photo) => photo.url)?.id ?? null,
+          );
+        })
+        .catch(() => {});
+    }, 2500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [session?.token, vehicle?.id, ownerPhotoSignature(vehicle)]);
 
   const hasChanges =
     vehicle !== null &&

@@ -148,6 +148,16 @@ function JudgeApp({ staff, onLogout }: { staff: StaffUser; onLogout: () => void 
       .finally(() => setLoadingCategory(false));
   }, [selectedCategoryId, categoryReloadKey]);
 
+  useEffect(() => {
+    if (!selectedCategoryId) return;
+    const interval = window.setInterval(() => {
+      listJudgeVehicles(selectedCategoryId)
+        .then((vehicleResult) => setVehicles(vehicleResult.registrations))
+        .catch(() => {});
+    }, 30_000);
+    return () => window.clearInterval(interval);
+  }, [selectedCategoryId]);
+
   async function saveBallot(nextPicks = ballot?.picks ?? []) {
     if (!selectedCategoryId) return;
     setMessage("");
@@ -386,6 +396,12 @@ function BallotWorkspace({
     next.splice(nextIndex, 0, item);
     updatePicks(next);
   }
+
+  useEffect(() => {
+    if (!detailVehicle) return;
+    const refreshedVehicle = vehicles.find((registration) => registration.id === detailVehicle.id);
+    if (refreshedVehicle && refreshedVehicle !== detailVehicle) setDetailVehicle(refreshedVehicle);
+  }, [detailVehicle, vehicles]);
 
   return (
     <>

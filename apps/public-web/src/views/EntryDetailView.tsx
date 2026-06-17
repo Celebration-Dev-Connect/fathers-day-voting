@@ -1,6 +1,6 @@
 import { Alert, VehicleProfileCard } from "@carshow/carshow-components";
 import type { PublishedVehiclePlacement, PublicVehicle } from "@carshow/carshow-components";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getEntryByNumber } from "../api";
 import { EntrySearch } from "../components/EntrySearch";
@@ -178,13 +178,13 @@ export function EntryDetailView() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadEntry = useCallback((showLoading = false) => {
     const num = parseInt(entryNumber, 10);
-    if (!num) return;
-    setLoading(true);
+    if (!num) return Promise.resolve();
+    if (showLoading) setLoading(true);
     setError("");
     setNotFound(false);
-    getEntryByNumber(num)
+    return getEntryByNumber(num)
       .then(({ vehicle, placements = [] }) => {
         setVehicle(vehicle);
         setPlacements(placements);
@@ -196,8 +196,19 @@ export function EntryDetailView() {
           setError(err.message);
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (showLoading) setLoading(false);
+      });
   }, [entryNumber]);
+
+  useEffect(() => {
+    void loadEntry(true);
+  }, [loadEntry]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => void loadEntry(false), 30_000);
+    return () => window.clearInterval(id);
+  }, [loadEntry]);
 
   if (loading) {
     return (

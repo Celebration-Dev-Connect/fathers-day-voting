@@ -203,6 +203,7 @@ enum PhotoModerationStatus {
 
 enum PhotoSource {
   STAFF
+  OWNER
   VISITOR
 }
 

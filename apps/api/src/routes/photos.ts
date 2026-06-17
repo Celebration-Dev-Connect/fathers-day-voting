@@ -325,7 +325,7 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
       const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
       const { vehicle } = await requireOwnerVehicle(app, request, params.id);
       const image = await readUploadedImage(app, request);
-      const result = await createPendingPhoto(app, deps, vehicle.id, `owner:${vehicle.ownerId}`, "VISITOR", image, true);
+      const result = await createPendingPhoto(app, deps, vehicle.id, `owner:${vehicle.ownerId}`, "OWNER", image, true);
       return reply.code(202).send(result);
     },
   );

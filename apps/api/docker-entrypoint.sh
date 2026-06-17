@@ -16,10 +16,13 @@ apply_migrations() {
   MIGRATE_LOG="$(mktemp)"
   "$PRISMA" migrate deploy --schema "$SCHEMA" >"$MIGRATE_LOG" 2>&1 || {
     cat "$MIGRATE_LOG" >&2
-    # P3009: a prior migration failed mid-run and was recorded as failed.
+    # P3009/P3018: a migration failed mid-run and was recorded as failed.
     # PostgreSQL rolls back failed migration transactions atomically, so no
     # partial changes exist. Resolve the record(s) and retry.
-    FAILED=$(awk -F'`' '/migration started.*failed/{print $2}' "$MIGRATE_LOG")
+    # P3018 fires on the first failure ("Migration name: <name>" format).
+    # P3009 fires on subsequent runs ("migration `<name>` started" format).
+    FAILED=$(awk -F'`' '/migration.*started.*failed/{print $2}' "$MIGRATE_LOG"; \
+             awk '/^Migration name:/{print $NF}' "$MIGRATE_LOG")
     if [ -n "$FAILED" ]; then
       echo "[entrypoint] P3009 detected — resolving rolled-back migration(s)..."
       for m in $FAILED; do

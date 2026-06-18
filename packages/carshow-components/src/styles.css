@@ -672,6 +672,20 @@ textarea:focus {
   background: #eeeeee;
 }
 
+button.owner-assist-photo-preview {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: zoom-in;
+  text-align: inherit;
+}
+
+button.owner-assist-photo-preview:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: -3px;
+}
+
 .owner-assist-photo-preview img {
   width: 100%;
   height: 80px;
@@ -745,6 +759,10 @@ textarea:focus {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--muted-grey);
+}
+
+.photo-review-drawer-alert {
+  padding: 0 24px 16px;
 }
 
 .qr-panel {

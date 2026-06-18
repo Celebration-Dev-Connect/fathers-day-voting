@@ -206,11 +206,6 @@ export function EntryDetailView() {
     void loadEntry(true);
   }, [loadEntry]);
 
-  useEffect(() => {
-    const id = window.setInterval(() => void loadEntry(false), 30_000);
-    return () => window.clearInterval(id);
-  }, [loadEntry]);
-
   if (loading) {
     return (
       <div className="public-content">

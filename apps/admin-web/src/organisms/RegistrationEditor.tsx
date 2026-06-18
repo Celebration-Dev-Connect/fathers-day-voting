@@ -1,6 +1,6 @@
 import { Camera, CheckCircle2, Download, EyeOff, ImagePlus, Loader2, Mail, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
 import { Alert, Button, compressImage, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
-import type { Category, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
+import type { Category, PhotoReviewItem, PhotoSource, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   checkInRegistration,
@@ -17,6 +17,7 @@ import {
   uploadRegistrationPhoto,
   type OwnerSummary,
 } from "../api";
+import { PhotoReviewDrawer } from "./PhotoReviewDrawer";
 import { QrAssignment } from "./QrAssignment";
 
 function parseFieldErrors(error: unknown): Record<string, string> {
@@ -73,6 +74,29 @@ function photoProcessingSignature(registration: Registration | null) {
     .join("|");
 }
 
+function registrationPhotoSource(photo: VehiclePhoto): PhotoSource {
+  return photo.ownerUploaded ? "OWNER" : "STAFF";
+}
+
+function registrationPhotoReviewItem(registration: Registration, photo: VehiclePhoto): PhotoReviewItem {
+  return {
+    id: photo.id,
+    url: photo.url,
+    mediumUrl: null,
+    thumbUrl: null,
+    altText: photo.altText ?? null,
+    sortOrder: photo.sortOrder,
+    moderationStatus: photo.moderationStatus ?? "PENDING",
+    moderationLabels: null,
+    source: registrationPhotoSource(photo),
+    uploadedBy: null,
+    processingStartedAt: null,
+    processedAt: null,
+    createdAt: photo.createdAt,
+    vehicleEntry: registration,
+  };
+}
+
 export function RegistrationEditor({
   categories,
   registration,
@@ -94,6 +118,7 @@ export function RegistrationEditor({
   const [sendingEmail, setSendingEmail] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
   const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoReviewItem | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [downloadingPhotos, setDownloadingPhotos] = useState(false);
   const [ownerSearch, setOwnerSearch] = useState("");
@@ -128,6 +153,12 @@ export function RegistrationEditor({
       window.clearTimeout(timeout);
     };
   }, [registration?.id, onSaved, photoProcessingSignature(registration)]);
+
+  useEffect(() => {
+    if (!registration || !selectedPhoto) return;
+    const freshPhoto = (registration.photos ?? []).find((photo) => photo.id === selectedPhoto.id);
+    setSelectedPhoto(freshPhoto ? registrationPhotoReviewItem(registration, freshPhoto) : null);
+  }, [registration, selectedPhoto?.id]);
 
   function updateOwner<Key extends keyof RegistrationPayload["owner"]>(
     key: Key,
@@ -286,6 +317,23 @@ export function RegistrationEditor({
       await refreshRegistration("Photo rejected.");
     } catch (rejectError) {
       setError(rejectError instanceof Error ? rejectError.message : "Could not reject photo");
+    } finally {
+      setPhotoBusyId(null);
+    }
+  }
+
+  async function changePhotoReviewStatus(photo: PhotoReviewItem, status: "APPROVED" | "REJECTED") {
+    if (!registration) return;
+    if (status === "REJECTED" && !window.confirm("Reject this photo and hide it from public views?")) return;
+    setPhotoBusyId(photo.id);
+    setError("");
+    setMessage("");
+    try {
+      await updatePhotoReviewStatus(photo.id, status);
+      await refreshRegistration(status === "APPROVED" ? "Photo approved." : "Photo rejected.");
+      setSelectedPhoto(null);
+    } catch (photoError) {
+      setError(photoError instanceof Error ? photoError.message : "Could not update photo");
     } finally {
       setPhotoBusyId(null);
     }
@@ -593,54 +641,69 @@ export function RegistrationEditor({
           </div>
 
           <div className="owner-assist-photo-grid">
-            {(registration.photos ?? []).map((photo, index) => (
-              <div className={`owner-assist-photo ${photo.isPrimary ? "primary" : ""}`} key={photo.id}>
-                <div className="owner-assist-photo-preview">
-                  {photo.url ? (
-                    <img src={photo.url} alt={photo.altText ?? `Vehicle photo ${index + 1}`} />
-                  ) : (
-                    <div>
-                      <Camera size={20} aria-hidden="true" />
-                      <span>{photo.moderationStatus ? photo.moderationStatus.charAt(0) + photo.moderationStatus.slice(1).toLowerCase() : "Pending"}</span>
-                    </div>
-                  )}
-                  {photo.isPrimary ? <strong>Hero</strong> : null}
-                </div>
-                <div className="owner-assist-photo-actions">
-                  {photo.url && photo.moderationStatus === "APPROVED" && !photo.isPrimary ? (
-                    <button type="button" title="Set as hero image" disabled={photoBusyId === photo.id} onClick={() => void setHeroPhoto(photo.id)}>
-                      {photoBusyId === photo.id ? <Loader2 className="spin" size={14} /> : <Star size={14} />}
-                    </button>
-                  ) : photo.isPrimary ? (
-                    <span>Hero</span>
-                  ) : null}
-                  {photo.moderationStatus !== "REJECTED" ? (
-                    <button
-                      type="button"
-                      title="Reject photo"
-                      disabled={photoBusyId === photo.id}
-                      onClick={() => void rejectPhoto(photo)}
-                      aria-label={`Reject photo ${photo.sortOrder}`}
-                    >
-                      {photoBusyId === photo.id ? <Loader2 className="spin" size={14} /> : <EyeOff size={14} />}
-                    </button>
-                  ) : (
-                    <span>Rejected</span>
-                  )}
+            {(registration.photos ?? []).map((photo, index) => {
+              const reviewPhoto = registrationPhotoReviewItem(registration, photo);
+              return (
+                <div className={`owner-assist-photo ${photo.isPrimary ? "primary" : ""}`} key={photo.id}>
                   <button
-                    className="danger"
                     type="button"
-                    disabled={photoBusyId === photo.id}
-                    onClick={() => void deletePhoto(photo)}
-                    aria-label={`Delete photo ${photo.sortOrder}`}
+                    className="owner-assist-photo-preview"
+                    onClick={() => setSelectedPhoto(reviewPhoto)}
+                    aria-label={`Open photo ${photo.sortOrder} details`}
                   >
-                    <Trash2 size={14} />
+                    {photo.url ? (
+                      <img src={photo.url} alt={photo.altText ?? `Vehicle photo ${index + 1}`} />
+                    ) : (
+                      <div>
+                        <Camera size={20} aria-hidden="true" />
+                        <span>{photo.moderationStatus ? photo.moderationStatus.charAt(0) + photo.moderationStatus.slice(1).toLowerCase() : "Pending"}</span>
+                      </div>
+                    )}
+                    {photo.isPrimary ? <strong>Hero</strong> : null}
                   </button>
+                  <div className="owner-assist-photo-actions">
+                    {photo.url && photo.moderationStatus === "APPROVED" && !photo.isPrimary ? (
+                      <button type="button" title="Set as hero image" disabled={photoBusyId === photo.id} onClick={() => void setHeroPhoto(photo.id)}>
+                        {photoBusyId === photo.id ? <Loader2 className="spin" size={14} /> : <Star size={14} />}
+                      </button>
+                    ) : photo.isPrimary ? (
+                      <span>Hero</span>
+                    ) : null}
+                    {photo.moderationStatus !== "REJECTED" ? (
+                      <button
+                        type="button"
+                        title="Reject photo"
+                        disabled={photoBusyId === photo.id}
+                        onClick={() => void rejectPhoto(photo)}
+                        aria-label={`Reject photo ${photo.sortOrder}`}
+                      >
+                        {photoBusyId === photo.id ? <Loader2 className="spin" size={14} /> : <EyeOff size={14} />}
+                      </button>
+                    ) : (
+                      <span>Rejected</span>
+                    )}
+                    <button
+                      className="danger"
+                      type="button"
+                      disabled={photoBusyId === photo.id}
+                      onClick={() => void deletePhoto(photo)}
+                      aria-label={`Delete photo ${photo.sortOrder}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {!(registration.photos ?? []).length ? <div className="photo-empty">No photos uploaded yet.</div> : null}
           </div>
+
+          <PhotoReviewDrawer
+            photo={selectedPhoto}
+            busy={Boolean(photoBusyId)}
+            onClose={() => setSelectedPhoto(null)}
+            onStatus={changePhotoReviewStatus}
+          />
         </section>
       ) : null}
 

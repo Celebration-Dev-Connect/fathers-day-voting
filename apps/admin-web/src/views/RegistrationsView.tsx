@@ -99,7 +99,7 @@ export function RegistrationsView({
 
   useEffect(() => {
     setPage(0);
-  }, [registrations]);
+  }, [search]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -218,6 +218,13 @@ export function RegistrationsView({
 
   const pageCount = Math.ceil(registrations.length / PAGE_SIZE);
   const pagedRegistrations = registrations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  useEffect(() => {
+    if (pageCount > 0 && page >= pageCount) {
+      setPage(pageCount - 1);
+      onSelect(null);
+    }
+  }, [onSelect, page, pageCount]);
 
   return (
     <section className="registrations-layout">

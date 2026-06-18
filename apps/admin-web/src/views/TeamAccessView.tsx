@@ -62,6 +62,10 @@ export function TeamAccessView() {
   }
 
   async function removeMapping(mapping: PcoTeamRole) {
+    const label = mapping.positionName
+      ? `${mapping.pcoTeamName} / ${mapping.positionName}`
+      : `${mapping.pcoTeamName} / whole team`;
+    if (!window.confirm(`Delete the Planning Center team mapping for ${label}?`)) return;
     setError("");
     try {
       await deleteTeamRole(mapping.id);

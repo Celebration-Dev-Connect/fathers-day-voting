@@ -14,6 +14,7 @@ export function EventStatusBanner({ settings }: { settings: VotingSettings }) {
       <div className="event-status-flags" aria-label="Current event controls">
         <StatusFlag active={settings.registrationOpen} activeLabel="Registration open" inactiveLabel="Registration closed" />
         <StatusFlag active={settings.votingOpen} activeLabel="People's choice open" inactiveLabel="People's choice closed" />
+        <StatusFlag active={settings.publicPhotoUploadsOpen} activeLabel="Public photos open" inactiveLabel="Public photos closed" />
         <StatusFlag
           active={settings.judgesVotingEnabled}
           activeLabel="Judge voting enabled"

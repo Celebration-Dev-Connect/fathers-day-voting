@@ -1,0 +1,2 @@
+ALTER TABLE "Event"
+ADD COLUMN "publicPhotoUploadsOpen" BOOLEAN NOT NULL DEFAULT true;

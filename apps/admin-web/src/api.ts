@@ -359,6 +359,7 @@ export async function updateVotingSettings(
       VotingSettings,
       | "registrationOpen"
       | "votingOpen"
+      | "publicPhotoUploadsOpen"
       | "judgesVotingEnabled"
       | "judgingOpen"
       | "peopleChoiceCutoff"

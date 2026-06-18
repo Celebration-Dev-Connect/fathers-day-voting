@@ -133,7 +133,7 @@ function StartChapter({ onNavigate }: { onNavigate: (view: View) => void }) {
         </InfoCard>
         <div className="help-stack">
           <InfoCard tone="red" eyebrow="Golden rule" title="Search first.">
-            <p>Before creating an owner or registration, search by name, phone, plate, entry number, or QR code. This prevents duplicates.</p>
+            <p>Before creating an owner or registration, search by name, phone, entry number, or QR code. This prevents duplicates.</p>
           </InfoCard>
           <InfoCard eyebrow="Know your access" title="Admin vs. Registrar">
             <div className="help-role-grid">
@@ -152,7 +152,7 @@ function RegistrationChapter({ onNavigate }: { onNavigate: (view: View) => void 
     <div className="help-chapter">
       <ChapterHeading kicker="At the welcome table" title="From arrival to checked in" description="Use the Registrations page as your home base. Every vehicle should leave the table with correct details and an assigned QR card." />
       <div className="help-flow help-flow-three">
-        <FlowStep number="1" icon={<Search />} title="Search" text="Look for the owner, phone, plate, entry, or QR before creating anything." />
+        <FlowStep number="1" icon={<Search />} title="Search" text="Look for the owner, phone, entry, or QR before creating anything." />
         <FlowStep number="2" icon={<Car />} title="Open or add" text="Select an existing row, or choose New. Reuse an existing owner when possible." />
         <FlowStep number="3" icon={<UserRoundCheck />} title="Save & check in" text="Confirm the waiver and vehicle category, save, then mark the vehicle checked in." />
       </div>
@@ -165,7 +165,7 @@ function RegistrationChapter({ onNavigate }: { onNavigate: (view: View) => void 
             <li><Check /> Correct owner and mobile number</li>
             <li><Check /> Waiver has been accepted</li>
             <li><Check /> Year, make, model, and category</li>
-            <li><Check /> Plate and nickname when available</li>
+            <li><Check /> Nickname when available</li>
             <li><Check /> Public-name preference is correct</li>
           </ul>
         </InfoCard>
@@ -175,7 +175,7 @@ function RegistrationChapter({ onNavigate }: { onNavigate: (view: View) => void 
         </InfoCard>
       </div>
       <TroubleStrip items={[
-        ["Can’t find an entry?", "Clear the search and try the phone number or plate."],
+        ["Can’t find an entry?", "Clear the search and try the phone number, entry number, or QR code."],
         ["Wrong details?", "Open the registration row, edit the fields, and save again."],
         ["Imported registrations?", "Preview the CSV, resolve every unmatched category, then confirm."],
       ]} />

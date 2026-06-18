@@ -1,4 +1,4 @@
-import { Camera, CheckCircle2, Download, ImagePlus, Loader2, Mail, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
+import { Camera, CheckCircle2, Download, EyeOff, ImagePlus, Loader2, Mail, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
 import { Alert, Button, compressImage, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
 import type { Category, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
 import { FormEvent, useEffect, useRef, useState } from "react";
@@ -12,6 +12,7 @@ import {
   listOwners,
   sendOwnerInviteEmail,
   setRegistrationPrimaryPhoto,
+  updatePhotoReviewStatus,
   updateRegistration,
   uploadRegistrationPhoto,
   type OwnerSummary,
@@ -52,7 +53,6 @@ const emptyPayload: RegistrationPayload = {
     make: "",
     model: "",
     nickname: "",
-    plateNumber: "",
     exteriorColor: "",
     internalNotes: "",
     buildStory: "",
@@ -275,6 +275,35 @@ export function RegistrationEditor({
     }
   }
 
+  async function rejectPhoto(photo: VehiclePhoto) {
+    if (!registration) return;
+    if (!window.confirm("Reject this photo and hide it from public views?")) return;
+    setPhotoBusyId(photo.id);
+    setError("");
+    setMessage("");
+    try {
+      await updatePhotoReviewStatus(photo.id, "REJECTED");
+      await refreshRegistration("Photo rejected.");
+    } catch (rejectError) {
+      setError(rejectError instanceof Error ? rejectError.message : "Could not reject photo");
+    } finally {
+      setPhotoBusyId(null);
+    }
+  }
+
+  function checkInMissingFields() {
+    const missing: string[] = [];
+    if (!/^\d{3}-\d{3}-\d{4}$/.test(registration?.owner.phone ?? "")) missing.push("phone");
+    if (!registration?.year || registration.year < 1900 || registration.year > 2100) missing.push("year");
+    if (!registration?.make?.trim()) missing.push("make");
+    if (!registration?.model?.trim()) missing.push("model");
+    if (!registration?.category?.id) missing.push("category");
+    if (!registration?.qrCard || registration.qrCard.status !== "ASSIGNED") missing.push("QR card");
+    return missing;
+  }
+
+  const checkInMissing = registration ? checkInMissingFields() : [];
+
   async function sendEmail() {
     if (!registration) return;
     setSendingEmail(true);
@@ -430,7 +459,7 @@ export function RegistrationEditor({
           {fieldErrors["owner.lastName"] && <span className="field-error">{fieldErrors["owner.lastName"]}</span>}
         </label>
         <label>
-          Phone *
+          Phone <span className="muted-copy">(needed for check-in)</span>
           <input
             className={fieldErrors["owner.phone"] ? "input-error" : undefined}
             value={payload.owner.phone}
@@ -463,7 +492,7 @@ export function RegistrationEditor({
 
       <div className="form-grid">
         <label>
-          Year *
+          Year <span className="muted-copy">(needed for check-in)</span>
           <input
             className={fieldErrors["vehicle.year"] ? "input-error" : undefined}
             type="number"
@@ -473,23 +502,14 @@ export function RegistrationEditor({
           {fieldErrors["vehicle.year"] && <span className="field-error">{fieldErrors["vehicle.year"]}</span>}
         </label>
         <label>
-          Make *
+          Make <span className="muted-copy">(needed for check-in)</span>
           <input className={fieldErrors["vehicle.make"] ? "input-error" : undefined} value={payload.vehicle.make} onChange={(event) => updateVehicle("make", event.target.value)} />
           {fieldErrors["vehicle.make"] && <span className="field-error">{fieldErrors["vehicle.make"]}</span>}
         </label>
         <label>
-          Model *
+          Model <span className="muted-copy">(needed for check-in)</span>
           <input className={fieldErrors["vehicle.model"] ? "input-error" : undefined} value={payload.vehicle.model} onChange={(event) => updateVehicle("model", event.target.value)} />
           {fieldErrors["vehicle.model"] && <span className="field-error">{fieldErrors["vehicle.model"]}</span>}
-        </label>
-        <label>
-          Plate
-          <input
-            className={fieldErrors["vehicle.plateNumber"] ? "input-error" : undefined}
-            value={payload.vehicle.plateNumber}
-            onChange={(event) => updateVehicle("plateNumber", event.target.value.toUpperCase())}
-          />
-          {fieldErrors["vehicle.plateNumber"] && <span className="field-error">{fieldErrors["vehicle.plateNumber"]}</span>}
         </label>
       </div>
 
@@ -594,6 +614,19 @@ export function RegistrationEditor({
                   ) : photo.isPrimary ? (
                     <span>Hero</span>
                   ) : null}
+                  {photo.moderationStatus !== "REJECTED" ? (
+                    <button
+                      type="button"
+                      title="Reject photo"
+                      disabled={photoBusyId === photo.id}
+                      onClick={() => void rejectPhoto(photo)}
+                      aria-label={`Reject photo ${photo.sortOrder}`}
+                    >
+                      {photoBusyId === photo.id ? <Loader2 className="spin" size={14} /> : <EyeOff size={14} />}
+                    </button>
+                  ) : (
+                    <span>Rejected</span>
+                  )}
                   <button
                     className="danger"
                     type="button"
@@ -613,11 +646,17 @@ export function RegistrationEditor({
 
       {registration ? (
         <div className="action-strip">
-          <Button onClick={checkIn}>
+          <Button
+            onClick={checkIn}
+            disabled={checkInMissing.length > 0}
+          >
             <CheckCircle2 size={20} />
             Check In
           </Button>
           <QrAssignment registration={registration} onAssigned={onSaved} />
+          {checkInMissing.length ? (
+            <span className="muted-copy">Complete before check-in: {checkInMissing.join(", ")}.</span>
+          ) : null}
         </div>
       ) : null}
     </form>

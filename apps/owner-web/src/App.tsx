@@ -371,7 +371,6 @@ function OwnerPortal() {
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [nickname, setNickname] = useState("");
-  const [plateNumber, setPlateNumber] = useState("");
   const [exteriorColor, setExteriorColor] = useState("");
   const [publicNameOptIn, setPublicNameOptIn] = useState(false);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
@@ -394,7 +393,6 @@ function OwnerPortal() {
     setMake(nextVehicle.make);
     setModel(nextVehicle.model);
     setNickname(nextVehicle.nickname ?? "");
-    setPlateNumber(nextVehicle.plateNumber ?? "");
     setExteriorColor(nextVehicle.exteriorColor ?? "");
     setPublicNameOptIn(nextVehicle.owner.publicNameOptIn);
     setSelectedPhotoId(nextVehicle.primaryPhotoId ?? nextVehicle.photos.find((photo) => photo.url)?.id ?? null);
@@ -468,7 +466,6 @@ function OwnerPortal() {
       make !== vehicle.make ||
       model !== vehicle.model ||
       nickname !== (vehicle.nickname ?? "") ||
-      plateNumber !== (vehicle.plateNumber ?? "") ||
       exteriorColor !== (vehicle.exteriorColor ?? "") ||
       publicNameOptIn !== vehicle.owner.publicNameOptIn);
 
@@ -493,7 +490,6 @@ function OwnerPortal() {
           model,
           buildStory,
           nickname: nickname.trim() || null,
-          plateNumber: plateNumber.trim() || null,
           exteriorColor: exteriorColor.trim() || null,
         },
       });
@@ -710,14 +706,10 @@ function OwnerPortal() {
                   <input value={nickname} maxLength={80} onChange={(event) => setNickname(event.target.value)} />
                 </label>
                 <label>
-                  Plate
-                  <input value={plateNumber} maxLength={20} onChange={(event) => setPlateNumber(event.target.value.toUpperCase())} />
+                  Exterior color
+                  <input value={exteriorColor} maxLength={60} onChange={(event) => setExteriorColor(event.target.value)} />
                 </label>
               </div>
-              <label>
-                Exterior color
-                <input value={exteriorColor} maxLength={60} onChange={(event) => setExteriorColor(event.target.value)} />
-              </label>
               <label>
                 Story or build description
                 <textarea

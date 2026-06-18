@@ -229,7 +229,16 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
 
     const photo = await prisma.vehiclePhoto.findFirst({
       where: { id: params.id, vehicleEntry: { eventId } },
-      select: { id: true, storageKey: true, url: true, mediumUrl: true, thumbUrl: true, moderationStatus: true },
+      select: {
+        id: true,
+        vehicleEntryId: true,
+        storageKey: true,
+        url: true,
+        mediumUrl: true,
+        thumbUrl: true,
+        moderationStatus: true,
+        vehicleEntry: { select: { primaryPhotoId: true } },
+      },
     });
     if (!photo) throw app.httpErrors.notFound("Photo not found");
 
@@ -263,13 +272,33 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
       );
     }
 
-    const updated = await prisma.vehiclePhoto.update({
-      where: { id: photo.id },
-      data: {
-        moderationStatus: "REJECTED",
-        processedAt: new Date(),
-        processingStartedAt: null,
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      const replacement = photo.vehicleEntry.primaryPhotoId === photo.id
+        ? await tx.vehiclePhoto.findFirst({
+            where: {
+              vehicleEntryId: photo.vehicleEntryId,
+              id: { not: photo.id },
+              moderationStatus: "APPROVED",
+              url: { not: null },
+            },
+            orderBy: { sortOrder: "asc" },
+            select: { id: true },
+          })
+        : null;
+      if (photo.vehicleEntry.primaryPhotoId === photo.id) {
+        await tx.vehicleEntry.update({
+          where: { id: photo.vehicleEntryId },
+          data: { primaryPhotoId: replacement?.id ?? null },
+        });
+      }
+      return tx.vehiclePhoto.update({
+        where: { id: photo.id },
+        data: {
+          moderationStatus: "REJECTED",
+          processedAt: new Date(),
+          processingStartedAt: null,
+        },
+      });
     });
     return { photo: updated };
   });
@@ -293,6 +322,11 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
     },
     async (request, reply) => {
       const params = z.object({ publicToken: z.string().trim().min(1) }).parse(request.params);
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { publicPhotoUploadsOpen: true },
+      });
+      if (!event?.publicPhotoUploadsOpen) throw app.httpErrors.forbidden("Public photo uploads are currently disabled");
       const qrCard = await prisma.qrCard.findFirst({
         where: { eventId, publicToken: params.publicToken },
         select: { vehicleEntryId: true },
@@ -447,6 +481,11 @@ export async function registerPhotosRoutes(app: FastifyInstance, deps: PhotosDep
     },
     async (request, reply) => {
       const params = z.object({ vehicleId: z.string().trim().min(1) }).parse(request.params);
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { publicPhotoUploadsOpen: true },
+      });
+      if (!event?.publicPhotoUploadsOpen) throw app.httpErrors.forbidden("Public photo uploads are currently disabled");
       const vehicle = await prisma.vehicleEntry.findFirst({
         where: { id: params.vehicleId, eventId },
         select: { id: true },

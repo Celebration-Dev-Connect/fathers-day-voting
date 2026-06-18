@@ -58,6 +58,7 @@ export type VotingSettings = {
   name: string;
   registrationOpen: boolean;
   votingOpen: boolean;
+  publicPhotoUploadsOpen: boolean;
   judgesVotingEnabled: boolean;
   judgingOpen: boolean;
   resultsPublished: boolean;
@@ -304,6 +305,7 @@ export type PublicEvent = {
   eventDate: string;
   venueName: string;
   votingOpen: boolean;
+  publicPhotoUploadsOpen: boolean;
   peopleChoiceCutoff: string | null;
   resultsPublished: boolean;
   resultsPublishedAt?: string | null;

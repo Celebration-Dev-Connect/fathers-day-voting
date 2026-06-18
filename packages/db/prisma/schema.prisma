@@ -63,6 +63,7 @@ model Event {
   venueAddress           String
   registrationOpen       Boolean                  @default(true)
   votingOpen             Boolean                  @default(false)
+  publicPhotoUploadsOpen Boolean                  @default(true)
   peopleChoiceCutoff     DateTime?
   judgesVotingEnabled    Boolean                  @default(true)
   judgingOpen            Boolean                  @default(false)

@@ -1,4 +1,4 @@
-import { CalendarClock, Gavel, MonitorPlay, Save, Send, EyeOff, Trophy } from "lucide-react";
+import { CalendarClock, Camera, Gavel, MonitorPlay, Save, Send, EyeOff, Trophy } from "lucide-react";
 import {
   Button,
   formatDateTime,
@@ -8,6 +8,7 @@ import {
 type EventControlKey =
   | "registrationOpen"
   | "votingOpen"
+  | "publicPhotoUploadsOpen"
   | "judgesVotingEnabled"
   | "judgingOpen";
 
@@ -73,6 +74,16 @@ export function VotingControls({
         />
         <Trophy size={18} />
         People's choice open
+      </label>
+      <label className="toggle-row">
+        <input
+          type="checkbox"
+          checked={settings?.publicPhotoUploadsOpen ?? true}
+          disabled={!canManage || !settings}
+          onChange={(event) => onSettingChange("publicPhotoUploadsOpen", event.target.checked)}
+        />
+        <Camera size={18} />
+        Public photo uploads open
       </label>
       <label className="toggle-row">
         <input

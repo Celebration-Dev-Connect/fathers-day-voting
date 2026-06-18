@@ -338,7 +338,7 @@ export function RegistrationsView({
         ) : null}
         <SearchBox
           value={search}
-          placeholder="Search owner, phone, plate, entry, QR..."
+          placeholder="Search owner, phone, entry, QR..."
           onChange={onSearch}
         />
         <div className="registration-list">

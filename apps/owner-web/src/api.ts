@@ -19,7 +19,6 @@ export type OwnerVehicle = {
   make: string;
   model: string;
   nickname: string | null;
-  plateNumber: string | null;
   exteriorColor: string | null;
   buildStory: string;
   ownerAccessCode: string;
@@ -97,7 +96,6 @@ export async function updateOwnerVehicle(
       make: string;
       model: string;
       nickname?: string | null;
-      plateNumber?: string | null;
       exteriorColor?: string | null;
       buildStory: string;
     };

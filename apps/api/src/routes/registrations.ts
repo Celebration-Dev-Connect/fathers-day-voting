@@ -1103,6 +1103,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
         : await tx.owner.create({
             data: {
               ...body.owner,
+              phone: body.owner.phone ?? "",
               email: body.owner.email || null,
             },
           });
@@ -1116,8 +1117,8 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
           entryNumber,
           ownerAccessCode,
           year: body.vehicle.year,
-          make: body.vehicle.make,
-          model: body.vehicle.model,
+          make: body.vehicle.make ?? "",
+          model: body.vehicle.model ?? "",
           nickname: body.vehicle.nickname,
           plateNumber: body.vehicle.plateNumber,
           exteriorColor: body.vehicle.exteriorColor,
@@ -1606,6 +1607,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
           where: { id: existing.ownerId },
           data: {
             ...body.owner,
+            phone: body.owner.phone ?? "",
             email: body.owner.email || null,
           },
         });
@@ -1617,8 +1619,8 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
           ? {
               categoryId: body.vehicle.categoryId,
               year: body.vehicle.year,
-              make: body.vehicle.make,
-              model: body.vehicle.model,
+              make: body.vehicle.make ?? "",
+              model: body.vehicle.model ?? "",
               nickname: body.vehicle.nickname,
               plateNumber: body.vehicle.plateNumber,
               exteriorColor: body.vehicle.exteriorColor,
@@ -1668,9 +1670,20 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
     const params = z.object({ id: z.string() }).parse(request.params);
     const existing = await prisma.vehicleEntry.findFirst({
       where: { id: params.id, eventId },
+      include: { owner: true, qrCard: true, category: true },
     });
 
     if (!existing) throw app.httpErrors.notFound("Registration not found");
+    const missing: string[] = [];
+    if (!/^\d{3}-\d{3}-\d{4}$/.test(existing.owner.phone)) missing.push("owner phone");
+    if (!existing.year || existing.year < 1900 || existing.year > 2100) missing.push("vehicle year");
+    if (!existing.make.trim()) missing.push("vehicle make");
+    if (!existing.model.trim()) missing.push("vehicle model");
+    if (!existing.categoryId || !existing.category.active) missing.push("active category");
+    if (!existing.qrCard || existing.qrCard.status !== "ASSIGNED") missing.push("QR card assignment");
+    if (missing.length) {
+      throw app.httpErrors.badRequest(`Complete ${missing.join(", ")} before check-in`);
+    }
 
     const registration = await prisma.vehicleEntry.update({
       where: { id: existing.id },

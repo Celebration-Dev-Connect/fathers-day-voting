@@ -169,6 +169,7 @@ function SpecialAwardVoteSections({ vehicle }: { vehicle: PublicVehicle }) {
 }
 
 export function EntryDetailView() {
+  const { publicPhotoUploadsOpen } = useVoting();
   const { entryNumber = "" } = useParams<{ entryNumber: string }>();
   const [vehicle, setVehicle] = useState<PublicVehicle | null>(null);
   const [placements, setPlacements] = useState<PublishedVehiclePlacement[]>([]);
@@ -258,7 +259,7 @@ export function EntryDetailView() {
       <VehicleProfileCard
         vehicle={vehicle}
         showVoting={false}
-        onUploadPhoto={() => setUploadOpen(true)}
+        onUploadPhoto={publicPhotoUploadsOpen ? () => setUploadOpen(true) : undefined}
       />
       {placements.length ? (
         <section className="published-placements">

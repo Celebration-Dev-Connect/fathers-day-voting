@@ -122,6 +122,7 @@ export function VotingSettings({
       const result = await updateVotingSettings({
         registrationOpen: settings.registrationOpen,
         votingOpen: settings.votingOpen,
+        publicPhotoUploadsOpen: settings.publicPhotoUploadsOpen,
         judgesVotingEnabled: settings.judgesVotingEnabled,
         judgingOpen: settings.judgingOpen,
         peopleChoiceCutoff: fromDateTimeLocalValue(cutoff),
@@ -140,7 +141,7 @@ export function VotingSettings({
   function updateSetting<
     Key extends keyof Pick<
       VotingSettingsType,
-      "registrationOpen" | "votingOpen" | "judgesVotingEnabled" | "judgingOpen"
+      "registrationOpen" | "votingOpen" | "publicPhotoUploadsOpen" | "judgesVotingEnabled" | "judgingOpen"
     >,
   >(key: Key, value: VotingSettingsType[Key]) {
     setSettings((current) => (current ? { ...current, [key]: value } : current));

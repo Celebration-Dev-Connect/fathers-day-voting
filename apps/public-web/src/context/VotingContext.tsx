@@ -22,6 +22,7 @@ import {
 export interface VotingContextValue {
   voterKey: string;
   votingOpen: boolean;
+  publicPhotoUploadsOpen: boolean;
   cutoffPassed: boolean;
   resultsPublished: boolean;
   categories: PublicCategory[];
@@ -57,6 +58,7 @@ export function useVoting() {
 export function VotingProvider({ children }: { children: React.ReactNode }) {
   const voterKey = useMemo(() => getOrCreateVoterKey(), []);
   const [votingOpen, setVotingOpen] = useState(false);
+  const [publicPhotoUploadsOpen, setPublicPhotoUploadsOpen] = useState(true);
   const [cutoffTime, setCutoffTime] = useState<Date | null>(null);
   const [cutoffPassed, setCutoffPassed] = useState(false);
   const [resultsPublished, setResultsPublished] = useState(false);
@@ -78,6 +80,7 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
     return getPublicEvent()
       .then(({ event, categories, specialAwards = [] }) => {
         setVotingOpen(event.votingOpen);
+        setPublicPhotoUploadsOpen(event.publicPhotoUploadsOpen);
         setResultsPublished(Boolean(event.resultsPublished && event.resultsPublishedAt));
         setCategories(categories);
         setSpecialAwards(specialAwards);
@@ -205,13 +208,13 @@ export function VotingProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<VotingContextValue>(
     () => ({
-      voterKey, votingOpen, cutoffPassed, resultsPublished, categories, specialAwards,
+      voterKey, votingOpen, publicPhotoUploadsOpen, cutoffPassed, resultsPublished, categories, specialAwards,
       drafts, submitted, specialAwardDrafts, specialAwardSubmitted,
       select, selectSpecialAward, clearSelection, clearSpecialAwardSelection,
       submitVote, submitVoteDirect, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
       isPanelOpen, openPanel, closePanel, togglePanel,
     }),
-    [voterKey, votingOpen, cutoffPassed, resultsPublished, categories, specialAwards, drafts, submitted,
+    [voterKey, votingOpen, publicPhotoUploadsOpen, cutoffPassed, resultsPublished, categories, specialAwards, drafts, submitted,
       specialAwardDrafts, specialAwardSubmitted, select, selectSpecialAward, clearSelection,
       clearSpecialAwardSelection, submitVote, submitVoteDirect, submitSpecialAward, submitSpecialAwardDirect, changeVote, changeSpecialAward,
       isPanelOpen, openPanel, closePanel, togglePanel],

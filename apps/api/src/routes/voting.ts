@@ -15,6 +15,7 @@ const eventControlsSelect = {
   name: true,
   registrationOpen: true,
   votingOpen: true,
+  publicPhotoUploadsOpen: true,
   judgesVotingEnabled: true,
   judgingOpen: true,
   resultsPublished: true,
@@ -270,6 +271,7 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         venueName: "Celebration Church",
         venueAddress: "7215 Argyll Road, Edmonton, AB",
         registrationOpen: true,
+        publicPhotoUploadsOpen: true,
         peopleChoiceCutoff: new Date("2026-06-21T21:00:00.000Z"),
       },
       select: eventControlsSelect,
@@ -378,6 +380,7 @@ export async function registerVotingRoutes(app: FastifyInstance) {
       .object({
         votingOpen: z.boolean().optional(),
         registrationOpen: z.boolean().optional(),
+        publicPhotoUploadsOpen: z.boolean().optional(),
         judgesVotingEnabled: z.boolean().optional(),
         judgingOpen: z.boolean().optional(),
         peopleChoiceCutoff: z.string().datetime().nullable().optional(),
@@ -389,6 +392,7 @@ export async function registerVotingRoutes(app: FastifyInstance) {
       data: {
         registrationOpen: body.registrationOpen,
         votingOpen: body.votingOpen,
+        publicPhotoUploadsOpen: body.publicPhotoUploadsOpen,
         judgesVotingEnabled: body.judgesVotingEnabled,
         judgingOpen: body.judgesVotingEnabled === false ? false : body.judgingOpen,
         peopleChoiceCutoff:
@@ -460,6 +464,7 @@ export async function registerVotingRoutes(app: FastifyInstance) {
       where: { id: eventId },
       select: {
         votingOpen: true,
+        publicPhotoUploadsOpen: true,
         registrationOpen: true,
         judgesVotingEnabled: true,
         judgingOpen: true,

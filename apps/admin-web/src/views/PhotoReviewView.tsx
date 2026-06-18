@@ -36,13 +36,14 @@ function labelSummary(labels: unknown) {
   if (!labels) return "No AI labels recorded";
   if (typeof labels !== "object") return String(labels);
   const value = labels as {
-    moderation?: Array<{ name?: string; confidence?: number }>;
-    vehicle?: Array<{ name?: string; confidence?: number }>;
+    moderation?: Array<{ name?: string; Name?: string; confidence?: number }>;
+    vehicle?: Array<{ name?: string; Name?: string; confidence?: number }>;
     error?: string;
   };
   if (value.error) return value.error;
-  const moderation = value.moderation?.slice(0, 3).map((item) => item.name).filter(Boolean) ?? [];
-  const vehicle = value.vehicle?.slice(0, 3).map((item) => item.name).filter(Boolean) ?? [];
+  const labelName = (item: { name?: string; Name?: string }) => item.name ?? item.Name;
+  const moderation = value.moderation?.slice(0, 3).map(labelName).filter(Boolean) ?? [];
+  const vehicle = value.vehicle?.slice(0, 3).map(labelName).filter(Boolean) ?? [];
   const parts = [
     moderation.length ? `Moderation: ${moderation.join(", ")}` : "",
     vehicle.length ? `Vehicle: ${vehicle.join(", ")}` : "",

@@ -69,7 +69,10 @@ export class PhotoModerationWorker {
         return;
       }
 
-      const labels = toJson({ moderation: result.moderationLabels, vehicle: result.vehicleLabels });
+      const labels = toJson({
+        moderation: normalizeLabels(result.moderationLabels),
+        vehicle: normalizeLabels(result.vehicleLabels),
+      });
 
       if (result.decision === "APPROVED") {
 
@@ -195,6 +198,14 @@ export class PhotoModerationWorker {
       },
     });
   }
+}
+
+function normalizeLabels(labels: unknown): Array<{ name: string; confidence: number }> {
+  if (!Array.isArray(labels)) return [];
+  return labels.map((l: Record<string, unknown>) => ({
+    name: String(l.name ?? l.Name ?? ""),
+    confidence: Number(l.confidence ?? l.Confidence ?? 0),
+  })).filter((l) => l.name);
 }
 
 function toJson(value: unknown): Prisma.InputJsonValue {

@@ -35,6 +35,7 @@ const pcoAssignmentsSchema = z.object({
       attributes: z.object({ name: z.string() }).passthrough(),
     }),
   ),
+  links: z.object({ next: z.string().optional() }).optional(),
 });
 
 const ROLE_PRIORITY: Record<StaffRole, number> = {
@@ -73,26 +74,34 @@ async function fetchPersonPositionsInTeam(
     return null;
   }
 
-  const assignRes = await fetch(
-    `https://api.planningcenteronline.com/services/v2/teams/${teamId}/person_team_position_assignments?include=team_position`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  if (!assignRes.ok) {
-    log.error({ status: assignRes.status, teamId }, "PCO PTPA fetch failed");
-    return null;
-  }
-  const assignments = pcoAssignmentsSchema.parse(await assignRes.json());
+  let nextUrl: string | undefined =
+    `https://api.planningcenteronline.com/services/v2/teams/${teamId}/person_team_position_assignments?include=team_position&per_page=100`;
+  const positionNames: string[] = [];
+  let page = 0;
 
-  const myAssignments = assignments.data.filter(
-    (a) => a.relationships.person.data.id === pcoPersonId,
-  );
-  const positionNames = myAssignments
-    .map((a) => {
+  while (nextUrl && page < 10) {
+    page++;
+    const assignRes = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!assignRes.ok) {
+      log.error({ status: assignRes.status, teamId }, "PCO PTPA fetch failed");
+      return null;
+    }
+    const assignments = pcoAssignmentsSchema.parse(await assignRes.json());
+
+    const myAssignments = assignments.data.filter(
+      (a) => a.relationships.person.data.id === pcoPersonId,
+    );
+    for (const a of myAssignments) {
       const tpId = a.relationships.team_position.data.id;
-      return assignments.included.find((i) => i.type === "TeamPosition" && i.id === tpId)?.attributes
-        .name;
-    })
-    .filter((name): name is string => Boolean(name));
+      const name = assignments.included.find((i) => i.type === "TeamPosition" && i.id === tpId)
+        ?.attributes.name;
+      if (name) positionNames.push(name);
+    }
+
+    if (positionNames.length > 0) break;
+    nextUrl = assignments.links?.next;
+  }
+
   log.info({ teamName, teamId, pcoPersonId, positionNames }, "PCO team membership resolved");
   return positionNames;
 }

@@ -183,6 +183,9 @@ textarea:focus {
 
 .sidebar {
   min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
   background: var(--inverse-surface);
   color: var(--pure-white);
   padding: 32px 24px;
@@ -2242,6 +2245,9 @@ textarea:focus {
   .sidebar {
     position: static;
     min-height: 0;
+    height: auto;
+    max-height: none;
+    overflow-y: visible;
     background: transparent;
     color: var(--on-surface);
     padding: 0;

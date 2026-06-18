@@ -113,7 +113,7 @@ export function QrCardsView() {
       </div>
 
       <div className="print-sheet" aria-label="Printable QR card sheet">
-        {chunk(pagedQrCards, 4).map((pageCards, pageIndex) => (
+        {chunk(qrCards, 4).map((pageCards, pageIndex) => (
           <div className="print-page" key={`qr-page-${pageIndex}`}>
             {pageCards.map((card) => (
               <QrPrintCard key={card.id} card={card} publicAppUrl={PUBLIC_APP_URL} />

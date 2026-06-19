@@ -765,6 +765,45 @@ button.owner-assist-photo-preview:focus-visible {
   padding: 0 24px 16px;
 }
 
+.team-picker-results {
+  margin-top: 16px;
+}
+
+.team-picker-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-grey);
+}
+
+.team-picker-preview div {
+  display: grid;
+  gap: 4px;
+}
+
+.team-picker-preview span,
+.selected-team-summary span {
+  color: var(--muted-grey);
+  font-size: 13px;
+}
+
+.selected-team-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-grey);
+  border-radius: 6px;
+  background: var(--pure-white);
+}
+
+.selected-team-summary div {
+  display: grid;
+  gap: 2px;
+}
+
 .qr-panel {
   padding: 16px;
   border-top: 4px solid var(--primary);

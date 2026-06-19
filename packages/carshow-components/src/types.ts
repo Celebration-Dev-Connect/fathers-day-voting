@@ -10,12 +10,34 @@ export type StaffUser = {
 
 export type PcoTeamRole = {
   id: string;
+  pcoTeamId?: string | null;
   pcoTeamName: string;
+  pcoServiceTypeName?: string | null;
   positionName: string | null;
   role: StaffRole;
   active: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type PcoServicesTeamMember = {
+  id: string;
+  name: string;
+  email?: string | null;
+  positions: string[];
+  leader: boolean;
+};
+
+export type PcoServicesTeam = {
+  id: string;
+  name: string;
+  serviceTypeName?: string | null;
+  memberCount: number;
+  leaderCount: number;
+  positionNames: string[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  members?: PcoServicesTeamMember[];
 };
 
 export type Category = {

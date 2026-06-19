@@ -84,6 +84,8 @@ seed_env() {
   set_secret "${prefix}_IMAGE_TAG"             "$(get_var image_tag "$f")"             "$gh_env"
   set_secret "${prefix}_PCO_CLIENT_ID"         "$(get_var pco_client_id "$f")"         "$gh_env"
   set_secret "${prefix}_PCO_CLIENT_SECRET"     "$(get_var pco_client_secret "$f")"     "$gh_env"
+  set_secret "${prefix}_PCO_API_APP_ID"        "$(get_var pco_api_app_id "$f")"        "$gh_env"
+  set_secret "${prefix}_PCO_API_SECRET"        "$(get_var pco_api_secret "$f")"        "$gh_env"
   set_secret "${prefix}_PCO_CALLBACK_URL"      "$(get_var pco_callback_url "$f")"      "$gh_env"
   set_secret "${prefix}_PCO_TEAM_NAME"         "$(get_var pco_team_name "$f")"         "$gh_env"
   set_secret "${prefix}_ADMIN_WEB_URL"         "$(get_var admin_web_url "$f")"         "$gh_env"

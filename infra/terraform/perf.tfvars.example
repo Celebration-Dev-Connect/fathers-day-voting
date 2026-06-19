@@ -36,6 +36,8 @@ image_tag = "latest"
 # ── Planning Center OAuth (leave blank — dev-login is used instead) ──
 pco_client_id     = ""
 pco_client_secret = ""
+pco_api_app_id    = ""
+pco_api_secret    = ""
 pco_callback_url  = ""
 pco_team_name     = "carshow"
 admin_web_url     = ""

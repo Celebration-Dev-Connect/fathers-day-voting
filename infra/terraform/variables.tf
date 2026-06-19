@@ -130,6 +130,20 @@ variable "pco_client_secret" {
   sensitive   = true
 }
 
+variable "pco_api_app_id" {
+  description = "Planning Center API personal access app ID used for server-side team lookup."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "pco_api_secret" {
+  description = "Planning Center API personal access secret used for server-side team lookup."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "webguide_username" {
   description = "WebGuide username used to download vehicle photos referenced by registration CSV imports."
   type        = string

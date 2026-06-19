@@ -5,6 +5,7 @@ import type {
   CeremonyData,
   DashboardMetrics,
   JudgeCategoryCompletion,
+  PcoServicesTeam,
   PcoTeamRole,
   PhotoModerationStatus,
   PhotoReviewItem,
@@ -128,8 +129,19 @@ export async function listTeamRoles() {
   return request<{ teamRoles: PcoTeamRole[] }>("/admin/pco-team-roles");
 }
 
+export async function searchPcoServicesTeams(query: string) {
+  const params = new URLSearchParams({ q: query });
+  return request<{ teams: PcoServicesTeam[] }>(`/admin/pco-services/teams/search?${params.toString()}`);
+}
+
+export async function getPcoServicesTeam(teamId: string) {
+  return request<{ team: PcoServicesTeam }>(`/admin/pco-services/teams/${encodeURIComponent(teamId)}`);
+}
+
 export async function createTeamRole(input: {
+  pcoTeamId: string;
   pcoTeamName: string;
+  pcoServiceTypeName?: string | null;
   positionName?: string | null;
   role: StaffRole;
 }) {

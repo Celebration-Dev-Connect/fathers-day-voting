@@ -3,6 +3,7 @@ import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireStaff } from "../auth.js";
 import { config } from "../config.js";
+import { getPersonPositionsForTeamId, planningCenterOAuthHeaders } from "../services/planningCenter.js";
 
 const pcoMeSchema = z.object({
   data: z.object({
@@ -61,7 +62,7 @@ async function fetchPersonPositionsInTeam(
 ): Promise<string[] | null> {
   const teamsRes = await fetch(
     `https://api.planningcenteronline.com/services/v2/teams?where[name]=${encodeURIComponent(teamName)}&per_page=1`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
+    { headers: planningCenterOAuthHeaders(accessToken) },
   );
   if (!teamsRes.ok) {
     log.error({ status: teamsRes.status, teamName }, "PCO teams fetch failed");
@@ -81,7 +82,7 @@ async function fetchPersonPositionsInTeam(
 
   while (nextUrl && page < 10) {
     page++;
-    const assignRes = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const assignRes = await fetch(nextUrl, { headers: planningCenterOAuthHeaders(accessToken) });
     if (!assignRes.ok) {
       log.error({ status: assignRes.status, teamId }, "PCO PTPA fetch failed");
       return null;
@@ -122,11 +123,22 @@ async function resolvePcoRole(
     return null;
   }
 
-  const teamNames = [...new Set(mappings.map((m) => m.pcoTeamName))];
   const positionsByTeam = new Map<string, string[]>();
-  for (const teamName of teamNames) {
-    const positions = await fetchPersonPositionsInTeam(pcoPersonId, accessToken, teamName, log);
-    if (positions !== null) positionsByTeam.set(teamName, positions);
+  for (const mapping of mappings) {
+    if (mapping.pcoTeamId) {
+      if (positionsByTeam.has(mapping.pcoTeamId)) continue;
+      const positions = await getPersonPositionsForTeamId(mapping.pcoTeamId, pcoPersonId, accessToken, log);
+      positionsByTeam.set(mapping.pcoTeamId, positions);
+      continue;
+    }
+
+    if (mapping.id !== "default-admin-team") {
+      log.warn({ mappingId: mapping.id, teamName: mapping.pcoTeamName }, "Ignoring legacy name-only PCO team mapping");
+      continue;
+    }
+    if (positionsByTeam.has(mapping.pcoTeamName)) continue;
+    const positions = await fetchPersonPositionsInTeam(pcoPersonId, accessToken, mapping.pcoTeamName, log);
+    if (positions !== null) positionsByTeam.set(mapping.pcoTeamName, positions);
   }
 
   const matchedRoles = matchMappedRoles(mappings, positionsByTeam);
@@ -135,7 +147,13 @@ async function resolvePcoRole(
   return role;
 }
 
-type TeamRoleMapping = { pcoTeamName: string; positionName: string | null; role: StaffRole };
+type TeamRoleMapping = {
+  id?: string;
+  pcoTeamId?: string | null;
+  pcoTeamName: string;
+  positionName: string | null;
+  role: StaffRole;
+};
 
 /**
  * Given the position names a person holds per team, return the roles they qualify for.
@@ -149,7 +167,7 @@ export function matchMappedRoles(
 ): StaffRole[] {
   const matchedRoles: StaffRole[] = [];
   for (const mapping of mappings) {
-    const memberPositions = positionsByTeam.get(mapping.pcoTeamName);
+    const memberPositions = positionsByTeam.get(mapping.pcoTeamId ?? mapping.pcoTeamName);
     if (!memberPositions || memberPositions.length === 0) continue;
     if (mapping.positionName === null) {
       matchedRoles.push(mapping.role);
@@ -216,7 +234,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       const accessToken = tokenSet.token.access_token;
 
       const pcoMeRes = await fetch("https://api.planningcenteronline.com/people/v2/me", {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: planningCenterOAuthHeaders(accessToken),
       });
       if (!pcoMeRes.ok) {
         app.log.error({ status: pcoMeRes.status }, "Failed to fetch PCO user info");

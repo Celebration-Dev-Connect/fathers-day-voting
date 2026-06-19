@@ -1,18 +1,43 @@
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Search, Trash2, Users } from "lucide-react";
 import { Alert, Button, PageHeader } from "@carshow/carshow-components";
-import type { PcoTeamRole, StaffRole } from "@carshow/carshow-components";
+import type { PcoServicesTeam, PcoTeamRole, StaffRole } from "@carshow/carshow-components";
 import { FormEvent, useEffect, useState } from "react";
-import { createTeamRole, deleteTeamRole, listTeamRoles, updateTeamRole } from "../api";
+import {
+  createTeamRole,
+  deleteTeamRole,
+  getPcoServicesTeam,
+  listTeamRoles,
+  searchPcoServicesTeams,
+  updateTeamRole,
+} from "../api";
 
 const ROLE_OPTIONS: StaffRole[] = ["REGISTRAR", "JUDGE", "ADMIN"];
+const fallbackAdminMappingId = "default-admin-team";
+
+function teamLabel(team: PcoServicesTeam | PcoTeamRole) {
+  const isMapping = "pcoTeamName" in team;
+  const name = isMapping ? team.pcoTeamName : team.name;
+  const serviceTypeName = isMapping ? team.pcoServiceTypeName : team.serviceTypeName;
+  return [name, serviceTypeName].filter(Boolean).join(" · ");
+}
+
+function mappingLabel(mapping: PcoTeamRole) {
+  return mapping.positionName ? `Position: ${mapping.positionName}` : "Whole team";
+}
 
 export function TeamAccessView() {
   const [teamRoles, setTeamRoles] = useState<PcoTeamRole[]>([]);
-  const [teamName, setTeamName] = useState("");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PcoServicesTeam[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<PcoServicesTeam | null>(null);
+  const [expandedTeamId, setExpandedTeamId] = useState("");
+  const [teamDetails, setTeamDetails] = useState<Record<string, PcoServicesTeam>>({});
   const [positionName, setPositionName] = useState("");
   const [role, setRole] = useState<StaffRole>("REGISTRAR");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [detailsLoadingId, setDetailsLoadingId] = useState("");
 
   function load() {
     listTeamRoles()
@@ -23,16 +48,61 @@ export function TeamAccessView() {
 
   useEffect(load, []);
 
+  async function searchTeams(event: FormEvent) {
+    event.preventDefault();
+    if (query.trim().length < 2) return;
+    setSearching(true);
+    setError("");
+    setSelectedTeam(null);
+    try {
+      const result = await searchPcoServicesTeams(query.trim());
+      setResults(result.teams);
+    } catch (searchError) {
+      setError(searchError instanceof Error ? searchError.message : "Could not search Planning Center teams");
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function toggleTeamDetails(team: PcoServicesTeam) {
+    if (expandedTeamId === team.id) {
+      setExpandedTeamId("");
+      return;
+    }
+    setExpandedTeamId(team.id);
+    if (teamDetails[team.id]?.members) return;
+    setDetailsLoadingId(team.id);
+    setError("");
+    try {
+      const result = await getPcoServicesTeam(team.id);
+      setTeamDetails((current) => ({ ...current, [team.id]: result.team }));
+    } catch (detailError) {
+      setError(detailError instanceof Error ? detailError.message : "Could not load team members");
+    } finally {
+      setDetailsLoadingId("");
+    }
+  }
+
+  function chooseTeam(team: PcoServicesTeam) {
+    const detail = teamDetails[team.id] ?? team;
+    setSelectedTeam(detail);
+    setPositionName("");
+  }
+
   async function addMapping(event: FormEvent) {
     event.preventDefault();
+    if (!selectedTeam) return;
     setError("");
     try {
       await createTeamRole({
-        pcoTeamName: teamName.trim(),
-        positionName: positionName.trim() || null,
+        pcoTeamId: selectedTeam.id,
+        pcoTeamName: selectedTeam.name,
+        pcoServiceTypeName: selectedTeam.serviceTypeName ?? null,
+        positionName: positionName || null,
         role,
       });
-      setTeamName("");
+      setSelectedTeam(null);
       setPositionName("");
       setRole("REGISTRAR");
       load();
@@ -63,8 +133,8 @@ export function TeamAccessView() {
 
   async function removeMapping(mapping: PcoTeamRole) {
     const label = mapping.positionName
-      ? `${mapping.pcoTeamName} / ${mapping.positionName}`
-      : `${mapping.pcoTeamName} / whole team`;
+      ? `${teamLabel(mapping)} / ${mapping.positionName}`
+      : `${teamLabel(mapping)} / whole team`;
     if (!window.confirm(`Delete the Planning Center team mapping for ${label}?`)) return;
     setError("");
     try {
@@ -75,38 +145,112 @@ export function TeamAccessView() {
     }
   }
 
+  const selectedPositions = selectedTeam?.positionNames ?? [];
+
   return (
     <section>
       <PageHeader eyebrow="Admin Setup" title="Team Access" />
       <p className="setup-description">
-        Grant app roles to Planning Center teams. Anyone who signs in via Planning Center and belongs to a mapped
-        team receives that role. Leave the position blank to grant the role to the whole team, or enter a position
-        name to restrict it to people holding that position. Team and position names must match Planning Center
-        Services exactly. When someone matches more than one mapping, the highest-privilege role wins.
+        Search Planning Center Services teams, select the exact team, then assign an app role. The app stores the
+        Planning Center team ID, so duplicate team names no longer collide. The built-in carshow admin fallback remains
+        protected as a lockout safety net.
       </p>
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
-      <form className="inline-form inline-form-stacked" style={{ marginTop: 20 }} onSubmit={addMapping}>
+      <form className="inline-form inline-form-stacked" style={{ marginTop: 20 }} onSubmit={searchTeams}>
         <input
-          value={teamName}
-          onChange={(event) => setTeamName(event.target.value)}
-          placeholder="PCO team name (e.g. Registration)"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search PCO Services teams, e.g. Registration"
         />
-        <input
+        <Button type="submit" disabled={query.trim().length < 2 || searching}>
+          <Search size={20} />
+          {searching ? "Searching..." : "Search Teams"}
+        </Button>
+      </form>
+
+      {results.length ? (
+        <div className="category-grid team-picker-results">
+          {results.map((team) => {
+            const detail = teamDetails[team.id] ?? team;
+            const expanded = expandedTeamId === team.id;
+            return (
+              <article key={team.id} className={`category-card ${selectedTeam?.id === team.id ? "selected" : ""}`}>
+                <div className="category-card-details">
+                  <strong>{team.name}</strong>
+                  <span>{team.serviceTypeName ?? "No service type listed"}</span>
+                  <span>{team.memberCount} members · {team.leaderCount} leaders</span>
+                  {team.updatedAt ? <span>Updated {new Date(team.updatedAt).toLocaleDateString()}</span> : null}
+                </div>
+                <div className="card-actions">
+                  <Button variant="secondary" onClick={() => void toggleTeamDetails(team)}>
+                    {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                    Preview
+                  </Button>
+                  <Button onClick={() => chooseTeam(detail)}>Select</Button>
+                </div>
+                {expanded ? (
+                  <div className="team-picker-preview">
+                    {detailsLoadingId === team.id ? (
+                      <span className="muted-copy">Loading members...</span>
+                    ) : (
+                      <>
+                        <div>
+                          <strong>Positions</strong>
+                          <span>{detail.positionNames.length ? detail.positionNames.join(", ") : "No positions found"}</span>
+                        </div>
+                        <div>
+                          <strong>People</strong>
+                          {(detail.members ?? []).slice(0, 12).map((member) => (
+                            <span key={member.id}>
+                              {member.name}{member.leader ? " · leader" : ""}{member.positions.length ? ` · ${member.positions.join(", ")}` : ""}
+                            </span>
+                          ))}
+                          {(detail.members?.length ?? 0) > 12 ? <span>{detail.members!.length - 12} more...</span> : null}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <form className="inline-form inline-form-stacked" style={{ marginTop: 20 }} onSubmit={addMapping}>
+        <div className="selected-team-summary">
+          <Users size={20} />
+          <div>
+            <strong>{selectedTeam ? teamLabel(selectedTeam) : "No Planning Center team selected"}</strong>
+            <span>
+              {selectedTeam
+                ? `${selectedTeam.memberCount} members · ${selectedTeam.leaderCount} leaders`
+                : "Search above and select the exact Services team first."}
+            </span>
+          </div>
+        </div>
+        <select
           value={positionName}
           onChange={(event) => setPositionName(event.target.value)}
-          placeholder="Position name (optional — blank = whole team)"
-        />
-        <select value={role} onChange={(event) => setRole(event.target.value as StaffRole)} aria-label="Role">
+          disabled={!selectedTeam}
+          aria-label="Planning Center position"
+        >
+          <option value="">Whole team</option>
+          {selectedPositions.map((position) => (
+            <option key={position} value={position}>{position}</option>
+          ))}
+        </select>
+        <select value={role} onChange={(event) => setRole(event.target.value as StaffRole)} aria-label="App role">
           {ROLE_OPTIONS.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
           ))}
         </select>
-        <Button type="submit" disabled={!teamName.trim()}>
+        <Button type="submit" disabled={!selectedTeam}>
           <Plus size={20} />
-          Add Team
+          Add Team Mapping
         </Button>
       </form>
 
@@ -116,33 +260,38 @@ export function TeamAccessView() {
         <Alert>No teams mapped yet. Add a Planning Center team above to grant access.</Alert>
       ) : (
         <div className="category-grid">
-          {teamRoles.map((mapping) => (
-            <article key={mapping.id} className="category-card">
-              <div className="category-card-details">
-                <strong>{mapping.pcoTeamName}</strong>
-                <span>{mapping.positionName ? `Position: ${mapping.positionName}` : "Whole team"}</span>
-              </div>
-              <div className="card-actions">
-                <select
-                  value={mapping.role}
-                  onChange={(event) => changeRole(mapping, event.target.value as StaffRole)}
-                  aria-label={`Role for ${mapping.pcoTeamName}`}
-                >
-                  {ROLE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-                <Button variant="secondary" onClick={() => toggleActive(mapping)}>
-                  {mapping.active ? "Active" : "Inactive"}
-                </Button>
-                <Button variant="secondary" onClick={() => removeMapping(mapping)}>
-                  <Trash2 size={18} />
-                </Button>
-              </div>
-            </article>
-          ))}
+          {teamRoles.map((mapping) => {
+            const isFallback = mapping.id === fallbackAdminMappingId;
+            return (
+              <article key={mapping.id} className="category-card">
+                <div className="category-card-details">
+                  <strong>{teamLabel(mapping)}</strong>
+                  <span>{mappingLabel(mapping)}</span>
+                  <span>{mapping.pcoTeamId ? `PCO team ID: ${mapping.pcoTeamId}` : "Fallback name-based mapping"}</span>
+                </div>
+                <div className="card-actions">
+                  <select
+                    value={mapping.role}
+                    onChange={(event) => changeRole(mapping, event.target.value as StaffRole)}
+                    aria-label={`Role for ${mapping.pcoTeamName}`}
+                    disabled={isFallback}
+                  >
+                    {ROLE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <Button variant="secondary" disabled={isFallback} onClick={() => toggleActive(mapping)}>
+                    {mapping.active ? "Active" : "Inactive"}
+                  </Button>
+                  <Button variant="secondary" disabled={isFallback} onClick={() => removeMapping(mapping)}>
+                    <Trash2 size={18} />
+                  </Button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </section>

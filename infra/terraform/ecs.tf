@@ -77,6 +77,8 @@ resource "aws_ecs_task_definition" "api" {
       { name = "JWT_SECRET", valueFrom = aws_secretsmanager_secret.jwt_secret.arn },
       { name = "PLANNING_CENTER_CLIENT_ID", valueFrom = aws_secretsmanager_secret.pco_client_id.arn },
       { name = "PLANNING_CENTER_CLIENT_SECRET", valueFrom = aws_secretsmanager_secret.pco_client_secret.arn },
+      { name = "PLANNING_CENTER_API_APP_ID", valueFrom = aws_secretsmanager_secret.pco_api_app_id.arn },
+      { name = "PLANNING_CENTER_API_SECRET", valueFrom = aws_secretsmanager_secret.pco_api_secret.arn },
       { name = "WEBGUIDE_USERNAME", valueFrom = aws_secretsmanager_secret.webguide_username.arn },
       { name = "WEBGUIDE_PASSWORD", valueFrom = aws_secretsmanager_secret.webguide_password.arn },
       { name = "EMAIL_SMTP_USERNAME", valueFrom = aws_secretsmanager_secret.email_smtp_username.arn },

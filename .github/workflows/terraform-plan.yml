@@ -53,6 +53,8 @@ jobs:
           TF_TEST_IMAGE_TAG:             ${{ secrets.TF_TEST_IMAGE_TAG }}
           TF_TEST_PCO_CLIENT_ID:         ${{ secrets.TF_TEST_PCO_CLIENT_ID }}
           TF_TEST_PCO_CLIENT_SECRET:     ${{ secrets.TF_TEST_PCO_CLIENT_SECRET }}
+          TF_TEST_PCO_API_APP_ID:        ${{ secrets.TF_TEST_PCO_API_APP_ID }}
+          TF_TEST_PCO_API_SECRET:        ${{ secrets.TF_TEST_PCO_API_SECRET }}
           TF_TEST_PCO_CALLBACK_URL:      ${{ secrets.TF_TEST_PCO_CALLBACK_URL }}
           TF_TEST_PCO_TEAM_NAME:         ${{ secrets.TF_TEST_PCO_TEAM_NAME }}
           TF_TEST_ADMIN_WEB_URL:         ${{ secrets.TF_TEST_ADMIN_WEB_URL }}
@@ -82,6 +84,8 @@ jobs:
           TF_PERF_IMAGE_TAG:             ${{ secrets.TF_PERF_IMAGE_TAG }}
           TF_PERF_PCO_CLIENT_ID:         ${{ secrets.TF_PERF_PCO_CLIENT_ID }}
           TF_PERF_PCO_CLIENT_SECRET:     ${{ secrets.TF_PERF_PCO_CLIENT_SECRET }}
+          TF_PERF_PCO_API_APP_ID:        ${{ secrets.TF_PERF_PCO_API_APP_ID }}
+          TF_PERF_PCO_API_SECRET:        ${{ secrets.TF_PERF_PCO_API_SECRET }}
           TF_PERF_PCO_CALLBACK_URL:      ${{ secrets.TF_PERF_PCO_CALLBACK_URL }}
           TF_PERF_PCO_TEAM_NAME:         ${{ secrets.TF_PERF_PCO_TEAM_NAME }}
           TF_PERF_ADMIN_WEB_URL:         ${{ secrets.TF_PERF_ADMIN_WEB_URL }}
@@ -111,6 +115,8 @@ jobs:
           TF_PROD_ALERT_SMS:             ${{ secrets.TF_PROD_ALERT_SMS }}
           TF_PROD_PCO_CLIENT_ID:         ${{ secrets.TF_PROD_PCO_CLIENT_ID }}
           TF_PROD_PCO_CLIENT_SECRET:     ${{ secrets.TF_PROD_PCO_CLIENT_SECRET }}
+          TF_PROD_PCO_API_APP_ID:        ${{ secrets.TF_PROD_PCO_API_APP_ID }}
+          TF_PROD_PCO_API_SECRET:        ${{ secrets.TF_PROD_PCO_API_SECRET }}
           TF_PROD_PCO_CALLBACK_URL:      ${{ secrets.TF_PROD_PCO_CALLBACK_URL }}
           TF_PROD_PCO_TEAM_NAME:         ${{ secrets.TF_PROD_PCO_TEAM_NAME }}
           TF_PROD_ADMIN_WEB_URL:         ${{ secrets.TF_PROD_ADMIN_WEB_URL }}
@@ -141,6 +147,8 @@ jobs:
           image_tag         = "$TF_TEST_IMAGE_TAG"
           pco_client_id     = "$TF_TEST_PCO_CLIENT_ID"
           pco_client_secret = "$TF_TEST_PCO_CLIENT_SECRET"
+          pco_api_app_id    = "$TF_TEST_PCO_API_APP_ID"
+          pco_api_secret    = "$TF_TEST_PCO_API_SECRET"
           pco_callback_url  = "$TF_TEST_PCO_CALLBACK_URL"
           pco_team_name     = "$TF_TEST_PCO_TEAM_NAME"
           admin_web_url     = "$TF_TEST_ADMIN_WEB_URL"
@@ -173,6 +181,8 @@ jobs:
           image_tag         = "$TF_PERF_IMAGE_TAG"
           pco_client_id     = "$TF_PERF_PCO_CLIENT_ID"
           pco_client_secret = "$TF_PERF_PCO_CLIENT_SECRET"
+          pco_api_app_id    = "$TF_PERF_PCO_API_APP_ID"
+          pco_api_secret    = "$TF_PERF_PCO_API_SECRET"
           pco_callback_url  = "$TF_PERF_PCO_CALLBACK_URL"
           pco_team_name     = "$TF_PERF_PCO_TEAM_NAME"
           admin_web_url     = "$TF_PERF_ADMIN_WEB_URL"
@@ -206,6 +216,8 @@ jobs:
           cloudfront_custom_domain = $TF_PROD_CLOUDFRONT_CUSTOM_DOMAIN
           pco_client_id     = "$TF_PROD_PCO_CLIENT_ID"
           pco_client_secret = "$TF_PROD_PCO_CLIENT_SECRET"
+          pco_api_app_id    = "$TF_PROD_PCO_API_APP_ID"
+          pco_api_secret    = "$TF_PROD_PCO_API_SECRET"
           pco_callback_url  = "$TF_PROD_PCO_CALLBACK_URL"
           pco_team_name     = "$TF_PROD_PCO_TEAM_NAME"
           admin_web_url     = "$TF_PROD_ADMIN_WEB_URL"

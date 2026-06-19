@@ -86,14 +86,16 @@ model Event {
 
 model PcoTeamRole {
   id           String    @id @default(cuid())
+  pcoTeamId    String?
   pcoTeamName  String
+  pcoServiceTypeName String?
   positionName String?
   role         StaffRole
   active       Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  @@unique([pcoTeamName, positionName])
+  @@index([pcoTeamId])
 }
 
 model StaffUser {

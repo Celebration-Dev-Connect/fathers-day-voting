@@ -22,6 +22,25 @@ export type PlanningCenterTeam = {
   members?: PlanningCenterMember[];
 };
 
+export type PlanningCenterErrorCode =
+  | "PCO_NOT_CONFIGURED"
+  | "PCO_UNAUTHORIZED"
+  | "PCO_FORBIDDEN"
+  | "PCO_RATE_LIMITED"
+  | "PCO_UNAVAILABLE";
+
+export class PlanningCenterApiError extends Error {
+  readonly code: PlanningCenterErrorCode;
+  readonly statusCode: number;
+
+  constructor(code: PlanningCenterErrorCode, message: string, statusCode: number) {
+    super(message);
+    this.name = "PlanningCenterApiError";
+    this.code = code;
+    this.statusCode = statusCode;
+  }
+}
+
 const pcoCollectionSchema = z.object({
   data: z.array(z.any()),
   included: z.array(z.any()).optional().default([]),
@@ -56,12 +75,41 @@ export function hasPlanningCenterApiCredentials() {
   return Boolean(config.planningCenter.apiAppId && config.planningCenter.apiSecret);
 }
 
+function planningCenterErrorForStatus(status: number): PlanningCenterApiError {
+  if (status === 401) {
+    return new PlanningCenterApiError(
+      "PCO_UNAUTHORIZED",
+      "Planning Center rejected the team lookup credentials.",
+      502,
+    );
+  }
+  if (status === 403) {
+    return new PlanningCenterApiError(
+      "PCO_FORBIDDEN",
+      "Planning Center credentials do not have permission to browse Services teams.",
+      403,
+    );
+  }
+  if (status === 429) {
+    return new PlanningCenterApiError(
+      "PCO_RATE_LIMITED",
+      "Planning Center is rate limiting team lookup requests. Try again shortly.",
+      429,
+    );
+  }
+  return new PlanningCenterApiError(
+    "PCO_UNAVAILABLE",
+    `Planning Center API request failed with ${status}.`,
+    502,
+  );
+}
+
 async function pcoFetch(url: string, headers: Record<string, string>, log: FastifyBaseLogger) {
   const response = await fetch(url, { headers });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     log.warn({ status: response.status, url, body: body.slice(0, 400) }, "Planning Center API request failed");
-    throw new Error(`Planning Center API request failed with ${response.status}`);
+    throw planningCenterErrorForStatus(response.status);
   }
   return response.json();
 }
@@ -195,7 +243,13 @@ function summarizeMembers(assignments: unknown[], included: unknown[]) {
 
 export async function searchPlanningCenterTeams(query: string, log: FastifyBaseLogger) {
   const headers = planningCenterBasicHeaders();
-  if (!headers) throw new Error("Planning Center API credentials are not configured");
+  if (!headers) {
+    throw new PlanningCenterApiError(
+      "PCO_NOT_CONFIGURED",
+      "Planning Center API credentials are not configured.",
+      424,
+    );
+  }
 
   const parsed = pcoCollectionSchema.parse(await pcoFetch(
     `https://api.planningcenteronline.com/services/v2/teams?where[name]=${encodeURIComponent(query)}&include=service_type&per_page=25`,
@@ -219,7 +273,13 @@ export async function getPlanningCenterTeam(
   knownTeam?: Omit<PlanningCenterTeam, "memberCount" | "leaderCount" | "positionNames">,
 ) {
   const headers = planningCenterBasicHeaders();
-  if (!headers) throw new Error("Planning Center API credentials are not configured");
+  if (!headers) {
+    throw new PlanningCenterApiError(
+      "PCO_NOT_CONFIGURED",
+      "Planning Center API credentials are not configured.",
+      424,
+    );
+  }
 
   let team = knownTeam;
   if (!team) {

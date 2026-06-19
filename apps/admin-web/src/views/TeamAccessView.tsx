@@ -4,6 +4,7 @@ import type { PcoServicesTeam, PcoTeamRole, StaffRole } from "@carshow/carshow-c
 import { FormEvent, useEffect, useState } from "react";
 import {
   createTeamRole,
+  ApiError,
   deleteTeamRole,
   getPcoServicesTeam,
   listTeamRoles,
@@ -13,6 +14,28 @@ import {
 
 const ROLE_OPTIONS: StaffRole[] = ["REGISTRAR", "JUDGE", "ADMIN"];
 const fallbackAdminMappingId = "default-admin-team";
+
+function planningCenterWarning(error: unknown) {
+  if (!(error instanceof ApiError)) return null;
+  const details = error.details;
+  const code = details && typeof details === "object" ? (details as { code?: unknown }).code : null;
+  if (code === "PCO_NOT_CONFIGURED") {
+    return "Planning Center team lookup is not configured yet. Add the Planning Center API app ID/secret secrets and run the Terraform apply workflow so the API can browse Services teams.";
+  }
+  if (code === "PCO_UNAUTHORIZED") {
+    return "Planning Center rejected the team lookup credentials. Verify the API app ID/secret, then run Terraform apply so the API receives the updated secrets.";
+  }
+  if (code === "PCO_FORBIDDEN") {
+    return "Planning Center connected, but these credentials do not have permission to browse Services teams. Use credentials from a Planning Center admin with Services access, or reconnect using the OAuth setup flow once enabled.";
+  }
+  if (code === "PCO_RATE_LIMITED") {
+    return "Planning Center is rate limiting team lookup requests. Wait a minute and try again.";
+  }
+  if (code === "PCO_UNAVAILABLE") {
+    return "Planning Center could not be reached for team lookup. Try again shortly.";
+  }
+  return null;
+}
 
 function teamLabel(team: PcoServicesTeam | PcoTeamRole) {
   const isMapping = "pcoTeamName" in team;
@@ -35,6 +58,7 @@ export function TeamAccessView() {
   const [positionName, setPositionName] = useState("");
   const [role, setRole] = useState<StaffRole>("REGISTRAR");
   const [error, setError] = useState("");
+  const [setupWarning, setSetupWarning] = useState("");
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [detailsLoadingId, setDetailsLoadingId] = useState("");
@@ -53,12 +77,18 @@ export function TeamAccessView() {
     if (query.trim().length < 2) return;
     setSearching(true);
     setError("");
+    setSetupWarning("");
     setSelectedTeam(null);
     try {
       const result = await searchPcoServicesTeams(query.trim());
       setResults(result.teams);
     } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : "Could not search Planning Center teams");
+      const warning = planningCenterWarning(searchError);
+      if (warning) {
+        setSetupWarning(warning);
+      } else {
+        setError(searchError instanceof Error ? searchError.message : "Could not search Planning Center teams");
+      }
       setResults([]);
     } finally {
       setSearching(false);
@@ -74,11 +104,17 @@ export function TeamAccessView() {
     if (teamDetails[team.id]?.members) return;
     setDetailsLoadingId(team.id);
     setError("");
+    setSetupWarning("");
     try {
       const result = await getPcoServicesTeam(team.id);
       setTeamDetails((current) => ({ ...current, [team.id]: result.team }));
     } catch (detailError) {
-      setError(detailError instanceof Error ? detailError.message : "Could not load team members");
+      const warning = planningCenterWarning(detailError);
+      if (warning) {
+        setSetupWarning(warning);
+      } else {
+        setError(detailError instanceof Error ? detailError.message : "Could not load team members");
+      }
     } finally {
       setDetailsLoadingId("");
     }
@@ -156,6 +192,7 @@ export function TeamAccessView() {
         protected as a lockout safety net.
       </p>
       {error ? <Alert variant="danger">{error}</Alert> : null}
+      {setupWarning ? <Alert>{setupWarning}</Alert> : null}
 
       <form className="inline-form inline-form-stacked" style={{ marginTop: 20 }} onSubmit={searchTeams}>
         <input

@@ -2,28 +2,64 @@ import { StaffRole, prisma } from "@carshow/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAdmin } from "../auth.js";
-import { getPlanningCenterTeam, hasPlanningCenterApiCredentials, searchPlanningCenterTeams } from "../services/planningCenter.js";
+import {
+  PlanningCenterApiError,
+  getPlanningCenterTeam,
+  hasPlanningCenterApiCredentials,
+  searchPlanningCenterTeams,
+} from "../services/planningCenter.js";
 
 const roleSchema = z.nativeEnum(StaffRole);
 const fallbackAdminMappingId = "default-admin-team";
 
+function sendPlanningCenterError(error: unknown) {
+  if (error instanceof PlanningCenterApiError) {
+    return {
+      statusCode: error.statusCode,
+      body: {
+        code: error.code,
+        message: error.message,
+      },
+    };
+  }
+  return null;
+}
+
 export async function registerPcoTeamRoleRoutes(app: FastifyInstance) {
-  app.get("/admin/pco-services/teams/search", async (request) => {
+  app.get("/admin/pco-services/teams/search", async (request, reply) => {
     await requireAdmin(app, request);
     const query = z.object({ q: z.string().trim().min(2) }).parse(request.query);
     if (!hasPlanningCenterApiCredentials()) {
-      throw app.httpErrors.failedDependency("Planning Center API credentials are not configured");
+      return reply.status(424).send({
+        code: "PCO_NOT_CONFIGURED",
+        message: "Planning Center API credentials are not configured.",
+      });
     }
-    return { teams: await searchPlanningCenterTeams(query.q, app.log) };
+    try {
+      return { teams: await searchPlanningCenterTeams(query.q, app.log) };
+    } catch (error) {
+      const pcoError = sendPlanningCenterError(error);
+      if (pcoError) return reply.status(pcoError.statusCode).send(pcoError.body);
+      throw error;
+    }
   });
 
-  app.get("/admin/pco-services/teams/:teamId", async (request) => {
+  app.get("/admin/pco-services/teams/:teamId", async (request, reply) => {
     await requireAdmin(app, request);
     const params = z.object({ teamId: z.string().trim().min(1) }).parse(request.params);
     if (!hasPlanningCenterApiCredentials()) {
-      throw app.httpErrors.failedDependency("Planning Center API credentials are not configured");
+      return reply.status(424).send({
+        code: "PCO_NOT_CONFIGURED",
+        message: "Planning Center API credentials are not configured.",
+      });
     }
-    return { team: await getPlanningCenterTeam(params.teamId, app.log, true) };
+    try {
+      return { team: await getPlanningCenterTeam(params.teamId, app.log, true) };
+    } catch (error) {
+      const pcoError = sendPlanningCenterError(error);
+      if (pcoError) return reply.status(pcoError.statusCode).send(pcoError.body);
+      throw error;
+    }
   });
 
   app.get("/admin/pco-team-roles", async (request) => {

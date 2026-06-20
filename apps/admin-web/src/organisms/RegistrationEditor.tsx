@@ -123,12 +123,14 @@ export function RegistrationEditor({
   const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoReviewItem | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showPhotoChoices, setShowPhotoChoices] = useState(false);
   const [downloadingPhotos, setDownloadingPhotos] = useState(false);
   const [ownerSearch, setOwnerSearch] = useState("");
   const [ownerCandidates, setOwnerCandidates] = useState<OwnerSummary[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<OwnerSummary | null>(null);
   const [searchingOwners, setSearchingOwners] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!payload.vehicle.categoryId && categories[0]) {
@@ -278,11 +280,13 @@ export function RegistrationEditor({
       const toUpload = await compressImage(file);
       await uploadRegistrationPhoto(registration.id, toUpload);
       await refreshRegistration("Photo uploaded for review.");
+      setShowPhotoChoices(false);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Photo upload failed");
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
     }
   }
 
@@ -632,6 +636,14 @@ export function RegistrationEditor({
                 accept="image/jpeg,image/png,image/webp"
                 onChange={(event) => void uploadPhoto(event.target.files?.[0] ?? null)}
               />
+              <input
+                ref={cameraInputRef}
+                className="visually-hidden"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(event) => void uploadPhoto(event.target.files?.[0] ?? null)}
+              />
               {(registration.photos ?? []).some((p) => p.moderationStatus === "APPROVED") ? (
                 <Button
                   type="button"
@@ -647,10 +659,24 @@ export function RegistrationEditor({
                   {downloadingPhotos ? <Loader2 className="spin" size={18} /> : <Download size={18} />}
                 </Button>
               ) : null}
-              <Button type="button" variant="secondary" disabled={uploadingPhoto} onClick={() => fileInputRef.current?.click()}>
-                {uploadingPhoto ? <Loader2 className="spin" size={18} /> : <ImagePlus size={18} />}
-                {uploadingPhoto ? "Uploading..." : "Upload Photo"}
-              </Button>
+              <div className="photo-upload-picker">
+                <Button type="button" variant="secondary" disabled={uploadingPhoto} onClick={() => setShowPhotoChoices((open) => !open)}>
+                  {uploadingPhoto ? <Loader2 className="spin" size={18} /> : <ImagePlus size={18} />}
+                  {uploadingPhoto ? "Uploading..." : "Upload Photo"}
+                </Button>
+                {showPhotoChoices ? (
+                  <div className="photo-upload-choice-actions">
+                    <button type="button" onClick={() => cameraInputRef.current?.click()}>
+                      <Camera size={18} />
+                      Take Photo
+                    </button>
+                    <button type="button" onClick={() => fileInputRef.current?.click()}>
+                      <ImagePlus size={18} />
+                      Choose From Library
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 

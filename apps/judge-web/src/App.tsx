@@ -747,9 +747,11 @@ function JudgePhotoUploadDialog({
   onUploaded: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [showPhotoChoices, setShowPhotoChoices] = useState(false);
   const [error, setError] = useState("");
 
   function chooseFile(nextFile: File | null) {
@@ -757,6 +759,7 @@ function JudgePhotoUploadDialog({
     setError("");
     setFile(nextFile);
     setPreviewUrl(nextFile ? URL.createObjectURL(nextFile) : "");
+    if (nextFile) setShowPhotoChoices(false);
   }
 
   useEffect(() => {
@@ -807,11 +810,32 @@ function JudgePhotoUploadDialog({
             accept="image/jpeg,image/png,image/webp"
             onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
           />
+          <input
+            ref={cameraInputRef}
+            className="judge-upload-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
+          />
           {!file ? (
-            <Button variant="secondary" onClick={() => inputRef.current?.click()}>
-              <Camera size={18} />
-              Choose Photo
-            </Button>
+            <div className="judge-upload-picker">
+              <Button variant="secondary" onClick={() => setShowPhotoChoices((open) => !open)}>
+                <Camera size={18} />
+                Choose Photo
+              </Button>
+              {showPhotoChoices ? (
+                <div className="judge-upload-choice-actions">
+                  <button type="button" onClick={() => cameraInputRef.current?.click()}>
+                    <Camera size={18} />
+                    Take Photo
+                  </button>
+                  <button type="button" onClick={() => inputRef.current?.click()}>
+                    Choose From Library
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <div className="judge-upload-actions">
               <Button disabled={uploading} onClick={submitPhoto}>

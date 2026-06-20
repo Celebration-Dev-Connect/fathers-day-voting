@@ -18,6 +18,8 @@ export function PhotoUploadModal({ vehicleId, vehicleTitle, onClose }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [showPhotoChoices, setShowPhotoChoices] = useState(false);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0];
@@ -25,6 +27,7 @@ export function PhotoUploadModal({ vehicleId, vehicleTitle, onClose }: Props) {
     setFile(picked);
     setPreview(URL.createObjectURL(picked));
     setStage("previewing");
+    setShowPhotoChoices(false);
   }
 
   function handleChooseDifferent() {
@@ -32,6 +35,7 @@ export function PhotoUploadModal({ vehicleId, vehicleTitle, onClose }: Props) {
     setPreview(null);
     setStage("idle");
     if (inputRef.current) inputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
   async function handleUpload() {
@@ -69,14 +73,33 @@ export function PhotoUploadModal({ vehicleId, vehicleTitle, onClose }: Props) {
             <p className="upload-modal-instructions">
               Share your photo of this car. All photos are reviewed before appearing publicly — this usually takes a few minutes.
             </p>
-            <button className="upload-modal-pick-btn" onClick={() => inputRef.current?.click()}>
+            <button className="upload-modal-pick-btn" onClick={() => setShowPhotoChoices((open) => !open)}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                 <circle cx="12" cy="13" r="4"/>
               </svg>
               Choose Photo
             </button>
+            {showPhotoChoices ? (
+              <div className="upload-modal-choice-actions">
+                <button type="button" onClick={() => cameraInputRef.current?.click()}>
+                  Take Photo
+                </button>
+                <button type="button" onClick={() => inputRef.current?.click()}>
+                  Choose From Library
+                </button>
+              </div>
+            ) : null}
             <p className="upload-modal-hint">JPEG, PNG, or WebP · Max one photo per submission</p>
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="upload-modal-file-input"
+              onChange={handleFileChange}
+              aria-hidden="true"
+            />
             <input
               ref={inputRef}
               type="file"

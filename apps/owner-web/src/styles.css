@@ -622,6 +622,37 @@ textarea {
   color: #ffffff;
 }
 
+.owner-upload-picker {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.owner-upload-choice-actions {
+  display: grid;
+  gap: 8px;
+  width: min(260px, 100%);
+  padding: 8px;
+  border: 1px solid #d7d7d7;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 14%);
+}
+
+.owner-upload-choice-actions button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #f4f4f4;
+  color: #191c21;
+  font-weight: 900;
+}
+
 .owner-upload-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

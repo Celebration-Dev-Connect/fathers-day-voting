@@ -244,10 +244,12 @@ function OwnerPhotoUploadDialog({
   token: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [compressing, setCompressing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showPhotoChoices, setShowPhotoChoices] = useState(false);
   const [error, setError] = useState("");
 
   async function chooseFile(nextFile: File | null) {
@@ -275,6 +277,7 @@ function OwnerPhotoUploadDialog({
     }
     setFile(fileToUse);
     setPreviewUrl(URL.createObjectURL(fileToUse));
+    setShowPhotoChoices(false);
   }
 
   useEffect(() => {
@@ -325,11 +328,33 @@ function OwnerPhotoUploadDialog({
             accept="image/jpeg,image/png,image/webp"
             onChange={(event) => void chooseFile(event.target.files?.[0] ?? null)}
           />
+          <input
+            ref={cameraInputRef}
+            className="owner-upload-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event) => void chooseFile(event.target.files?.[0] ?? null)}
+          />
           {!file && !compressing ? (
-            <button className="owner-upload-secondary" type="button" onClick={() => inputRef.current?.click()}>
-              <Camera aria-hidden="true" />
-              Choose Photo
-            </button>
+            <div className="owner-upload-picker">
+              <button className="owner-upload-secondary" type="button" onClick={() => setShowPhotoChoices((open) => !open)}>
+                <Camera aria-hidden="true" />
+                Choose Photo
+              </button>
+              {showPhotoChoices ? (
+                <div className="owner-upload-choice-actions">
+                  <button type="button" onClick={() => cameraInputRef.current?.click()}>
+                    <Camera aria-hidden="true" />
+                    Take Photo
+                  </button>
+                  <button type="button" onClick={() => inputRef.current?.click()}>
+                    <CloudUpload aria-hidden="true" />
+                    Choose From Library
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <div className="owner-upload-actions">
               <button type="button" disabled={busy} onClick={() => void submitPhoto()}>

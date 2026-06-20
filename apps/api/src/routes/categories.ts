@@ -15,6 +15,37 @@ const ceremonyOrderSchema = z.object({
   ceremonyOrder: z.number().int().min(1).max(999).nullable().optional(),
 });
 
+async function validateCeremonyOrder(
+  ceremonyOrder: number | null | undefined,
+  exclude?: { categoryId?: string; specialAwardId?: string },
+) {
+  if (ceremonyOrder === null || ceremonyOrder === undefined) return;
+
+  const [category, specialAward] = await Promise.all([
+    prisma.category.findFirst({
+      where: {
+        eventId,
+        ceremonyOrder,
+        id: exclude?.categoryId ? { not: exclude.categoryId } : undefined,
+      },
+      select: { name: true },
+    }),
+    prisma.specialAward.findFirst({
+      where: {
+        eventId,
+        ceremonyOrder,
+        id: exclude?.specialAwardId ? { not: exclude.specialAwardId } : undefined,
+      },
+      select: { name: true },
+    }),
+  ]);
+
+  if (category) throw new Error(`Ceremony #${ceremonyOrder} is already used by category "${category.name}".`);
+  if (specialAward) {
+    throw new Error(`Ceremony #${ceremonyOrder} is already used by special award "${specialAward.name}".`);
+  }
+}
+
 async function validateImportRule(
   input: { importIdentifier?: string | null; importYearMin?: number | null; importYearMax?: number | null },
   excludeCategoryId?: string,
@@ -95,6 +126,7 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
     try {
       await validateImportRule(body);
       await validateCategorySlug(body.name);
+      await validateCeremonyOrder(body.ceremonyOrder);
     } catch (error) {
       throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid category");
     }
@@ -144,6 +176,9 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
         existing.id,
       );
       if (body.name) await validateCategorySlug(body.name, existing.id);
+      if (body.ceremonyOrder !== undefined) {
+        await validateCeremonyOrder(body.ceremonyOrder, { categoryId: existing.id });
+      }
     } catch (error) {
       throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid category");
     }
@@ -214,6 +249,12 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
       .merge(ceremonyOrderSchema)
       .parse(request.body);
 
+    try {
+      await validateCeremonyOrder(body.ceremonyOrder);
+    } catch (error) {
+      throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid special award");
+    }
+
     const count = await prisma.specialAward.count({ where: { eventId } });
     const specialAward = await prisma.specialAward.create({
       data: {
@@ -246,6 +287,13 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
     });
 
     if (!existing) throw app.httpErrors.notFound("Special award not found");
+    try {
+      if (body.ceremonyOrder !== undefined) {
+        await validateCeremonyOrder(body.ceremonyOrder, { specialAwardId: existing.id });
+      }
+    } catch (error) {
+      throw app.httpErrors.badRequest(error instanceof Error ? error.message : "Invalid special award");
+    }
 
     const specialAward = await prisma.specialAward.update({
       where: { id: existing.id },

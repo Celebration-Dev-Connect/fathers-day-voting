@@ -75,6 +75,15 @@ export function CategoriesView({
     }
   }
 
+  function ceremonyOrderConflict(ceremonyOrder: number | null, currentId: string) {
+    if (ceremonyOrder === null) return null;
+    const category = categories.find((item) => item.id !== currentId && item.ceremonyOrder === ceremonyOrder);
+    if (category) return `Ceremony #${ceremonyOrder} is already used by category "${category.name}".`;
+    const specialAward = specialAwards.find((item) => item.id !== currentId && item.ceremonyOrder === ceremonyOrder);
+    if (specialAward) return `Ceremony #${ceremonyOrder} is already used by special award "${specialAward.name}".`;
+    return null;
+  }
+
   return (
     <section>
       <PageHeader eyebrow="Admin Setup" title="Categories" />
@@ -101,6 +110,8 @@ export function CategoriesView({
               onRefresh();
             }}
             onCeremonyOrderChange={async (ceremonyOrder) => {
+              const conflict = ceremonyOrderConflict(ceremonyOrder, category.id);
+              if (conflict) throw new Error(conflict);
               await updateCategory(category.id, { ceremonyOrder });
               onRefresh();
             }}
@@ -168,6 +179,8 @@ export function CategoriesView({
                 onRefresh();
               }}
               onCeremonyOrderChange={async (ceremonyOrder) => {
+                const conflict = ceremonyOrderConflict(ceremonyOrder, specialAward.id);
+                if (conflict) throw new Error(conflict);
                 await updateSpecialAward(specialAward.id, { ceremonyOrder });
                 onRefresh();
               }}

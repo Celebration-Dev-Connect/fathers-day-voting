@@ -1977,6 +1977,28 @@ button.owner-assist-photo-preview:focus-visible {
   width: min(100%, 360px);
 }
 
+.category-ceremony-order {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+}
+
+.category-ceremony-order span {
+  color: var(--muted-grey);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.category-ceremony-order input {
+  width: 76px;
+  min-height: 36px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
 .category-card strong,
 .category-card span {
   display: block;
@@ -4953,6 +4975,36 @@ html.landing .public-app {
 
 .ceremony-winner-banner h1 {
   font-size: clamp(36px, 4.4vw, 72px);
+}
+
+.ceremony-up-next {
+  position: absolute;
+  right: 56px;
+  bottom: 22px;
+  z-index: 4;
+  max-width: 34%;
+  padding: 14px 18px;
+  background: rgba(4, 6, 10, 0.78);
+  border-right: 5px solid var(--pure-white);
+  text-align: right;
+  text-transform: uppercase;
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.6);
+}
+
+.ceremony-up-next span {
+  display: block;
+  margin-bottom: 4px;
+  color: #ffd8df;
+  font-size: clamp(12px, 0.9vw, 18px);
+  font-weight: 950;
+  letter-spacing: 0.18em;
+}
+
+.ceremony-up-next strong {
+  display: block;
+  color: var(--pure-white);
+  font-size: clamp(18px, 1.4vw, 28px);
+  line-height: 1;
 }
 
 .ceremony-prepublish-overlay p,

@@ -27,6 +27,7 @@ function toPublicVehicle(vehicle: VotingRegistration) {
       id: vehicle.category.id,
       name: vehicle.category.name,
       slug: vehicle.category.slug,
+      ceremonyOrder: vehicle.category.ceremonyOrder ?? null,
     },
     ownerName: vehicle.owner.publicNameOptIn
       ? vehicle.owner.publicName || `${vehicle.owner.firstName} ${vehicle.owner.lastName}`
@@ -146,7 +147,12 @@ export async function buildPublishedResultsSnapshot(publishedByName: string) {
         }));
 
       return {
-        category: { id: tally.category.id, name: tally.category.name, slug: tally.category.slug },
+        category: {
+          id: tally.category.id,
+          name: tally.category.name,
+          slug: tally.category.slug,
+          ceremonyOrder: tally.category.ceremonyOrder ?? null,
+        },
         official: event.judgesVotingEnabled ? official : [],
         peopleChoice: tally.peopleChoice.slice(0, 5).map((item) => ({
           rank: item.rank,
@@ -160,6 +166,7 @@ export async function buildPublishedResultsSnapshot(publishedByName: string) {
         id: tally.specialAward.id,
         name: tally.specialAward.name,
         description: tally.specialAward.description ?? null,
+        ceremonyOrder: tally.specialAward.ceremonyOrder ?? null,
       },
       results: tally.results.slice(0, 5).map((item) => ({
         rank: item.rank,

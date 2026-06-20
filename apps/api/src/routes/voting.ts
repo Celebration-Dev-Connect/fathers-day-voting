@@ -58,12 +58,12 @@ type CeremonyPublishedEntry = {
 type CeremonyPublishedSnapshot = {
   judgesVotingEnabled: boolean;
   categories?: Array<{
-    category: { id: string; name: string; slug: string };
+    category: { id: string; name: string; slug: string; ceremonyOrder?: number | null };
     official?: CeremonyPublishedEntry[];
     peopleChoice?: CeremonyPublishedEntry[];
   }>;
   specialAwards?: Array<{
-    specialAward: { id: string; name: string; description: string | null };
+    specialAward: { id: string; name: string; description: string | null; ceremonyOrder?: number | null };
     results?: CeremonyPublishedEntry[];
   }>;
 };
@@ -75,36 +75,47 @@ export function publishedSnapshot(value: unknown): CeremonyPublishedSnapshot | n
 
 export function winnerSlidesFromSnapshot(snapshot: CeremonyPublishedSnapshot | null) {
   if (!snapshot) return [];
-  return [
-    ...(snapshot.categories ?? []).flatMap((category) => {
-      const entry = (snapshot.judgesVotingEnabled ? category.official?.[0] : null) ?? category.peopleChoice?.[0];
-      if (!entry) return [];
-      return [{
-        id: `category-${category.category.id}`,
-        kind: "CATEGORY" as const,
-        label: category.category.name,
-        resultLabel: snapshot.judgesVotingEnabled ? "Category Winner" : "People's Choice Winner",
-        rank: entry.rank,
-        votes: entry.votes,
-        judgePoints: entry.judgePoints,
-        vehicle: entry.vehicle,
-      }];
-    }),
-    ...(snapshot.specialAwards ?? []).flatMap((award) => {
-      const entry = award.results?.[0];
-      if (!entry) return [];
-      return [{
-        id: `special-award-${award.specialAward.id}`,
-        kind: "SPECIAL_AWARD" as const,
-        label: award.specialAward.name,
-        resultLabel: "Special Award Winner",
-        rank: entry.rank,
-        votes: entry.votes,
-        judgePoints: entry.judgePoints,
-        vehicle: entry.vehicle,
-      }];
-    }),
-  ];
+  const categorySlides = (snapshot.categories ?? []).flatMap((category, index) => {
+    const entry = (snapshot.judgesVotingEnabled ? category.official?.[0] : null) ?? category.peopleChoice?.[0];
+    if (!entry) return [];
+    return [{
+      id: `category-${category.category.id}`,
+      kind: "CATEGORY" as const,
+      label: category.category.name,
+      ceremonyOrder: category.category.ceremonyOrder ?? null,
+      resultLabel: snapshot.judgesVotingEnabled ? "Category Winner" : "People's Choice Winner",
+      rank: entry.rank,
+      votes: entry.votes,
+      judgePoints: entry.judgePoints,
+      vehicle: entry.vehicle,
+      fallbackOrder: index,
+    }];
+  });
+  const specialAwardSlides = (snapshot.specialAwards ?? []).flatMap((award, index) => {
+    const entry = award.results?.[0];
+    if (!entry) return [];
+    return [{
+      id: `special-award-${award.specialAward.id}`,
+      kind: "SPECIAL_AWARD" as const,
+      label: award.specialAward.name,
+      ceremonyOrder: award.specialAward.ceremonyOrder ?? null,
+      resultLabel: "Special Award Winner",
+      rank: entry.rank,
+      votes: entry.votes,
+      judgePoints: entry.judgePoints,
+      vehicle: entry.vehicle,
+      fallbackOrder: 10_000 + index,
+    }];
+  });
+
+  return [...categorySlides, ...specialAwardSlides]
+    .sort((first, second) => {
+      const firstOrder = first.ceremonyOrder ?? Number.POSITIVE_INFINITY;
+      const secondOrder = second.ceremonyOrder ?? Number.POSITIVE_INFINITY;
+      if (firstOrder !== secondOrder) return firstOrder - secondOrder;
+      return first.fallbackOrder - second.fallbackOrder;
+    })
+    .map(({ fallbackOrder: _fallbackOrder, ...slide }) => slide);
 }
 
 const cutoffBurstWindowMs = 15 * 60 * 1000;

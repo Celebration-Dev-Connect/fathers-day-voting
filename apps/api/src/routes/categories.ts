@@ -11,6 +11,10 @@ const importRuleSchema = z.object({
   importYearMax: z.number().int().min(1900).max(2100).nullable().optional(),
 });
 
+const ceremonyOrderSchema = z.object({
+  ceremonyOrder: z.number().int().min(1).max(999).nullable().optional(),
+});
+
 async function validateImportRule(
   input: { importIdentifier?: string | null; importYearMin?: number | null; importYearMax?: number | null },
   excludeCategoryId?: string,
@@ -86,6 +90,7 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
         active: z.boolean().default(true),
       })
       .merge(importRuleSchema)
+      .merge(ceremonyOrderSchema)
       .parse(request.body);
     try {
       await validateImportRule(body);
@@ -102,6 +107,7 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
         slug: slugify(body.name),
         active: body.active,
         sortOrder: count + 1,
+        ceremonyOrder: body.ceremonyOrder,
         importIdentifier: body.importIdentifier || null,
         importYearMin: body.importYearMin,
         importYearMax: body.importYearMax,
@@ -120,6 +126,7 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
         active: z.boolean().optional(),
       })
       .merge(importRuleSchema)
+      .merge(ceremonyOrderSchema)
       .parse(request.body);
 
     const existing = await prisma.category.findFirst({
@@ -204,6 +211,7 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
         description: z.string().trim().max(500).optional(),
         active: z.boolean().default(true),
       })
+      .merge(ceremonyOrderSchema)
       .parse(request.body);
 
     const count = await prisma.specialAward.count({ where: { eventId } });
@@ -214,6 +222,7 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
         description: body.description,
         active: body.active,
         sortOrder: count + 1,
+        ceremonyOrder: body.ceremonyOrder,
       },
     });
 
@@ -229,6 +238,7 @@ export async function registerCategoryRoutes(app: FastifyInstance) {
         description: z.string().trim().max(500).nullable().optional(),
         active: z.boolean().optional(),
       })
+      .merge(ceremonyOrderSchema)
       .parse(request.body);
 
     const existing = await prisma.specialAward.findFirst({

@@ -140,6 +140,10 @@ export function CeremonyView() {
   }, [advanceWinner, data?.event.resultsPublished, previousWinner]);
 
   const currentWinner = winnerIndex >= 0 ? data?.winnerSlides[winnerIndex] : null;
+  const nextWinner =
+    data?.event.resultsPublished && winnerIndex >= 0 && winnerIndex < data.winnerSlides.length - 1
+      ? data.winnerSlides[winnerIndex + 1]
+      : null;
   const prePublishPhoto = photoSlides[prePublishIndex % Math.max(photoSlides.length, 1)];
 
   return (
@@ -156,6 +160,7 @@ export function CeremonyView() {
         {!error && currentWinner ? (
           <WinnerSlide
             slide={currentWinner}
+            nextSlide={nextWinner}
             photoIndex={winnerPhotoIndex}
           />
         ) : null}
@@ -211,9 +216,11 @@ function LogoSlide({ winnerCount }: { winnerCount: number }) {
 
 function WinnerSlide({
   slide,
+  nextSlide,
   photoIndex,
 }: {
   slide: CeremonyWinnerSlide;
+  nextSlide: CeremonyWinnerSlide | null;
   photoIndex: number;
 }) {
   const photo = slide.vehicle.photos[photoIndex] ?? slide.vehicle.photos[0];
@@ -238,6 +245,12 @@ function WinnerSlide({
           </span>
         </div>
       </div>
+      {nextSlide ? (
+        <div className="ceremony-up-next">
+          <span>Up Next</span>
+          <strong>{nextSlide.label}</strong>
+        </div>
+      ) : null}
     </div>
   );
 }

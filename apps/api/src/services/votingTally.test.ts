@@ -16,6 +16,7 @@ const category = {
   slug: "muscle",
   active: true,
   sortOrder: 1,
+  ceremonyOrder: null,
   importIdentifier: null,
   importYearMin: null,
   importYearMax: null,

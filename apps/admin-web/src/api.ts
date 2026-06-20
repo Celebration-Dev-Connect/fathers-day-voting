@@ -84,7 +84,7 @@ export async function createCategory(name: string) {
 
 export async function updateCategory(
   id: string,
-  input: Partial<Pick<Category, "name" | "active" | "importIdentifier" | "importYearMin" | "importYearMax">>,
+  input: Partial<Pick<Category, "name" | "active" | "ceremonyOrder" | "importIdentifier" | "importYearMin" | "importYearMax">>,
 ) {
   return request<{ category: Category }>(`/categories/${id}`, {
     method: "PATCH",
@@ -111,7 +111,7 @@ export async function createSpecialAward(input: Pick<SpecialAward, "name"> & { d
 
 export async function updateSpecialAward(
   id: string,
-  input: Partial<Pick<SpecialAward, "name" | "description" | "active">>,
+  input: Partial<Pick<SpecialAward, "name" | "description" | "active" | "ceremonyOrder">>,
 ) {
   return request<{ specialAward: SpecialAward }>(`/special-awards/${id}`, {
     method: "PATCH",

@@ -100,6 +100,10 @@ export function CategoriesView({
               await updateCategory(category.id, { name: categoryName });
               onRefresh();
             }}
+            onCeremonyOrderChange={async (ceremonyOrder) => {
+              await updateCategory(category.id, { ceremonyOrder });
+              onRefresh();
+            }}
             onToggleActive={async () => {
               await updateCategory(category.id, { active: !category.active });
               onRefresh();
@@ -161,6 +165,10 @@ export function CategoriesView({
               canEdit={staff.role === "ADMIN"}
               onRename={async (specialAwardName) => {
                 await updateSpecialAward(specialAward.id, { name: specialAwardName });
+                onRefresh();
+              }}
+              onCeremonyOrderChange={async (ceremonyOrder) => {
+                await updateSpecialAward(specialAward.id, { ceremonyOrder });
                 onRefresh();
               }}
               onToggleActive={async () => {
@@ -260,23 +268,30 @@ function SpecialAwardCard({
   specialAward,
   canEdit,
   onRename,
+  onCeremonyOrderChange,
   onToggleActive,
   onDelete,
 }: {
   specialAward: SpecialAward;
   canEdit: boolean;
   onRename: (name: string) => Promise<void>;
+  onCeremonyOrderChange: (ceremonyOrder: number | null) => Promise<void>;
   onToggleActive: () => void;
   onDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(specialAward.name);
+  const [ceremonyOrder, setCeremonyOrder] = useState(specialAward.ceremonyOrder?.toString() ?? "");
   const [saving, setSaving] = useState(false);
   const [renameError, setRenameError] = useState("");
 
   useEffect(() => {
     if (!editing) setName(specialAward.name);
   }, [editing, specialAward.name]);
+
+  useEffect(() => {
+    setCeremonyOrder(specialAward.ceremonyOrder?.toString() ?? "");
+  }, [specialAward.ceremonyOrder]);
 
   function cancelEditing() {
     setName(specialAward.name);
@@ -303,6 +318,28 @@ function SpecialAwardCard({
       setEditing(false);
     } catch (error) {
       setRenameError(error instanceof Error ? error.message : "Could not rename special award");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveCeremonyOrder() {
+    const trimmedOrder = ceremonyOrder.trim();
+    const nextOrder = trimmedOrder ? Number(trimmedOrder) : null;
+    if (nextOrder !== null && (!Number.isInteger(nextOrder) || nextOrder < 1)) {
+      setRenameError("Ceremony order must be a whole number.");
+      setCeremonyOrder(specialAward.ceremonyOrder?.toString() ?? "");
+      return;
+    }
+    if ((specialAward.ceremonyOrder ?? null) === nextOrder) return;
+
+    setSaving(true);
+    setRenameError("");
+    try {
+      await onCeremonyOrderChange(nextOrder);
+    } catch (error) {
+      setCeremonyOrder(specialAward.ceremonyOrder?.toString() ?? "");
+      setRenameError(error instanceof Error ? error.message : "Could not save ceremony order");
     } finally {
       setSaving(false);
     }
@@ -336,6 +373,32 @@ function SpecialAwardCard({
         )}
         {specialAward.description ? <span>{specialAward.description}</span> : null}
         <span>{specialAward._count?.votes ?? 0} votes</span>
+        {canEdit ? (
+          <label className="category-ceremony-order">
+            <span>Ceremony #</span>
+            <input
+              type="number"
+              min="1"
+              max="999"
+              value={ceremonyOrder}
+              disabled={editing || saving}
+              aria-label={`Ceremony order for ${specialAward.name}`}
+              onChange={(event) => setCeremonyOrder(event.target.value)}
+              onBlur={() => void saveCeremonyOrder()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.currentTarget.blur();
+                }
+                if (event.key === "Escape") {
+                  setCeremonyOrder(specialAward.ceremonyOrder?.toString() ?? "");
+                  event.currentTarget.blur();
+                }
+              }}
+            />
+          </label>
+        ) : specialAward.ceremonyOrder ? (
+          <span>Ceremony #{specialAward.ceremonyOrder}</span>
+        ) : null}
         {renameError ? <span className="form-error">{renameError}</span> : null}
       </div>
       <div className="card-actions">

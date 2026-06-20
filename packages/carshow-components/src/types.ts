@@ -46,6 +46,7 @@ export type Category = {
   slug: string;
   active: boolean;
   sortOrder: number;
+  ceremonyOrder?: number | null;
   importIdentifier?: string | null;
   importYearMin?: number | null;
   importYearMax?: number | null;
@@ -63,6 +64,7 @@ export type SpecialAward = {
   description?: string | null;
   active: boolean;
   sortOrder: number;
+  ceremonyOrder?: number | null;
   _count?: {
     votes: number;
   };
@@ -288,12 +290,14 @@ export type PublicCategory = {
   id: string;
   name: string;
   slug: string;
+  ceremonyOrder?: number | null;
 };
 
 export type PublicSpecialAward = {
   id: string;
   name: string;
   description: string | null;
+  ceremonyOrder?: number | null;
 };
 
 export type PublicPhoto = {
@@ -393,6 +397,7 @@ export type CeremonyWinnerSlide = {
   id: string;
   kind: "CATEGORY" | "SPECIAL_AWARD";
   label: string;
+  ceremonyOrder?: number | null;
   resultLabel: string;
   rank: number;
   votes?: number;

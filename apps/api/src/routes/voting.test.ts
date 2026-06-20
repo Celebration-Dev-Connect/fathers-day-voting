@@ -102,3 +102,29 @@ test("winnerSlidesFromSnapshot uses people's choice category winners when judgin
   assert.equal(slides[0]?.vehicle.id, "vehicle-2");
   assert.equal(slides[0]?.resultLabel, "People's Choice Winner");
 });
+
+test("winnerSlidesFromSnapshot orders category and special award winners by ceremony order", () => {
+  const slides = winnerSlidesFromSnapshot({
+    judgesVotingEnabled: true,
+    categories: [
+      {
+        category: { id: "classic", name: "Classic Car", slug: "classic-car", ceremonyOrder: 5 },
+        official: [{ rank: 1, vehicle: vehicleOne, judgePoints: 42 }],
+        peopleChoice: [],
+      },
+      {
+        category: { id: "bikes", name: "Bikes", slug: "bikes", ceremonyOrder: 1 },
+        official: [{ rank: 1, vehicle: vehicleTwo, judgePoints: 35 }],
+        peopleChoice: [],
+      },
+    ],
+    specialAwards: [
+      {
+        specialAward: { id: "award-1", name: "Best Paint", description: null, ceremonyOrder: 3 },
+        results: [{ rank: 1, vehicle: vehicleOne, votes: 7 }],
+      },
+    ],
+  });
+
+  assert.deepEqual(slides.map((slide) => slide.label), ["Bikes", "Best Paint", "Classic Car"]);
+});

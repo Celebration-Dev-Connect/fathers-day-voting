@@ -126,6 +126,7 @@ model Category {
   slug               String
   active             Boolean                  @default(true)
   sortOrder          Int                      @default(0)
+  ceremonyOrder      Int?
   importIdentifier   String?
   importYearMin      Int?
   importYearMax      Int?
@@ -317,6 +318,7 @@ model SpecialAward {
   description String?
   active      Boolean            @default(true)
   sortOrder   Int                @default(0)
+  ceremonyOrder Int?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   event       Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)

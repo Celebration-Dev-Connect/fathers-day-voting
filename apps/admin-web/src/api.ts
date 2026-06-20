@@ -167,9 +167,10 @@ export async function deleteTeamRole(id: string) {
   });
 }
 
-export async function listRegistrations(search = "") {
+export async function listRegistrations(search = "", filter?: "invited_not_logged_in") {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
+  if (filter) params.set("filter", filter);
   return request<{ registrations: Registration[] }>(`/registrations?${params.toString()}`);
 }
 
@@ -503,7 +504,7 @@ export async function sendOwnerInviteEmail(id: string, force = false) {
 }
 
 export async function sendBulkOwnerInviteEmails(vehicleEntryIds?: string[]) {
-  return request<{ sent: number; skipped: number; alreadySent: number; errors: number }>(
+  return request<{ queued: number; skipped: number; alreadySent: number }>(
     "/registrations/send-owner-invite-bulk",
     { method: "POST", body: JSON.stringify({ vehicleEntryIds }) },
   );

@@ -62,8 +62,10 @@ export function RegistrationsView({
   categories,
   registrations,
   search,
+  registrationFilter,
   selected,
   onSearch,
+  onFilterChange,
   onSelect,
   onRefresh,
 }: {
@@ -71,8 +73,10 @@ export function RegistrationsView({
   categories: Category[];
   registrations: Registration[];
   search: string;
+  registrationFilter: "all" | "invited_not_logged_in";
   selected: Registration | null;
   onSearch: (value: string) => void;
+  onFilterChange: (value: "all" | "invited_not_logged_in") => void;
   onSelect: (registration: Registration | null) => void;
   onRefresh: () => void;
 }) {
@@ -204,11 +208,13 @@ export function RegistrationsView({
     setImportError("");
     try {
       const result = await sendBulkOwnerInviteEmails();
-      const parts = [`${result.sent} email${result.sent === 1 ? "" : "s"} sent`];
+      const parts = [
+        `${result.queued} invite${result.queued === 1 ? "" : "s"} sending in the background`,
+      ];
       if (result.alreadySent) parts.push(`${result.alreadySent} already sent`);
       if (result.skipped) parts.push(`${result.skipped} skipped (no email)`);
-      if (result.errors) parts.push(`${result.errors} failed`);
       setImportMessage(parts.join(" · "));
+      onRefresh();
     } catch (emailError) {
       setImportError(emailError instanceof Error ? emailError.message : "Bulk email failed");
     } finally {
@@ -348,6 +354,16 @@ export function RegistrationsView({
           placeholder="Search owner, phone, entry, QR..."
           onChange={onSearch}
         />
+        <div className="registration-filter-bar">
+          <Button
+            variant={registrationFilter === "invited_not_logged_in" ? "primary" : "secondary"}
+            onClick={() =>
+              onFilterChange(registrationFilter === "invited_not_logged_in" ? "all" : "invited_not_logged_in")
+            }
+          >
+            Invited · not logged in
+          </Button>
+        </div>
         <div className="registration-list">
           {showNewEditor ? (
             <div className="registration-detail-row">

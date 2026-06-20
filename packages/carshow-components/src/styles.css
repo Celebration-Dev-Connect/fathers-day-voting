@@ -434,6 +434,12 @@ textarea:focus {
   margin-top: 16px;
 }
 
+.registration-filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .registration-list-item {
   display: grid;
   gap: 8px;

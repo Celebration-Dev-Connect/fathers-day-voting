@@ -980,6 +980,7 @@ function registrationResponse(registration: RegistrationPayload) {
     owner: {
       ...registration.owner,
       ownerInviteSentAt: registration.owner.ownerInviteSentAt?.toISOString() ?? null,
+      lastLoginAt: registration.owner.lastLoginAt?.toISOString() ?? null,
     },
     photos: photos.map((photo) => ({
       id: photo.id,
@@ -1019,7 +1020,12 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
 
   app.get("/registrations", async (request) => {
     await requireStaff(app, request);
-    const query = z.object({ search: z.string().optional() }).parse(request.query);
+    const query = z
+      .object({
+        search: z.string().optional(),
+        filter: z.enum(["invited_not_logged_in"]).optional(),
+      })
+      .parse(request.query);
     const search = normalizeSearch(query.search);
     const searchFilters = search ? textSearchFilter(search) : undefined;
 
@@ -1027,6 +1033,9 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
       where: {
         eventId,
         ...(searchFilters ? { OR: searchFilters } : {}),
+        ...(query.filter === "invited_not_logged_in"
+          ? { owner: { ownerInviteSentAt: { not: null }, lastLoginAt: null } }
+          : {}),
       },
       orderBy: { entryNumber: "desc" },
       include: {
@@ -1831,35 +1840,44 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
       group.push(vehicle);
       byOwner.set(vehicle.ownerId, group);
     }
+    const ownerGroups = [...byOwner.values()];
 
-    let sent = 0;
-    let errors = 0;
-    for (const ownerVehicles of byOwner.values()) {
-      const owner = ownerVehicles[0].owner;
-      if (!owner.email) continue;
-      try {
-        const message = await buildOwnerInviteEmail({
-          firstName: owner.firstName,
-          lastName: owner.lastName,
-          email: owner.email,
-          portalUrl: config.ownerPortalUrl,
-          vehicles: ownerVehicles.map((v) => ({
-            entryNumber: String(v.entryNumber).padStart(3, "0"),
-            vehicleName: `${v.year} ${v.make} ${v.model}`,
-            category: v.category.name,
-            accessCode: v.ownerAccessCode,
-          })),
-        });
-        await deps.emailProvider.send(message);
-        await prisma.owner.update({
-          where: { id: owner.id },
-          data: { ownerInviteSentAt: new Date() },
-        });
-        sent++;
-      } catch {
-        errors++;
+    // Send in the background and return immediately. A large batch sends serially and
+    // can take minutes, which previously outlived the CloudFront origin timeout (~30s)
+    // and surfaced a false error in the UI even though every email was delivered. Owners
+    // are marked as they complete, so a re-run only targets the ones still unsent.
+    void (async () => {
+      let sent = 0;
+      let errors = 0;
+      for (const ownerVehicles of ownerGroups) {
+        const owner = ownerVehicles[0].owner;
+        if (!owner.email) continue;
+        try {
+          const message = await buildOwnerInviteEmail({
+            firstName: owner.firstName,
+            lastName: owner.lastName,
+            email: owner.email,
+            portalUrl: config.ownerPortalUrl,
+            vehicles: ownerVehicles.map((v) => ({
+              entryNumber: String(v.entryNumber).padStart(3, "0"),
+              vehicleName: `${v.year} ${v.make} ${v.model}`,
+              category: v.category.name,
+              accessCode: v.ownerAccessCode,
+            })),
+          });
+          await deps.emailProvider.send(message);
+          await prisma.owner.update({
+            where: { id: owner.id },
+            data: { ownerInviteSentAt: new Date() },
+          });
+          sent++;
+        } catch (error) {
+          errors++;
+          app.log.error({ err: error, ownerId: owner.id }, "Owner invite email failed");
+        }
       }
-    }
+      app.log.info({ sent, errors, total: ownerGroups.length }, "Bulk owner invite send complete");
+    })();
 
     const [alreadySent, noEmail] = await Promise.all([
       prisma.owner.count({
@@ -1886,6 +1904,6 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
       }),
     ]);
 
-    return { sent, errors, alreadySent, skipped: noEmail };
+    return { queued: ownerGroups.length, alreadySent, skipped: noEmail };
   });
 }

@@ -12,6 +12,7 @@ import {
   listOwners,
   sendOwnerInviteEmail,
   setRegistrationPrimaryPhoto,
+  uncheckInRegistration,
   updatePhotoReviewStatus,
   updateRegistration,
   uploadRegistrationPhoto,
@@ -98,11 +99,13 @@ function registrationPhotoReviewItem(registration: Registration, photo: VehicleP
 }
 
 export function RegistrationEditor({
+  staff,
   categories,
   registration,
   onCancel,
   onSaved,
 }: {
+  staff: { role: string };
   categories: Category[];
   registration: Registration | null;
   onCancel: () => void;
@@ -242,11 +245,20 @@ export function RegistrationEditor({
     if (!registration) return;
     setError("");
     try {
+      const checkedIn = registration.status === "CHECKED_IN";
+      if (checkedIn) {
+        if (!window.confirm("Uncheck this vehicle and remove it from public/judging checked-in lists?")) return;
+        const result = await uncheckInRegistration(registration.id);
+        onSaved(result.registration);
+        setMessage("Vehicle check-in reversed.");
+        return;
+      }
+
       const result = await checkInRegistration(registration.id);
       onSaved(result.registration);
       setMessage("Vehicle checked in.");
     } catch (checkInError) {
-      setError(checkInError instanceof Error ? checkInError.message : "Check-in failed");
+      setError(checkInError instanceof Error ? checkInError.message : "Check-in update failed");
     }
   }
 
@@ -351,6 +363,8 @@ export function RegistrationEditor({
   }
 
   const checkInMissing = registration ? checkInMissingFields() : [];
+  const isCheckedIn = registration?.status === "CHECKED_IN";
+  const canUndoCheckIn = staff.role === "ADMIN";
 
   async function sendEmail() {
     if (!registration) return;
@@ -711,13 +725,15 @@ export function RegistrationEditor({
         <div className="action-strip">
           <Button
             onClick={checkIn}
-            disabled={checkInMissing.length > 0}
+            disabled={isCheckedIn ? !canUndoCheckIn : checkInMissing.length > 0}
           >
             <CheckCircle2 size={20} />
-            Check In
+            {isCheckedIn ? "Undo Check-In" : "Check In"}
           </Button>
           <QrAssignment registration={registration} onAssigned={onSaved} />
-          {checkInMissing.length ? (
+          {isCheckedIn && !canUndoCheckIn ? (
+            <span className="muted-copy">Only admins can undo check-in.</span>
+          ) : !isCheckedIn && checkInMissing.length ? (
             <span className="muted-copy">Complete before check-in: {checkInMissing.join(", ")}.</span>
           ) : null}
         </div>

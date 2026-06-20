@@ -369,6 +369,7 @@ export function RegistrationsView({
             <div className="registration-detail-row">
               <RegistrationEditor
                 key="new"
+                staff={staff}
                 categories={categories}
                 registration={null}
                 onCancel={() => {
@@ -394,6 +395,7 @@ export function RegistrationsView({
                 <div className="registration-detail-row">
                   <RegistrationEditor
                     key={selected.id}
+                    staff={staff}
                     categories={categories}
                     registration={selected}
                     onCancel={() => onSelect(null)}

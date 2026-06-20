@@ -302,6 +302,12 @@ export async function checkInRegistration(id: string) {
   });
 }
 
+export async function uncheckInRegistration(id: string) {
+  return request<{ registration: Registration }>(`/registrations/${id}/uncheck-in`, {
+    method: "POST",
+  });
+}
+
 export async function uploadRegistrationPhoto(id: string, file: File) {
   const form = new FormData();
   form.append("file", file);

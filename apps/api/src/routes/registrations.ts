@@ -1706,6 +1706,31 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
     return { registration: registrationResponse(registration) };
   });
 
+  app.post("/registrations/:id/uncheck-in", async (request) => {
+    await requireAdmin(app, request);
+    const params = z.object({ id: z.string() }).parse(request.params);
+    const existing = await prisma.vehicleEntry.findFirst({
+      where: { id: params.id, eventId },
+      include: { owner: true, qrCard: true, category: true },
+    });
+
+    if (!existing) throw app.httpErrors.notFound("Registration not found");
+    if (existing.status !== VehicleStatus.CHECKED_IN) {
+      throw app.httpErrors.badRequest("Vehicle is not checked in");
+    }
+
+    const registration = await prisma.vehicleEntry.update({
+      where: { id: existing.id },
+      data: {
+        status: VehicleStatus.REGISTERED,
+        checkedInAt: null,
+      },
+      include: { owner: true, category: true, qrCard: true, photos: { orderBy: { sortOrder: "asc" } } },
+    });
+
+    return { registration: registrationResponse(registration) };
+  });
+
   app.get("/registrations/:id/photos/download", async (request, reply) => {
     await requireStaff(app, request);
     const params = z.object({ id: z.string() }).parse(request.params);

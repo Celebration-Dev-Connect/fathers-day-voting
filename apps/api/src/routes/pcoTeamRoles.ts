@@ -5,7 +5,7 @@ import { requireAdmin } from "../auth.js";
 import {
   PlanningCenterApiError,
   getPlanningCenterTeam,
-  hasPlanningCenterApiCredentials,
+  getValidStaffAccessToken,
   searchPlanningCenterTeams,
 } from "../services/planningCenter.js";
 
@@ -27,16 +27,11 @@ function sendPlanningCenterError(error: unknown) {
 
 export async function registerPcoTeamRoleRoutes(app: FastifyInstance) {
   app.get("/admin/pco-services/teams/search", async (request, reply) => {
-    await requireAdmin(app, request);
+    const staff = await requireAdmin(app, request);
     const query = z.object({ q: z.string().trim().min(2) }).parse(request.query);
-    if (!hasPlanningCenterApiCredentials()) {
-      return reply.status(424).send({
-        code: "PCO_NOT_CONFIGURED",
-        message: "Planning Center API credentials are not configured.",
-      });
-    }
     try {
-      return { teams: await searchPlanningCenterTeams(query.q, app.log) };
+      const accessToken = await getValidStaffAccessToken(staff, app.log);
+      return { teams: await searchPlanningCenterTeams(query.q, accessToken, app.log) };
     } catch (error) {
       const pcoError = sendPlanningCenterError(error);
       if (pcoError) return reply.status(pcoError.statusCode).send(pcoError.body);
@@ -45,16 +40,11 @@ export async function registerPcoTeamRoleRoutes(app: FastifyInstance) {
   });
 
   app.get("/admin/pco-services/teams/:teamId", async (request, reply) => {
-    await requireAdmin(app, request);
+    const staff = await requireAdmin(app, request);
     const params = z.object({ teamId: z.string().trim().min(1) }).parse(request.params);
-    if (!hasPlanningCenterApiCredentials()) {
-      return reply.status(424).send({
-        code: "PCO_NOT_CONFIGURED",
-        message: "Planning Center API credentials are not configured.",
-      });
-    }
     try {
-      return { team: await getPlanningCenterTeam(params.teamId, app.log, true) };
+      const accessToken = await getValidStaffAccessToken(staff, app.log);
+      return { team: await getPlanningCenterTeam(params.teamId, accessToken, app.log, true) };
     } catch (error) {
       const pcoError = sendPlanningCenterError(error);
       if (pcoError) return reply.status(pcoError.statusCode).send(pcoError.body);

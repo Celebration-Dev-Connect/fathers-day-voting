@@ -1,6 +1,9 @@
+import { prisma } from "@carshow/db";
+import type { StaffUser } from "@carshow/db";
 import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
+import { decryptToken, encryptToken } from "./tokenCrypto.js";
 
 export type PlanningCenterMember = {
   id: string;
@@ -14,17 +17,16 @@ export type PlanningCenterTeam = {
   id: string;
   name: string;
   serviceTypeName?: string | null;
-  memberCount: number;
-  leaderCount: number;
-  positionNames: string[];
+  memberCount?: number;
+  leaderCount?: number;
+  positionNames?: string[];
   createdAt?: string | null;
   updatedAt?: string | null;
   members?: PlanningCenterMember[];
 };
 
 export type PlanningCenterErrorCode =
-  | "PCO_NOT_CONFIGURED"
-  | "PCO_UNAUTHORIZED"
+  | "PCO_SESSION_EXPIRED"
   | "PCO_FORBIDDEN"
   | "PCO_RATE_LIMITED"
   | "PCO_UNAVAILABLE";
@@ -61,32 +63,18 @@ export function planningCenterOAuthHeaders(accessToken: string) {
   };
 }
 
-function planningCenterBasicHeaders() {
-  const appId = config.planningCenter.apiAppId;
-  const secret = config.planningCenter.apiSecret;
-  if (!appId || !secret) return null;
-  return {
-    Authorization: `Basic ${Buffer.from(`${appId}:${secret}`).toString("base64")}`,
-    "User-Agent": userAgent,
-  };
-}
-
-export function hasPlanningCenterApiCredentials() {
-  return Boolean(config.planningCenter.apiAppId && config.planningCenter.apiSecret);
-}
-
 function planningCenterErrorForStatus(status: number): PlanningCenterApiError {
   if (status === 401) {
     return new PlanningCenterApiError(
-      "PCO_UNAUTHORIZED",
-      "Planning Center rejected the team lookup credentials.",
-      502,
+      "PCO_SESSION_EXPIRED",
+      "Your Planning Center session has expired. Sign out and sign back in.",
+      401,
     );
   }
   if (status === 403) {
     return new PlanningCenterApiError(
       "PCO_FORBIDDEN",
-      "Planning Center credentials do not have permission to browse Services teams.",
+      "Your Planning Center account does not have permission to browse Services teams.",
       403,
     );
   }
@@ -99,7 +87,7 @@ function planningCenterErrorForStatus(status: number): PlanningCenterApiError {
   }
   return new PlanningCenterApiError(
     "PCO_UNAVAILABLE",
-    `Planning Center API request failed with ${status}.`,
+    "Planning Center could not be reached. Try again shortly.",
     502,
   );
 }
@@ -119,7 +107,7 @@ async function pcoFetchAll(url: string, headers: Record<string, string>, log: Fa
   const included: unknown[] = [];
   let nextUrl: string | undefined = url;
   let page = 0;
-  while (nextUrl && page < 20) {
+  while (nextUrl && page < 50) {
     page++;
     const parsed = pcoCollectionSchema.parse(await pcoFetch(nextUrl, headers, log));
     rows.push(...parsed.data);
@@ -134,13 +122,6 @@ function stringAttr(record: unknown, key: string) {
   const attrs = (record as { attributes?: Record<string, unknown> }).attributes;
   const value = attrs?.[key];
   return typeof value === "string" ? value : null;
-}
-
-function numberAttr(record: unknown, key: string) {
-  if (!record || typeof record !== "object") return null;
-  const attrs = (record as { attributes?: Record<string, unknown> }).attributes;
-  const value = attrs?.[key];
-  return typeof value === "number" ? value : null;
 }
 
 function relationshipId(record: unknown, key: string) {
@@ -180,7 +161,7 @@ function isLeaderPosition(positionName: string) {
   return /leader|admin|captain|lead/i.test(positionName);
 }
 
-function teamFromRecord(record: unknown, included: unknown[]): Omit<PlanningCenterTeam, "memberCount" | "leaderCount" | "positionNames"> {
+function teamFromRecord(record: unknown, included: unknown[]): Omit<PlanningCenterTeam, "members"> {
   const id = recordId(record) ?? "";
   const serviceType = includedByTypeAndId(included, "ServiceType", relationshipId(record, "service_type"));
   return {
@@ -194,12 +175,12 @@ function teamFromRecord(record: unknown, included: unknown[]): Omit<PlanningCent
 
 async function loadTeamPositionAssignments(
   teamId: string,
-  headers: Record<string, string>,
+  accessToken: string,
   log: FastifyBaseLogger,
 ) {
   return pcoFetchAll(
     `https://api.planningcenteronline.com/services/v2/teams/${encodeURIComponent(teamId)}/person_team_position_assignments?include=team_position,person&per_page=100`,
-    headers,
+    planningCenterOAuthHeaders(accessToken),
     log,
   );
 }
@@ -241,72 +222,169 @@ function summarizeMembers(assignments: unknown[], included: unknown[]) {
   };
 }
 
-export async function searchPlanningCenterTeams(query: string, log: FastifyBaseLogger) {
-  const headers = planningCenterBasicHeaders();
-  if (!headers) {
-    throw new PlanningCenterApiError(
-      "PCO_NOT_CONFIGURED",
-      "Planning Center API credentials are not configured.",
-      424,
-    );
-  }
+// --- Org-wide team list (cached) -------------------------------------------------
 
-  const parsed = pcoCollectionSchema.parse(await pcoFetch(
-    `https://api.planningcenteronline.com/services/v2/teams?where[name]=${encodeURIComponent(query)}&include=service_type&per_page=25`,
-    headers,
+type CachedTeam = Omit<PlanningCenterTeam, "members" | "memberCount" | "leaderCount" | "positionNames">;
+let teamCache: { teams: CachedTeam[]; fetchedAt: number } | null = null;
+const TEAM_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function listAllTeams(accessToken: string, log: FastifyBaseLogger): Promise<CachedTeam[]> {
+  if (teamCache && Date.now() - teamCache.fetchedAt < TEAM_CACHE_TTL_MS) {
+    return teamCache.teams;
+  }
+  const result = await pcoFetchAll(
+    "https://api.planningcenteronline.com/services/v2/teams?include=service_type&per_page=100",
+    planningCenterOAuthHeaders(accessToken),
     log,
-  ));
-  const teamRecords = parsed.data.slice(0, 10);
-  const teams = await Promise.all(teamRecords.map(async (record) => {
-    const team = teamFromRecord(record, parsed.included);
-    if (!team.id) return null;
-    const summary = await getPlanningCenterTeam(team.id, log, false, team);
-    return summary;
-  }));
-  return teams.filter((team): team is NonNullable<typeof team> => Boolean(team));
+  );
+  const teams = result.data
+    .map((record) => teamFromRecord(record, result.included))
+    .filter((team) => team.id);
+  teamCache = { teams, fetchedAt: Date.now() };
+  log.info({ teamCount: teams.length }, "Planning Center team list cached");
+  return teams;
+}
+
+/**
+ * Search all PCO Services teams by name (case-insensitive substring). Returns lightweight
+ * records; member counts and positions are loaded on demand via {@link getPlanningCenterTeam}.
+ */
+export async function searchPlanningCenterTeams(query: string, accessToken: string, log: FastifyBaseLogger) {
+  const teams = await listAllTeams(accessToken, log);
+  const needle = query.trim().toLowerCase();
+  return teams
+    .filter((team) => team.name.toLowerCase().includes(needle))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 50);
 }
 
 export async function getPlanningCenterTeam(
   teamId: string,
+  accessToken: string,
   log: FastifyBaseLogger,
   includeMembers = true,
-  knownTeam?: Omit<PlanningCenterTeam, "memberCount" | "leaderCount" | "positionNames">,
-) {
-  const headers = planningCenterBasicHeaders();
-  if (!headers) {
-    throw new PlanningCenterApiError(
-      "PCO_NOT_CONFIGURED",
-      "Planning Center API credentials are not configured.",
-      424,
-    );
-  }
+): Promise<PlanningCenterTeam> {
+  const parsedTeam = pcoSingleSchema.parse(await pcoFetch(
+    `https://api.planningcenteronline.com/services/v2/teams/${encodeURIComponent(teamId)}?include=service_type`,
+    planningCenterOAuthHeaders(accessToken),
+    log,
+  ));
+  const team = teamFromRecord(parsedTeam.data, parsedTeam.included);
 
-  let team = knownTeam;
-  if (!team) {
-    const parsedTeam = pcoSingleSchema.parse(await pcoFetch(
-      `https://api.planningcenteronline.com/services/v2/teams/${encodeURIComponent(teamId)}?include=service_type`,
-      headers,
-      log,
-    ));
-    team = teamFromRecord(parsedTeam.data, parsedTeam.included);
-  }
-
-  const assignmentResult = await loadTeamPositionAssignments(teamId, headers, log);
+  const assignmentResult = await loadTeamPositionAssignments(teamId, accessToken, log);
   const summary = summarizeMembers(assignmentResult.data, assignmentResult.included);
   return {
     ...team,
-    ...summary,
+    positionNames: summary.positionNames,
+    memberCount: summary.memberCount,
+    leaderCount: summary.leaderCount,
     members: includeMembers ? summary.members : undefined,
   };
 }
 
-export async function getPersonPositionsForTeamId(
-  teamId: string,
+// --- Login-time membership lookup (person-centric) -------------------------------
+
+export type PersonTeamMembership = { teamId: string; teamName: string; positions: string[] };
+
+/**
+ * Fetch every team + position the given person holds, in one paginated person-scoped query.
+ * Bounded by how many teams the person is on, not by team size.
+ */
+export async function getPersonTeamMemberships(
   pcoPersonId: string,
   accessToken: string,
   log: FastifyBaseLogger,
+): Promise<PersonTeamMembership[]> {
+  // A person's assignments relate to a TeamPosition, not directly to a Team. The team
+  // hangs off the TeamPosition, so we resolve it via the nested `team_position.team` include.
+  const result = await pcoFetchAll(
+    `https://api.planningcenteronline.com/services/v2/people/${encodeURIComponent(pcoPersonId)}/person_team_position_assignments?include=team_position.team&per_page=100`,
+    planningCenterOAuthHeaders(accessToken),
+    log,
+  );
+
+  const byTeam = new Map<string, PersonTeamMembership>();
+  for (const assignment of result.data) {
+    const teamPosition = includedByTypeAndId(result.included, "TeamPosition", relationshipId(assignment, "team_position"));
+    const teamId = teamPosition ? relationshipId(teamPosition, "team") : null;
+    if (!teamId) continue;
+    const teamRecord = includedByTypeAndId(result.included, "Team", teamId);
+    const teamName = teamRecord ? stringAttr(teamRecord, "name") ?? `Team ${teamId}` : `Team ${teamId}`;
+    const positionName = teamPosition ? stringAttr(teamPosition, "name") : null;
+
+    const current = byTeam.get(teamId) ?? { teamId, teamName, positions: [] };
+    if (positionName && !current.positions.includes(positionName)) current.positions.push(positionName);
+    byTeam.set(teamId, current);
+  }
+  return [...byTeam.values()];
+}
+
+// --- OAuth token persistence + refresh -------------------------------------------
+
+const tokenResponseSchema = z.object({
+  access_token: z.string(),
+  refresh_token: z.string(),
+  expires_in: z.number(),
+});
+
+/** Persist the freshly-issued OAuth token set on a staff user (encrypted at rest). */
+export async function storeStaffTokens(
+  staffUserId: string,
+  tokens: { accessToken: string; refreshToken?: string; expiresInSeconds: number },
 ) {
-  const result = await loadTeamPositionAssignments(teamId, planningCenterOAuthHeaders(accessToken), log);
-  const summary = summarizeMembers(result.data, result.included);
-  return summary.members.find((member) => member.id === pcoPersonId)?.positions ?? [];
+  await prisma.staffUser.update({
+    where: { id: staffUserId },
+    data: {
+      pcoAccessToken: encryptToken(tokens.accessToken),
+      pcoRefreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : undefined,
+      pcoTokenExpiresAt: new Date(Date.now() + tokens.expiresInSeconds * 1000),
+    },
+  });
+}
+
+/**
+ * Return a valid PCO access token for the given staff user, refreshing via the stored
+ * refresh token when expired. Throws if no usable token is available (admin must re-login).
+ */
+export async function getValidStaffAccessToken(staff: StaffUser, log: FastifyBaseLogger): Promise<string> {
+  const accessToken = decryptToken(staff.pcoAccessToken);
+  const expiresAt = staff.pcoTokenExpiresAt?.getTime() ?? 0;
+  if (accessToken && expiresAt - 60_000 > Date.now()) {
+    return accessToken;
+  }
+
+  const refreshToken = decryptToken(staff.pcoRefreshToken);
+  if (!refreshToken || !config.planningCenter.clientId || !config.planningCenter.clientSecret) {
+    throw new PlanningCenterApiError(
+      "PCO_SESSION_EXPIRED",
+      "Your Planning Center session has expired. Sign out and sign back in.",
+      401,
+    );
+  }
+
+  const response = await fetch("https://api.planningcenteronline.com/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": userAgent },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: config.planningCenter.clientId,
+      client_secret: config.planningCenter.clientSecret,
+    }),
+  });
+  if (!response.ok) {
+    log.warn({ status: response.status }, "Planning Center token refresh failed");
+    throw new PlanningCenterApiError(
+      "PCO_SESSION_EXPIRED",
+      "Your Planning Center session has expired. Sign out and sign back in.",
+      401,
+    );
+  }
+  const tokens = tokenResponseSchema.parse(await response.json());
+  await storeStaffTokens(staff.id, {
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresInSeconds: tokens.expires_in,
+  });
+  return tokens.access_token;
 }

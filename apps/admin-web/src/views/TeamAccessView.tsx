@@ -1,7 +1,7 @@
-import { ChevronDown, ChevronRight, Plus, Search, Trash2, Users } from "lucide-react";
+import { Plus, Search, Trash2, Users } from "lucide-react";
 import { Alert, Button, PageHeader } from "@carshow/carshow-components";
 import type { PcoServicesTeam, PcoTeamRole, StaffRole } from "@carshow/carshow-components";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import {
   createTeamRole,
   ApiError,
@@ -19,14 +19,11 @@ function planningCenterWarning(error: unknown) {
   if (!(error instanceof ApiError)) return null;
   const details = error.details;
   const code = details && typeof details === "object" ? (details as { code?: unknown }).code : null;
-  if (code === "PCO_NOT_CONFIGURED") {
-    return "Planning Center team lookup is not configured yet. Add the Planning Center API app ID/secret secrets and run the Terraform apply workflow so the API can browse Services teams.";
-  }
-  if (code === "PCO_UNAUTHORIZED") {
-    return "Planning Center rejected the team lookup credentials. Verify the API app ID/secret, then run Terraform apply so the API receives the updated secrets.";
+  if (code === "PCO_SESSION_EXPIRED") {
+    return "Your Planning Center session has expired. Sign out and sign back in to browse Services teams.";
   }
   if (code === "PCO_FORBIDDEN") {
-    return "Planning Center connected, but these credentials do not have permission to browse Services teams. Use credentials from a Planning Center admin with Services access, or reconnect using the OAuth setup flow once enabled.";
+    return "Your Planning Center account does not have permission to browse Services teams. Sign in with an account that has Services access.";
   }
   if (code === "PCO_RATE_LIMITED") {
     return "Planning Center is rate limiting team lookup requests. Wait a minute and try again.";
@@ -52,16 +49,17 @@ export function TeamAccessView() {
   const [teamRoles, setTeamRoles] = useState<PcoTeamRole[]>([]);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PcoServicesTeam[]>([]);
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
   const [selectedTeam, setSelectedTeam] = useState<PcoServicesTeam | null>(null);
-  const [expandedTeamId, setExpandedTeamId] = useState("");
-  const [teamDetails, setTeamDetails] = useState<Record<string, PcoServicesTeam>>({});
   const [positionName, setPositionName] = useState("");
   const [role, setRole] = useState<StaffRole>("REGISTRAR");
   const [error, setError] = useState("");
   const [setupWarning, setSetupWarning] = useState("");
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
-  const [detailsLoadingId, setDetailsLoadingId] = useState("");
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const comboboxRef = useRef<HTMLDivElement>(null);
 
   function load() {
     listTeamRoles()
@@ -72,16 +70,26 @@ export function TeamAccessView() {
 
   useEffect(load, []);
 
+  // Close the dropdown on outside click.
+  useEffect(() => {
+    function onClick(event: MouseEvent) {
+      if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
   async function searchTeams(event: FormEvent) {
     event.preventDefault();
     if (query.trim().length < 2) return;
     setSearching(true);
     setError("");
     setSetupWarning("");
-    setSelectedTeam(null);
     try {
       const result = await searchPcoServicesTeams(query.trim());
       setResults(result.teams);
+      setHighlight(0);
+      setOpen(true);
     } catch (searchError) {
       const warning = planningCenterWarning(searchError);
       if (warning) {
@@ -95,35 +103,44 @@ export function TeamAccessView() {
     }
   }
 
-  async function toggleTeamDetails(team: PcoServicesTeam) {
-    if (expandedTeamId === team.id) {
-      setExpandedTeamId("");
-      return;
-    }
-    setExpandedTeamId(team.id);
-    if (teamDetails[team.id]?.members) return;
-    setDetailsLoadingId(team.id);
+  async function chooseTeam(team: PcoServicesTeam) {
+    setOpen(false);
+    setQuery(team.name);
+    setPositionName("");
     setError("");
     setSetupWarning("");
+    setLoadingDetail(true);
     try {
+      // Search returns lightweight rows; load positions + counts for the chosen team.
       const result = await getPcoServicesTeam(team.id);
-      setTeamDetails((current) => ({ ...current, [team.id]: result.team }));
+      setSelectedTeam(result.team);
     } catch (detailError) {
       const warning = planningCenterWarning(detailError);
       if (warning) {
         setSetupWarning(warning);
       } else {
-        setError(detailError instanceof Error ? detailError.message : "Could not load team members");
+        setSelectedTeam(team);
+        setError(detailError instanceof Error ? detailError.message : "Could not load team details");
       }
     } finally {
-      setDetailsLoadingId("");
+      setLoadingDetail(false);
     }
   }
 
-  function chooseTeam(team: PcoServicesTeam) {
-    const detail = teamDetails[team.id] ?? team;
-    setSelectedTeam(detail);
-    setPositionName("");
+  function onComboKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!open || results.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHighlight((index) => Math.min(index + 1, results.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlight((index) => Math.max(index - 1, 0));
+    } else if (event.key === "Enter" && results[highlight]) {
+      event.preventDefault();
+      void chooseTeam(results[highlight]);
+    } else if (event.key === "Escape") {
+      setOpen(false);
+    }
   }
 
   async function addMapping(event: FormEvent) {
@@ -139,6 +156,8 @@ export function TeamAccessView() {
         role,
       });
       setSelectedTeam(null);
+      setQuery("");
+      setResults([]);
       setPositionName("");
       setRole("REGISTRAR");
       load();
@@ -187,73 +206,53 @@ export function TeamAccessView() {
     <section>
       <PageHeader eyebrow="Admin Setup" title="Team Access" />
       <p className="setup-description">
-        Search Planning Center Services teams, select the exact team, then assign an app role. The app stores the
-        Planning Center team ID, so duplicate team names no longer collide. The built-in carshow admin fallback remains
-        protected as a lockout safety net.
+        Search Planning Center Services teams, pick the exact team from the dropdown, then assign an app role. The app
+        stores the Planning Center team ID, so duplicate team names no longer collide. The built-in carshow admin
+        fallback remains protected as a lockout safety net.
       </p>
       {error ? <Alert variant="danger">{error}</Alert> : null}
       {setupWarning ? <Alert>{setupWarning}</Alert> : null}
 
-      <form className="inline-form inline-form-stacked" style={{ marginTop: 20 }} onSubmit={searchTeams}>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search PCO Services teams, e.g. Registration"
-        />
-        <Button type="submit" disabled={query.trim().length < 2 || searching}>
-          <Search size={20} />
-          {searching ? "Searching..." : "Search Teams"}
-        </Button>
-      </form>
+      <div className="team-combobox" ref={comboboxRef}>
+        <form className="team-combobox-input-row" onSubmit={searchTeams}>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={onComboKeyDown}
+            onFocus={() => results.length && setOpen(true)}
+            placeholder="Search PCO Services teams, e.g. Registration"
+            role="combobox"
+            aria-expanded={open}
+            aria-controls="team-combobox-listbox"
+          />
+          <Button type="submit" disabled={query.trim().length < 2 || searching}>
+            <Search size={20} />
+            {searching ? "Searching..." : "Search"}
+          </Button>
+        </form>
 
-      {results.length ? (
-        <div className="category-grid team-picker-results">
-          {results.map((team) => {
-            const detail = teamDetails[team.id] ?? team;
-            const expanded = expandedTeamId === team.id;
-            return (
-              <article key={team.id} className={`category-card ${selectedTeam?.id === team.id ? "selected" : ""}`}>
-                <div className="category-card-details">
+        {open ? (
+          <ul className="team-combobox-listbox" id="team-combobox-listbox" role="listbox">
+            {results.length === 0 ? (
+              <li className="team-combobox-empty">No teams match “{query.trim()}”.</li>
+            ) : (
+              results.map((team, index) => (
+                <li
+                  key={team.id}
+                  role="option"
+                  aria-selected={index === highlight}
+                  className={`team-combobox-option ${index === highlight ? "active" : ""}`}
+                  onMouseEnter={() => setHighlight(index)}
+                  onClick={() => void chooseTeam(team)}
+                >
                   <strong>{team.name}</strong>
                   <span>{team.serviceTypeName ?? "No service type listed"}</span>
-                  <span>{team.memberCount} members · {team.leaderCount} leaders</span>
-                  {team.updatedAt ? <span>Updated {new Date(team.updatedAt).toLocaleDateString()}</span> : null}
-                </div>
-                <div className="card-actions">
-                  <Button variant="secondary" onClick={() => void toggleTeamDetails(team)}>
-                    {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                    Preview
-                  </Button>
-                  <Button onClick={() => chooseTeam(detail)}>Select</Button>
-                </div>
-                {expanded ? (
-                  <div className="team-picker-preview">
-                    {detailsLoadingId === team.id ? (
-                      <span className="muted-copy">Loading members...</span>
-                    ) : (
-                      <>
-                        <div>
-                          <strong>Positions</strong>
-                          <span>{detail.positionNames.length ? detail.positionNames.join(", ") : "No positions found"}</span>
-                        </div>
-                        <div>
-                          <strong>People</strong>
-                          {(detail.members ?? []).slice(0, 12).map((member) => (
-                            <span key={member.id}>
-                              {member.name}{member.leader ? " · leader" : ""}{member.positions.length ? ` · ${member.positions.join(", ")}` : ""}
-                            </span>
-                          ))}
-                          {(detail.members?.length ?? 0) > 12 ? <span>{detail.members!.length - 12} more...</span> : null}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ) : null}
-              </article>
-            );
-          })}
-        </div>
-      ) : null}
+                </li>
+              ))
+            )}
+          </ul>
+        ) : null}
+      </div>
 
       <form className="inline-form inline-form-stacked" style={{ marginTop: 20 }} onSubmit={addMapping}>
         <div className="selected-team-summary">
@@ -261,16 +260,18 @@ export function TeamAccessView() {
           <div>
             <strong>{selectedTeam ? teamLabel(selectedTeam) : "No Planning Center team selected"}</strong>
             <span>
-              {selectedTeam
-                ? `${selectedTeam.memberCount} members · ${selectedTeam.leaderCount} leaders`
-                : "Search above and select the exact Services team first."}
+              {loadingDetail
+                ? "Loading team details..."
+                : selectedTeam
+                  ? `${selectedTeam.memberCount ?? 0} members · ${selectedTeam.leaderCount ?? 0} leaders`
+                  : "Search above and pick the exact Services team first."}
             </span>
           </div>
         </div>
         <select
           value={positionName}
           onChange={(event) => setPositionName(event.target.value)}
-          disabled={!selectedTeam}
+          disabled={!selectedTeam || loadingDetail}
           aria-label="Planning Center position"
         >
           <option value="">Whole team</option>
@@ -285,7 +286,7 @@ export function TeamAccessView() {
             </option>
           ))}
         </select>
-        <Button type="submit" disabled={!selectedTeam}>
+        <Button type="submit" disabled={!selectedTeam || loadingDetail}>
           <Plus size={20} />
           Add Team Mapping
         </Button>

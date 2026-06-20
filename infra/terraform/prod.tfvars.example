@@ -55,8 +55,6 @@ alert_sms = ""
 # ── Planning Center OAuth (fill these in prod.tfvars, never here) ──
 # pco_client_id     = ""
 # pco_client_secret = ""
-# pco_api_app_id    = ""
-# pco_api_secret    = ""
 # pco_callback_url  = "https://carshow.celebrationedmonton.com/api/auth/planning-center/callback"
 # pco_team_name     = "carshow"
 # admin_web_url     = "https://carshow.celebrationedmonton.com/admin"

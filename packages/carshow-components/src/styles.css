@@ -804,6 +804,62 @@ button.owner-assist-photo-preview:focus-visible {
   gap: 2px;
 }
 
+.team-combobox {
+  position: relative;
+  margin-top: 20px;
+}
+
+.team-combobox-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.team-combobox-listbox {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  background: var(--pure-white);
+  border: 1px solid var(--border-grey);
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.team-combobox-option {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.team-combobox-option:hover,
+.team-combobox-option.active {
+  background: var(--surface-grey, #f1f3f5);
+}
+
+.team-combobox-option strong {
+  font-size: 14px;
+}
+
+.team-combobox-option span {
+  color: var(--muted-grey);
+  font-size: 13px;
+}
+
+.team-combobox-empty {
+  padding: 12px;
+  color: var(--muted-grey);
+  font-size: 13px;
+}
+
 .qr-panel {
   padding: 16px;
   border-top: 4px solid var(--primary);

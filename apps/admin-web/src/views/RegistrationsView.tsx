@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Mail, Plus, RefreshCw, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, CloudRain, Mail, Plus, RefreshCw, Upload, X } from "lucide-react";
 import { Alert, Button, PageHeader, Pagination, RegistrationRow, SearchBox } from "@carshow/carshow-components";
 import type { Category, Registration, StaffUser } from "@carshow/carshow-components";
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +10,7 @@ import {
   previewRegistrationsCsv,
   retryFailedRegistrationImport,
   sendBulkOwnerInviteEmails,
+  sendBulkOwnerRainUpdateEmails,
   type RegistrationCsvPreviewRow,
   type RegistrationImportJob,
   type RegistrationImportItemStatus,
@@ -98,6 +99,8 @@ export function RegistrationsView({
   const [showImportProgress, setShowImportProgress] = useState(false);
   const [sendingBulkEmail, setSendingBulkEmail] = useState(false);
   const [showSendAllConfirm, setShowSendAllConfirm] = useState(false);
+  const [sendingRainUpdate, setSendingRainUpdate] = useState(false);
+  const [showRainUpdateConfirm, setShowRainUpdateConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isAdmin = staff.role === "ADMIN";
 
@@ -222,6 +225,26 @@ export function RegistrationsView({
     }
   }
 
+  async function sendRainUpdateEmails() {
+    setSendingRainUpdate(true);
+    setImportMessage("");
+    setImportError("");
+    try {
+      const result = await sendBulkOwnerRainUpdateEmails();
+      const parts = [
+        `${result.queued} update${result.queued === 1 ? "" : "s"} sending in the background`,
+      ];
+      if (result.alreadySent) parts.push(`${result.alreadySent} already sent`);
+      if (result.skipped) parts.push(`${result.skipped} skipped (no email)`);
+      setImportMessage(parts.join(" · "));
+      onRefresh();
+    } catch (emailError) {
+      setImportError(emailError instanceof Error ? emailError.message : "Rain update email failed");
+    } finally {
+      setSendingRainUpdate(false);
+    }
+  }
+
   const pageCount = Math.ceil(registrations.length / PAGE_SIZE);
   const pagedRegistrations = registrations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
@@ -256,6 +279,16 @@ export function RegistrationsView({
                 >
                   <Mail size={20} />
                   {sendingBulkEmail ? "Sending..." : "Send All Emails"}
+                </Button>
+              ) : null}
+              {isAdmin ? (
+                <Button
+                  variant="secondary"
+                  disabled={sendingRainUpdate}
+                  onClick={() => setShowRainUpdateConfirm(true)}
+                >
+                  <CloudRain size={20} />
+                  {sendingRainUpdate ? "Sending..." : "Send Rain Update"}
                 </Button>
               ) : null}
               <Button
@@ -444,6 +477,36 @@ export function RegistrationsView({
               >
                 <Mail size={18} />
                 Send All Emails
+              </Button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {isAdmin && showRainUpdateConfirm ? (
+        <div className="import-status-overlay" role="presentation" onClick={() => setShowRainUpdateConfirm(false)}>
+          <section
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm send rain update emails"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className="confirm-dialog-title">Send Rain Update to All Owners?</h2>
+            <p className="confirm-dialog-body">
+              This sends the "rain or shine — still on tomorrow" weather update to every owner who has an email address on file, including those already invited. Each owner receives it once. This cannot be undone.
+            </p>
+            <div className="confirm-dialog-actions">
+              <Button variant="secondary" onClick={() => setShowRainUpdateConfirm(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowRainUpdateConfirm(false);
+                  void sendRainUpdateEmails();
+                }}
+              >
+                <CloudRain size={18} />
+                Send Rain Update
               </Button>
             </div>
           </section>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>Rain or Shine — Father's Day Car Show is ON Tomorrow!</title>
+  <style>
+    :root { color-scheme: light; }
+    @media (prefers-color-scheme: dark) {
+      /* Force light backgrounds and brand colors regardless of dark mode */
+      body, .email-outer { background: #f4f4f4 !important; }
+      .email-card { background: #ffffff !important; }
+      .header-banner { background: #b90a29 !important; }
+      .header-banner * { color: #ffffff !important; }
+      .footer-band { background: #f4f4f4 !important; border-top: 1px solid #e5e5e5 !important; }
+    }
+  </style>
+  <!--
+    Handlebars template. Variables:
+      firstName     — Owner first name
+      portalUrl     — Full URL to owner portal
+      vehicles[]    — Array of vehicle objects:
+        .entryNumber  — zero-padded string, e.g. "042"
+        .vehicleName  — "2019 Ford Mustang GT"
+        .category     — category name
+        .accessCode   — 5-digit numeric string, e.g. "74829"
+  -->
+</head>
+<body class="email-outer" style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#191c21;">
+
+  <!-- Outer wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" class="email-outer" style="background:#f4f4f4;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <!-- Email card -->
+        <table width="600" cellpadding="0" cellspacing="0" role="presentation" class="email-card" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Header banner -->
+          <tr>
+            <td class="header-banner" style="background:#b90a29;padding:28px 40px 24px;">
+              <p style="margin:0 0 6px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.7);font-weight:600;">Celebration Church Presents</p>
+              <h1 style="margin:0;font-size:26px;font-weight:800;color:#ffffff;line-height:1.2;">Father's Day Car Show 2026</h1>
+              <p style="margin:10px 0 0;font-size:14px;color:rgba(255,255,255,0.85);">Sunday, June 21 &nbsp;·&nbsp; 7215 Argyll Road, Edmonton, AB</p>
+            </td>
+          </tr>
+
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="background:#ffffff;padding:24px 40px 16px;border-bottom:1px solid #f0f0f0;">
+              <img src="{{logoDataUri}}" alt="Father's Day Car Show" width="260" style="display:block;max-width:260px;height:auto;" />
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 40px 0;">
+
+              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#191c21;">Hey {{firstName}},</p>
+
+              <!-- Rain or shine callout -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:24px;">
+                <tr>
+                  <td style="background:#b90a29;border-radius:8px;padding:22px 24px;">
+                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.8);">Weather Update</p>
+                    <p style="margin:0 0 10px;font-size:20px;font-weight:800;color:#ffffff;line-height:1.3;">Rain or shine — we're still on for tomorrow! ☔️🚗</p>
+                    <p style="margin:0;font-size:15px;line-height:1.6;color:rgba(255,255,255,0.92);">
+                      A little rain won't stop the Father's Day Car Show. The event is happening as planned on <strong style="color:#ffffff;">Sunday, June 21</strong>, and we'd love to see <strong style="color:#ffffff;">every owner still come out</strong> with their car. There are several indoor locations around the property to stay warm and dry. <strong style="color:#ffffff;">The parking lot opens to show cars at 7am!</strong>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#3d3d3d;">
+                As a quick reminder, use the <strong>Owner Portal</strong> below to upload photos, share your build story, and complete your profile — attendees will see it when they scan your QR code to vote.
+              </p>
+
+              <!-- Show day reminders callout -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:28px;">
+                <tr>
+                  <td style="background:#fff3cd;border:1px solid #f0c040;border-radius:6px;padding:16px 20px;">
+                    <p style="margin:0 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7a5c00;">Show Day Reminders</p>
+                    <table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
+                      <tr>
+                        <td style="padding:4px 0;font-size:14px;line-height:1.5;color:#4a3800;">
+                          <strong>Check in at the lobby first</strong> — pick up your <strong>QR Code card</strong> before heading to your spot. Without it, your vehicle won't be eligible for voting.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0 0;font-size:14px;line-height:1.5;color:#4a3800;">
+                          <strong>Vehicles must remain parked until 3:30 PM</strong> — please don't move your car before the show closes.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Vehicle table -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border:1px solid #e5e5e5;border-radius:6px;overflow:hidden;margin-bottom:28px;">
+
+                <tr style="background:#f9f9ff;">
+                  <td style="padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7d7d7d;border-bottom:1px solid #e5e5e5;">Entry</td>
+                  <td style="padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7d7d7d;border-bottom:1px solid #e5e5e5;">Vehicle</td>
+                  <td style="padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7d7d7d;border-bottom:1px solid #e5e5e5;">Category</td>
+                  <td style="padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7d7d7d;border-bottom:1px solid #e5e5e5;">Your Code</td>
+                </tr>
+
+                {{#each vehicles}}
+                <tr>
+                  <td style="padding:14px 16px;font-size:14px;font-weight:700;color:#191c21;border-bottom:1px solid #f0f0f0;white-space:nowrap;">#{{this.entryNumber}}</td>
+                  <td style="padding:14px 16px;font-size:14px;color:#191c21;border-bottom:1px solid #f0f0f0;">{{this.vehicleName}}</td>
+                  <td style="padding:14px 16px;font-size:13px;color:#5a5a5a;border-bottom:1px solid #f0f0f0;">{{this.category}}</td>
+                  <td style="padding:14px 16px;border-bottom:1px solid #f0f0f0;">
+                    <span style="display:inline-block;background:#191c21;color:#ffffff;font-family:'Courier New',Courier,monospace;font-size:18px;font-weight:700;letter-spacing:6px;padding:6px 12px;border-radius:4px;">{{this.accessCode}}</span>
+                  </td>
+                </tr>
+                {{/each}}
+
+              </table>
+
+              <!-- CTA button -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:28px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{portalUrl}}"
+                       style="display:inline-block;background:#b90a29;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:6px;letter-spacing:0.5px;">
+                      Open Owner Portal &rarr;
+                    </a>
+                    <p style="margin:10px 0 0;font-size:12px;color:#999;">Or copy this link: <a href="{{portalUrl}}" style="color:#b90a29;">{{portalUrl}}</a></p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- How it works -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f9f9ff;border-radius:6px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7d7d7d;">Set up your car page before show day</p>
+                    <table cellpadding="0" cellspacing="0" role="presentation">
+                      <tr>
+                        <td style="padding:4px 0;font-size:14px;color:#191c21;">📷&nbsp; Upload photos of your vehicle</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;font-size:14px;color:#191c21;">✍️&nbsp; Add your build story &amp; fun facts</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;font-size:14px;color:#191c21;">🏷️&nbsp; Choose how your name appears publicly</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;font-size:14px;color:#191c21;">🗳️&nbsp; Attendees scan your QR card to view your page and cast their People's Choice vote</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 32px;font-size:14px;line-height:1.6;color:#5a5a5a;">
+                Your 5-digit code is unique to your entry — keep it safe, you'll need it to log in. Questions? Find us at the registration desk on show day. See you tomorrow, rain or shine!
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td class="footer-band" style="background:#f4f4f4;padding:24px 40px;border-top:1px solid #e5e5e5;">
+              <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#191c21;">Father's Day Car Show 2026</p>
+              <p style="margin:0 0 4px;font-size:12px;color:#7d7d7d;">Celebration Church &nbsp;·&nbsp; 7215 Argyll Road, Edmonton, AB &nbsp;·&nbsp; Sunday, June 21</p>
+              <p style="margin:16px 0 0;font-size:11px;color:#aaaaaa;">
+                You received this email because you registered a vehicle for the 2026 Father's Day Car Show. If this was a mistake, please let a team member know at the registration desk.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- end card -->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

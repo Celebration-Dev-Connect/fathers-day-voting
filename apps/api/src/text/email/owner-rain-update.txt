@@ -1,0 +1,55 @@
+Father's Day Car Show 2026
+Celebration Church — Sunday, June 21 — 7215 Argyll Road, Edmonton, AB
+
+Hey {{firstName}},
+
+WEATHER UPDATE — RAIN OR SHINE, WE'RE STILL ON FOR TOMORROW!
+
+A little rain won't stop the Father's Day Car Show. The event is
+happening as planned on Sunday, June 21, and we'd love to see every
+owner still come out with their car. There are several indoor
+locations around the property to stay warm and dry. The parking lot
+opens to show cars at 7am!
+
+As a quick reminder, use the Owner Portal below to upload photos,
+share your build story, and complete your profile — attendees will
+see it when they scan your QR code to vote.
+
+SHOW DAY REMINDERS
+-  Check in at the lobby first — pick up your QR Code card before
+   heading to your spot. Without it, your vehicle won't be eligible
+   for voting.
+-  Vehicles must remain parked until 3:30 PM — please don't move
+   your car before the show closes.
+
+YOUR VEHICLE(S)
+───────────────────────────────────────────────────────────
+{{#each vehicles}}
+  Entry:    #{{this.entryNumber}}
+  Vehicle:  {{this.vehicleName}}
+  Category: {{this.category}}
+  Code:     {{this.accessCode}}
+
+{{/each}}
+───────────────────────────────────────────────────────────
+
+OWNER PORTAL
+{{portalUrl}}
+
+Set up your car page before show day:
+  • Upload photos of your vehicle
+  • Add your build story & fun facts
+  • Choose how your name appears publicly
+  • Attendees scan your QR card to view your page and vote
+
+Your 5-digit code is unique to your entry — keep it safe, you'll need
+it to log in. Questions? Find us at the registration desk on show day.
+See you tomorrow, rain or shine!
+
+───────────────────────────────────────────────────────────
+Father's Day Car Show 2026 · Celebration Church
+7215 Argyll Road, Edmonton, AB · Sunday, June 21
+
+You received this email because you registered a vehicle for the 2026
+Father's Day Car Show. If this was a mistake, please let a team member
+know at the registration desk.

@@ -20,3 +20,5 @@ export function createEmailProvider(): EmailProvider {
 export type { EmailProvider } from "./types.js";
 export { buildOwnerInviteEmail } from "./messages/ownerInvite.js";
 export type { OwnerInviteVehicle, OwnerInviteOptions } from "./messages/ownerInvite.js";
+export { buildOwnerRainUpdateEmail } from "./messages/ownerRainUpdate.js";
+export type { OwnerRainUpdateOptions } from "./messages/ownerRainUpdate.js";

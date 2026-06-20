@@ -7,7 +7,7 @@ import sharp from "sharp";
 import { z } from "zod";
 import { requireAdmin, requireStaff } from "../auth.js";
 import { config, eventId } from "../config.js";
-import { buildOwnerInviteEmail, type EmailProvider } from "../email/index.js";
+import { buildOwnerInviteEmail, buildOwnerRainUpdateEmail, type EmailProvider } from "../email/index.js";
 import type { PhotoStorage } from "../media/storage/index.js";
 import { registrationSchema } from "../schemas/registration.js";
 import { ownerIdentityKey } from "../services/ownerIdentity.js";
@@ -1908,6 +1908,100 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
       prisma.owner.count({
         where: {
           ownerInviteSentAt: { not: null },
+          vehicleEntries: {
+            some: {
+              eventId,
+              ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
+            },
+          },
+        },
+      }),
+      prisma.owner.count({
+        where: {
+          email: null,
+          vehicleEntries: {
+            some: {
+              eventId,
+              ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
+            },
+          },
+        },
+      }),
+    ]);
+
+    return { queued: ownerGroups.length, alreadySent, skipped: noEmail };
+  });
+
+  app.post("/registrations/send-owner-rain-update-bulk", async (request) => {
+    await requireAdmin(app, request);
+    const body = z
+      .object({ vehicleEntryIds: z.array(z.string()).optional() })
+      .parse(request.body);
+
+    // Unlike the invite blast, this weather update goes to EVERY owner with an
+    // email on file regardless of whether they were already invited. We track a
+    // separate `ownerRainUpdateSentAt` so a re-run (e.g. after an origin timeout)
+    // only targets owners who haven't received this specific message yet.
+    const vehicles = await prisma.vehicleEntry.findMany({
+      where: {
+        eventId,
+        ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
+        owner: { email: { not: null }, ownerRainUpdateSentAt: null },
+      },
+      include: { owner: true, category: true },
+      orderBy: { entryNumber: "asc" },
+    });
+
+    // Group vehicle entries by owner so multi-car owners get one combined email
+    const byOwner = new Map<string, typeof vehicles>();
+    for (const vehicle of vehicles) {
+      const group = byOwner.get(vehicle.ownerId) ?? [];
+      group.push(vehicle);
+      byOwner.set(vehicle.ownerId, group);
+    }
+    const ownerGroups = [...byOwner.values()];
+
+    // Send in the background and return immediately. A large batch sends serially and
+    // can take minutes, which would otherwise outlive the CloudFront origin timeout
+    // (~30s). Owners are marked as they complete, so a re-run only targets the ones
+    // still unsent.
+    void (async () => {
+      let sent = 0;
+      let errors = 0;
+      for (const ownerVehicles of ownerGroups) {
+        const owner = ownerVehicles[0].owner;
+        if (!owner.email) continue;
+        try {
+          const message = await buildOwnerRainUpdateEmail({
+            firstName: owner.firstName,
+            lastName: owner.lastName,
+            email: owner.email,
+            portalUrl: config.ownerPortalUrl,
+            vehicles: ownerVehicles.map((v) => ({
+              entryNumber: String(v.entryNumber).padStart(3, "0"),
+              vehicleName: `${v.year} ${v.make} ${v.model}`,
+              category: v.category.name,
+              accessCode: v.ownerAccessCode,
+            })),
+          });
+          await deps.emailProvider.send(message);
+          await prisma.owner.update({
+            where: { id: owner.id },
+            data: { ownerRainUpdateSentAt: new Date() },
+          });
+          sent++;
+        } catch (error) {
+          errors++;
+          app.log.error({ err: error, ownerId: owner.id }, "Owner rain-update email failed");
+        }
+      }
+      app.log.info({ sent, errors, total: ownerGroups.length }, "Bulk owner rain-update send complete");
+    })();
+
+    const [alreadySent, noEmail] = await Promise.all([
+      prisma.owner.count({
+        where: {
+          ownerRainUpdateSentAt: { not: null },
           vehicleEntries: {
             some: {
               eventId,

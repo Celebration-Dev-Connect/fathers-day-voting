@@ -3,7 +3,11 @@ import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireStaff } from "../auth.js";
 import { config } from "../config.js";
-import { getPersonPositionsForTeamId, planningCenterOAuthHeaders } from "../services/planningCenter.js";
+import {
+  getPersonTeamMemberships,
+  planningCenterOAuthHeaders,
+  storeStaffTokens,
+} from "../services/planningCenter.js";
 
 const pcoMeSchema = z.object({
   data: z.object({
@@ -14,29 +18,6 @@ const pcoMeSchema = z.object({
       primary_email_address: z.string().nullable().optional(),
     }),
   }),
-});
-
-const pcoTeamsSchema = z.object({
-  data: z.array(z.object({ id: z.string() })),
-});
-
-const pcoAssignmentsSchema = z.object({
-  data: z.array(
-    z.object({
-      relationships: z.object({
-        person: z.object({ data: z.object({ id: z.string() }) }),
-        team_position: z.object({ data: z.object({ id: z.string() }) }),
-      }),
-    }),
-  ),
-  included: z.array(
-    z.object({
-      type: z.string(),
-      id: z.string(),
-      attributes: z.object({ name: z.string() }).passthrough(),
-    }),
-  ),
-  links: z.object({ next: z.string().optional() }).optional(),
 });
 
 const ROLE_PRIORITY: Record<StaffRole, number> = {
@@ -53,64 +34,13 @@ export function pickHighestRole(roles: StaffRole[]): StaffRole | null {
   );
 }
 
-/** Fetch the position names the given person holds within a single PCO team. */
-async function fetchPersonPositionsInTeam(
-  pcoPersonId: string,
-  accessToken: string,
-  teamName: string,
-  log: FastifyBaseLogger,
-): Promise<string[] | null> {
-  const teamsRes = await fetch(
-    `https://api.planningcenteronline.com/services/v2/teams?where[name]=${encodeURIComponent(teamName)}&per_page=1`,
-    { headers: planningCenterOAuthHeaders(accessToken) },
-  );
-  if (!teamsRes.ok) {
-    log.error({ status: teamsRes.status, teamName }, "PCO teams fetch failed");
-    return null;
-  }
-  const teams = pcoTeamsSchema.parse(await teamsRes.json());
-  const teamId = teams.data[0]?.id;
-  if (!teamId) {
-    log.warn({ teamName }, "PCO team not found — check team name matches exactly in PCO Services");
-    return null;
-  }
-
-  let nextUrl: string | undefined =
-    `https://api.planningcenteronline.com/services/v2/teams/${teamId}/person_team_position_assignments?include=team_position&per_page=100`;
-  const positionNames: string[] = [];
-  let page = 0;
-
-  while (nextUrl && page < 10) {
-    page++;
-    const assignRes = await fetch(nextUrl, { headers: planningCenterOAuthHeaders(accessToken) });
-    if (!assignRes.ok) {
-      log.error({ status: assignRes.status, teamId }, "PCO PTPA fetch failed");
-      return null;
-    }
-    const assignments = pcoAssignmentsSchema.parse(await assignRes.json());
-
-    const myAssignments = assignments.data.filter(
-      (a) => a.relationships.person.data.id === pcoPersonId,
-    );
-    for (const a of myAssignments) {
-      const tpId = a.relationships.team_position.data.id;
-      const name = assignments.included.find((i) => i.type === "TeamPosition" && i.id === tpId)
-        ?.attributes.name;
-      if (name) positionNames.push(name);
-    }
-
-    if (positionNames.length > 0) break;
-    nextUrl = assignments.links?.next;
-  }
-
-  log.info({ teamName, teamId, pcoPersonId, positionNames }, "PCO team membership resolved");
-  return positionNames;
-}
-
 /**
  * Resolve a staff role from the admin-managed PcoTeamRole mappings. A mapping with no
  * positionName grants its role to any member of the team; one with a positionName grants
  * its role only to people holding that position. Highest privilege across all matches wins.
+ *
+ * Membership is read with a single person-scoped Planning Center query, so duplicate team
+ * names never collide (mappings are matched by team ID) and team size doesn't matter.
  */
 async function resolvePcoRole(
   pcoPersonId: string,
@@ -123,27 +53,24 @@ async function resolvePcoRole(
     return null;
   }
 
-  const positionsByTeam = new Map<string, string[]>();
-  for (const mapping of mappings) {
-    if (mapping.pcoTeamId) {
-      if (positionsByTeam.has(mapping.pcoTeamId)) continue;
-      const positions = await getPersonPositionsForTeamId(mapping.pcoTeamId, pcoPersonId, accessToken, log);
-      positionsByTeam.set(mapping.pcoTeamId, positions);
-      continue;
-    }
+  const memberships = await getPersonTeamMemberships(pcoPersonId, accessToken, log);
 
-    if (mapping.id !== "default-admin-team") {
-      log.warn({ mappingId: mapping.id, teamName: mapping.pcoTeamName }, "Ignoring legacy name-only PCO team mapping");
-      continue;
-    }
-    if (positionsByTeam.has(mapping.pcoTeamName)) continue;
-    const positions = await fetchPersonPositionsInTeam(pcoPersonId, accessToken, mapping.pcoTeamName, log);
-    if (positions !== null) positionsByTeam.set(mapping.pcoTeamName, positions);
+  // Key by team ID for ID-based mappings and by team name for the legacy name-only
+  // admin fallback. A person without an explicit position still counts as a member,
+  // so seed an empty sentinel that whole-team mappings can match.
+  const positionsByTeam = new Map<string, string[]>();
+  for (const membership of memberships) {
+    const positions = membership.positions.length ? membership.positions : [""];
+    positionsByTeam.set(membership.teamId, positions);
+    positionsByTeam.set(membership.teamName, positions);
   }
 
   const matchedRoles = matchMappedRoles(mappings, positionsByTeam);
   const role = pickHighestRole(matchedRoles);
-  log.info({ pcoPersonId, matchedRoles, role }, "PCO role resolved from team mappings");
+  log.info(
+    { pcoPersonId, teamCount: memberships.length, matchedRoles, role },
+    "PCO role resolved from team mappings",
+  );
   return role;
 }
 
@@ -262,6 +189,12 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         create: { planningCenterId: pcoPersonId, email, displayName, role, active: true, devLogin: false },
         update: { email, displayName, role, active: true },
       });
+
+      // Persist the OAuth token set so the admin team picker can call Planning Center
+      // on this user's behalf later (refreshing as needed) — no service credential.
+      const refreshToken = tokenSet.token.refresh_token as string | undefined;
+      const expiresInSeconds = Number(tokenSet.token.expires_in) || 7200;
+      await storeStaffTokens(staff.id, { accessToken, refreshToken, expiresInSeconds });
 
       const jwt = app.jwt.sign({ staffUserId: staff.id, role: staff.role }, { expiresIn: "12h" });
       return reply.redirect(`${spaUrl}/#token=${jwt}`);

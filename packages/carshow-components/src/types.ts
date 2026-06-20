@@ -32,9 +32,9 @@ export type PcoServicesTeam = {
   id: string;
   name: string;
   serviceTypeName?: string | null;
-  memberCount: number;
-  leaderCount: number;
-  positionNames: string[];
+  memberCount?: number;
+  leaderCount?: number;
+  positionNames?: string[];
   createdAt?: string | null;
   updatedAt?: string | null;
   members?: PcoServicesTeamMember[];

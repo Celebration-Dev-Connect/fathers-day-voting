@@ -71,36 +71,6 @@ resource "aws_secretsmanager_secret_version" "pco_client_secret" {
   secret_string = var.pco_client_secret
 }
 
-resource "aws_secretsmanager_secret" "pco_api_app_id" {
-  name                    = "${var.project}/${var.environment}/pco-api-app-id"
-  recovery_window_in_days = 0
-
-  tags = {
-    Project     = var.project
-    Environment = var.environment
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "pco_api_app_id" {
-  secret_id     = aws_secretsmanager_secret.pco_api_app_id.id
-  secret_string = var.pco_api_app_id
-}
-
-resource "aws_secretsmanager_secret" "pco_api_secret" {
-  name                    = "${var.project}/${var.environment}/pco-api-secret"
-  recovery_window_in_days = 0
-
-  tags = {
-    Project     = var.project
-    Environment = var.environment
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "pco_api_secret" {
-  secret_id     = aws_secretsmanager_secret.pco_api_secret.id
-  secret_string = var.pco_api_secret
-}
-
 resource "aws_secretsmanager_secret" "webguide_username" {
   name                    = "${var.project}/${var.environment}/webguide-username"
   recovery_window_in_days = 0

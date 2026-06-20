@@ -104,6 +104,9 @@ model StaffUser {
   displayName            String
   role                   StaffRole
   planningCenterId       String?                  @unique
+  pcoAccessToken         String?
+  pcoRefreshToken        String?
+  pcoTokenExpiresAt      DateTime?
   devLogin               Boolean                  @default(false)
   active                 Boolean                  @default(true)
   createdAt              DateTime                 @default(now())

@@ -56,8 +56,6 @@ const envSchema = z
     // Planning Center Online OAuth (production staff login)
     planningCenterClientId: z.string().optional(),
     planningCenterClientSecret: z.string().optional(),
-    planningCenterApiAppId: z.string().optional(),
-    planningCenterApiSecret: z.string().optional(),
     planningCenterCallbackUrl: z.string().url().optional(),
     planningCenterTeamName: z.string().default("carshow"),
     planningCenterUserAgent: z.string().default("Father's Day Car Show (admin@fathersdaycarshow.ca)"),
@@ -117,8 +115,6 @@ const parsed = envSchema.safeParse({
   trustedVoteIps: process.env.TRUSTED_VOTE_IPS,
   planningCenterClientId: process.env.PLANNING_CENTER_CLIENT_ID,
   planningCenterClientSecret: process.env.PLANNING_CENTER_CLIENT_SECRET,
-  planningCenterApiAppId: process.env.PLANNING_CENTER_API_APP_ID,
-  planningCenterApiSecret: process.env.PLANNING_CENTER_API_SECRET,
   planningCenterCallbackUrl: process.env.PLANNING_CENTER_CALLBACK_URL,
   planningCenterTeamName: process.env.PCO_TEAM_NAME,
   planningCenterUserAgent: process.env.PLANNING_CENTER_USER_AGENT,
@@ -184,8 +180,6 @@ export const config = {
   planningCenter: {
     clientId: env.planningCenterClientId,
     clientSecret: env.planningCenterClientSecret,
-    apiAppId: env.planningCenterApiAppId,
-    apiSecret: env.planningCenterApiSecret,
     callbackUrl: env.planningCenterCallbackUrl,
     teamName: env.planningCenterTeamName,
     userAgent: env.planningCenterUserAgent,

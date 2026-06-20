@@ -120,6 +120,7 @@ function AdminShellConnected({
     categories: 0,
   });
   const [search, setSearch] = useState("");
+  const [registrationFilter, setRegistrationFilter] = useState<"all" | "invited_not_logged_in">("all");
   const [selected, setSelected] = useState<Registration | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState("");
@@ -141,7 +142,7 @@ function AdminShellConnected({
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      listRegistrations(search)
+      listRegistrations(search, registrationFilter === "all" ? undefined : registrationFilter)
         .then(({ registrations }) => {
           setRegistrations(registrations);
           if (selected) {
@@ -153,7 +154,7 @@ function AdminShellConnected({
     }, 180);
 
     return () => window.clearTimeout(timeout);
-  }, [refreshKey, search, selected?.id]);
+  }, [refreshKey, search, registrationFilter, selected?.id]);
 
   function refresh() {
     setRefreshKey((v) => v + 1);
@@ -174,8 +175,10 @@ function AdminShellConnected({
             categories={categories}
             registrations={registrations}
             search={search}
+            registrationFilter={registrationFilter}
             selected={selected}
             onSearch={setSearch}
+            onFilterChange={setRegistrationFilter}
             onSelect={setSelected}
             onRefresh={refresh}
           />

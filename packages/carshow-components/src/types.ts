@@ -98,6 +98,7 @@ export type Owner = {
   publicNameOptIn: boolean;
   waiverAccepted: boolean;
   ownerInviteSentAt?: string | null;
+  lastLoginAt?: string | null;
 };
 
 export type QrCard = {

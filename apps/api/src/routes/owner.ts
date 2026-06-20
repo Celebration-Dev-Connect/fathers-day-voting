@@ -167,6 +167,11 @@ export async function registerOwnerRoutes(app: FastifyInstance, deps: OwnerRoute
 
     if (!vehicle) throw app.httpErrors.unauthorized("Last name or access code did not match");
 
+    await prisma.owner.update({
+      where: { id: vehicle.ownerId },
+      data: { lastLoginAt: new Date() },
+    });
+
     const vehicles = await findOwnerVehicles(vehicle.ownerId);
     const signOwnerToken = app.jwt.sign as unknown as (payload: OwnerSession, options: { expiresIn: string }) => string;
     const token = signOwnerToken(

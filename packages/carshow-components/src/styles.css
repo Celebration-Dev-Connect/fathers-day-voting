@@ -5124,7 +5124,7 @@ html.landing .public-app {
 .ceremony-up-next {
   position: absolute;
   right: 56px;
-  bottom: 22px;
+  top: 40px;
   z-index: 4;
   max-width: 34%;
   padding: 14px 18px;

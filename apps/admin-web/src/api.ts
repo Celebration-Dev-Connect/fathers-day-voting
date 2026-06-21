@@ -552,6 +552,13 @@ export async function sendBulkOwnerRainUpdateEmails(vehicleEntryIds?: string[]) 
   );
 }
 
+export async function sendBulkOwnerVotingUpdateEmails(vehicleEntryIds?: string[]) {
+  return request<{ queued: number; skipped: number; alreadySent: number }>(
+    "/registrations/send-owner-voting-update-bulk",
+    { method: "POST", body: JSON.stringify({ vehicleEntryIds }) },
+  );
+}
+
 export async function downloadRegistrationPhotos(id: string) {
   const token = getToken();
   const response = await fetch(`${API_URL}/registrations/${encodeURIComponent(id)}/photos/download`, {

@@ -71,6 +71,7 @@ function registration(id: string, entryNumber: number): VotingRegistration {
       waiverAccepted: true,
       ownerInviteSentAt: null,
       ownerRainUpdateSentAt: null,
+      ownerVotingUpdateSentAt: null,
       lastLoginAt: null,
       createdAt: new Date("2026-05-01T00:00:00.000Z"),
       updatedAt: new Date("2026-05-01T00:00:00.000Z"),

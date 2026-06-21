@@ -12,6 +12,7 @@ import {
   retryFailedRegistrationImport,
   sendBulkOwnerInviteEmails,
   sendBulkOwnerRainUpdateEmails,
+  sendBulkOwnerVotingUpdateEmails,
   type RegistrationFilter,
   type RegistrationCsvPreviewRow,
   type RegistrationImportJob,
@@ -107,6 +108,8 @@ export function RegistrationsView({
   const [printOwnerNames, setPrintOwnerNames] = useState<string[]>([]);
   const [ownerPrintRequested, setOwnerPrintRequested] = useState(false);
   const [loadingOwnerPrint, setLoadingOwnerPrint] = useState(false);
+  const [sendingVotingUpdate, setSendingVotingUpdate] = useState(false);
+  const [showVotingUpdateConfirm, setShowVotingUpdateConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isAdmin = staff.role === "ADMIN";
 
@@ -309,6 +312,26 @@ export function RegistrationsView({
     onFilterChange(registrationFilter === nextFilter ? "all" : nextFilter);
   }
 
+  async function sendVotingUpdateEmails() {
+    setSendingVotingUpdate(true);
+    setImportMessage("");
+    setImportError("");
+    try {
+      const result = await sendBulkOwnerVotingUpdateEmails();
+      const parts = [
+        `${result.queued} ceremony update${result.queued === 1 ? "" : "s"} sending in the background`,
+      ];
+      if (result.alreadySent) parts.push(`${result.alreadySent} already sent`);
+      if (result.skipped) parts.push(`${result.skipped} skipped (no email)`);
+      setImportMessage(parts.join(" · "));
+      onRefresh();
+    } catch (emailError) {
+      setImportError(emailError instanceof Error ? emailError.message : "Ceremony update email failed");
+    } finally {
+      setSendingVotingUpdate(false);
+    }
+  }
+
   const pageCount = Math.ceil(registrations.length / PAGE_SIZE);
   const pagedRegistrations = registrations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
@@ -354,6 +377,16 @@ export function RegistrationsView({
                 >
                   <CloudRain size={20} />
                   {sendingRainUpdate ? "Sending..." : "Send Rain Update"}
+                </Button>
+              ) : null}
+              {isAdmin ? (
+                <Button
+                  variant="secondary"
+                  disabled={sendingVotingUpdate}
+                  onClick={() => setShowVotingUpdateConfirm(true)}
+                >
+                  <Mail size={20} />
+                  {sendingVotingUpdate ? "Sending..." : "Send Ceremony Update"}
                 </Button>
               ) : null}
               <Button
@@ -592,6 +625,36 @@ export function RegistrationsView({
               >
                 <CloudRain size={18} />
                 Send Rain Update
+              </Button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {isAdmin && showVotingUpdateConfirm ? (
+        <div className="import-status-overlay" role="presentation" onClick={() => setShowVotingUpdateConfirm(false)}>
+          <section
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm send ceremony update emails"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className="confirm-dialog-title">Send Ceremony Update to Checked-In Owners?</h2>
+            <p className="confirm-dialog-body">
+              This sends the ceremony time change (2:30 PM, main auditorium) to every checked-in owner who has an email address on file. Each owner receives it once. This cannot be undone.
+            </p>
+            <div className="confirm-dialog-actions">
+              <Button variant="secondary" onClick={() => setShowVotingUpdateConfirm(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowVotingUpdateConfirm(false);
+                  void sendVotingUpdateEmails();
+                }}
+              >
+                <Mail size={18} />
+                Send Ceremony Update
               </Button>
             </div>
           </section>

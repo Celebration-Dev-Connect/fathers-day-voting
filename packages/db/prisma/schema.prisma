@@ -153,7 +153,8 @@ model Owner {
   publicNameOptIn Boolean        @default(false)
   waiverAccepted      Boolean        @default(false)
   ownerInviteSentAt   DateTime?
-  ownerRainUpdateSentAt DateTime?
+  ownerRainUpdateSentAt   DateTime?
+  ownerVotingUpdateSentAt DateTime?
   lastLoginAt         DateTime?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt

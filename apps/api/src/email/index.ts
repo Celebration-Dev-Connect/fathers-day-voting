@@ -22,3 +22,5 @@ export { buildOwnerInviteEmail } from "./messages/ownerInvite.js";
 export type { OwnerInviteVehicle, OwnerInviteOptions } from "./messages/ownerInvite.js";
 export { buildOwnerRainUpdateEmail } from "./messages/ownerRainUpdate.js";
 export type { OwnerRainUpdateOptions } from "./messages/ownerRainUpdate.js";
+export { buildOwnerVotingUpdateEmail } from "./messages/ownerVotingUpdate.js";
+export type { OwnerVotingUpdateOptions } from "./messages/ownerVotingUpdate.js";

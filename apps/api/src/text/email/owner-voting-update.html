@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>Award Ceremony Moved Up — Starts at 2:30 PM</title>
+  <style>
+    :root { color-scheme: light; }
+    @media (prefers-color-scheme: dark) {
+      body, .email-outer { background: #f4f4f4 !important; }
+      .email-card { background: #ffffff !important; }
+      .header-banner { background: #b90a29 !important; }
+      .header-banner * { color: #ffffff !important; }
+      .footer-band { background: #f4f4f4 !important; border-top: 1px solid #e5e5e5 !important; }
+    }
+  </style>
+  <!--
+    Handlebars template. Variables:
+      firstName   — Owner first name
+      logoDataUri — Embedded PNG data URI
+  -->
+</head>
+<body class="email-outer" style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#191c21;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" class="email-outer" style="background:#f4f4f4;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table width="600" cellpadding="0" cellspacing="0" role="presentation" class="email-card" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Header banner -->
+          <tr>
+            <td class="header-banner" style="background:#b90a29;padding:28px 40px 24px;">
+              <p style="margin:0 0 6px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.7);font-weight:600;">Celebration Church Presents</p>
+              <h1 style="margin:0;font-size:26px;font-weight:800;color:#ffffff;line-height:1.2;">Father's Day Car Show 2026</h1>
+              <p style="margin:10px 0 0;font-size:14px;color:rgba(255,255,255,0.85);">Sunday, June 21 &nbsp;·&nbsp; 7215 Argyll Road, Edmonton, AB</p>
+            </td>
+          </tr>
+
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="background:#ffffff;padding:24px 40px 16px;border-bottom:1px solid #f0f0f0;">
+              <img src="{{logoDataUri}}" alt="Father's Day Car Show" width="260" style="display:block;max-width:260px;height:auto;" />
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 40px 0;">
+
+              <p style="margin:0 0 20px;font-size:22px;font-weight:700;color:#191c21;">Hey {{firstName}},</p>
+
+              <!-- Schedule update callout -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:24px;">
+                <tr>
+                  <td style="background:#b90a29;border-radius:8px;padding:22px 24px;">
+                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.8);">Schedule Update</p>
+                    <p style="margin:0 0 10px;font-size:20px;font-weight:800;color:#ffffff;line-height:1.3;">The award ceremony has been moved up — it now starts at 2:30 PM 🏆</p>
+                    <p style="margin:0;font-size:15px;line-height:1.6;color:rgba(255,255,255,0.92);">
+                      The People's Choice award ceremony will now begin at <strong style="color:#ffffff;">2:30 PM</strong> instead of 3:00 PM. Voting closes at the same time as planned — only the ceremony start has moved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#3d3d3d;">
+                Since you're already checked in and on the lot, make sure you're free and near the stage at <strong>2:30 PM</strong> for the ceremony. We'd love to see all registered owners there to celebrate!
+              </p>
+
+              <!-- Reminders callout -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:32px;">
+                <tr>
+                  <td style="background:#fff3cd;border:1px solid #f0c040;border-radius:6px;padding:16px 20px;">
+                    <p style="margin:0 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7a5c00;">Reminders</p>
+                    <table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
+                      <tr>
+                        <td style="padding:4px 0;font-size:14px;line-height:1.5;color:#4a3800;">
+                          🏆&nbsp; <strong>Award ceremony starts at 2:30 PM</strong> — thirty minutes earlier than originally announced
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0 0;font-size:14px;line-height:1.5;color:#4a3800;">
+                          📍&nbsp; <strong>Ceremony is in the main auditorium</strong> — head inside when you're ready
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0 0;font-size:14px;line-height:1.5;color:#4a3800;">
+                          🗳️&nbsp; <strong>Voting closes at 2:00 PM</strong> — the close time has not changed
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0 0;font-size:14px;line-height:1.5;color:#4a3800;">
+                          🚗&nbsp; <strong>Vehicles must remain parked until 3:00 PM</strong> — please don't move your car before the show closes
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 32px;font-size:15px;line-height:1.6;color:#3d3d3d;">
+                We are so incredibly grateful you chose to spend part of your Father's Day with us today. What a blessing it is to celebrate together as a community. We'll see you at the ceremony — may God bless you and your family this Father's Day. 🙏
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td class="footer-band" style="background:#f4f4f4;padding:24px 40px;border-top:1px solid #e5e5e5;">
+              <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#191c21;">Father's Day Car Show 2026</p>
+              <p style="margin:0 0 4px;font-size:12px;color:#7d7d7d;">Celebration Church &nbsp;·&nbsp; 7215 Argyll Road, Edmonton, AB &nbsp;·&nbsp; Sunday, June 21</p>
+              <p style="margin:16px 0 0;font-size:11px;color:#aaaaaa;">
+                You received this email because you are a checked-in vehicle owner at the 2026 Father's Day Car Show. Questions? Find us at the registration desk.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

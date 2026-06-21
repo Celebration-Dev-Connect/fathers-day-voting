@@ -7,7 +7,7 @@ import sharp from "sharp";
 import { z } from "zod";
 import { requireAdmin, requireStaff } from "../auth.js";
 import { config, eventId } from "../config.js";
-import { buildOwnerInviteEmail, buildOwnerRainUpdateEmail, type EmailProvider } from "../email/index.js";
+import { buildOwnerInviteEmail, buildOwnerRainUpdateEmail, buildOwnerVotingUpdateEmail, type EmailProvider } from "../email/index.js";
 import type { PhotoStorage } from "../media/storage/index.js";
 import { registrationSchema } from "../schemas/registration.js";
 import { ownerIdentityKey } from "../services/ownerIdentity.js";
@@ -2070,6 +2070,86 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
           vehicleEntries: {
             some: {
               eventId,
+              ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
+            },
+          },
+        },
+      }),
+    ]);
+
+    return { queued: ownerGroups.length, alreadySent, skipped: noEmail };
+  });
+
+  app.post("/registrations/send-owner-voting-update-bulk", async (request) => {
+    await requireAdmin(app, request);
+    const body = z
+      .object({ vehicleEntryIds: z.array(z.string()).optional() })
+      .parse(request.body);
+
+    const vehicles = await prisma.vehicleEntry.findMany({
+      where: {
+        eventId,
+        status: VehicleStatus.CHECKED_IN,
+        ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
+        owner: { email: { not: null }, ownerVotingUpdateSentAt: null },
+      },
+      include: { owner: true },
+      orderBy: { entryNumber: "asc" },
+    });
+
+    const byOwner = new Map<string, typeof vehicles>();
+    for (const vehicle of vehicles) {
+      if (!byOwner.has(vehicle.ownerId)) byOwner.set(vehicle.ownerId, []);
+      byOwner.get(vehicle.ownerId)!.push(vehicle);
+    }
+    const ownerGroups = [...byOwner.values()];
+
+    void (async () => {
+      let sent = 0;
+      let errors = 0;
+      for (const ownerVehicles of ownerGroups) {
+        const owner = ownerVehicles[0].owner;
+        if (!owner.email) continue;
+        try {
+          const message = await buildOwnerVotingUpdateEmail({
+            firstName: owner.firstName,
+            lastName: owner.lastName,
+            email: owner.email,
+          });
+          await deps.emailProvider.send(message);
+          await prisma.owner.update({
+            where: { id: owner.id },
+            data: { ownerVotingUpdateSentAt: new Date() },
+          });
+          sent++;
+        } catch (error) {
+          errors++;
+          app.log.error({ err: error, ownerId: owner.id }, "Owner voting-update email failed");
+        }
+      }
+      app.log.info({ sent, errors, total: ownerGroups.length }, "Bulk owner voting-update send complete");
+    })();
+
+    const [alreadySent, noEmail] = await Promise.all([
+      prisma.owner.count({
+        where: {
+          ownerVotingUpdateSentAt: { not: null },
+          vehicleEntries: {
+            some: {
+              eventId,
+              status: VehicleStatus.CHECKED_IN,
+              ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
+            },
+          },
+        },
+      }),
+      prisma.owner.count({
+        where: {
+          email: null,
+          vehicleEntries: {
+            some: {
+              eventId,
+              status: VehicleStatus.CHECKED_IN,
               ...(body.vehicleEntryIds?.length ? { id: { in: body.vehicleEntryIds } } : {}),
             },
           },

@@ -9,6 +9,7 @@ import {
   listSpecialAwards,
   me,
   setToken,
+  type RegistrationFilter,
 } from "./api";
 import { API_URL } from "./config";
 import { Sidebar } from "./organisms/Sidebar";
@@ -120,7 +121,7 @@ function AdminShellConnected({
     categories: 0,
   });
   const [search, setSearch] = useState("");
-  const [registrationFilter, setRegistrationFilter] = useState<"all" | "invited_not_logged_in">("all");
+  const [registrationFilter, setRegistrationFilter] = useState<RegistrationFilter | "all">("all");
   const [selected, setSelected] = useState<Registration | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState("");

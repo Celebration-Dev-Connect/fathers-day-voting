@@ -443,8 +443,36 @@ textarea:focus {
 
 .registration-filter-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.checked-in-owner-print-sheet {
+  display: none;
+}
+
+.checked-in-owner-print-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.16in;
+}
+
+.checked-in-owner-print-name {
+  min-height: 0.5in;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #000;
+  padding: 0.08in;
+  color: #000;
+  background: #fff;
+  font-size: 12pt;
+  font-weight: 900;
+  line-height: 1.12;
+  text-align: center;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .registration-list-item {
@@ -2765,6 +2793,15 @@ button.owner-assist-photo-preview:focus-visible {
     padding: 0;
     width: auto;
     max-width: none;
+  }
+
+  .owner-print-hidden {
+    display: none !important;
+  }
+
+  .checked-in-owner-print-sheet.is-active {
+    display: block;
+    width: 100%;
   }
 
   .print-sheet {

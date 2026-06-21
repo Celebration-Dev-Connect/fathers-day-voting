@@ -1023,7 +1023,8 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
     const query = z
       .object({
         search: z.string().optional(),
-        filter: z.enum(["invited_not_logged_in"]).optional(),
+        filter: z.enum(["checked_in", "not_checked_in", "invited_not_logged_in"]).optional(),
+        limit: z.coerce.number().int().min(1).max(5000).optional(),
       })
       .parse(request.query);
     const search = normalizeSearch(query.search);
@@ -1036,6 +1037,8 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
         ...(query.filter === "invited_not_logged_in"
           ? { owner: { ownerInviteSentAt: { not: null }, lastLoginAt: null } }
           : {}),
+        ...(query.filter === "checked_in" ? { status: VehicleStatus.CHECKED_IN } : {}),
+        ...(query.filter === "not_checked_in" ? { status: { not: VehicleStatus.CHECKED_IN } } : {}),
       },
       orderBy: { entryNumber: "desc" },
       include: {
@@ -1044,7 +1047,7 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
         qrCard: true,
         photos: { orderBy: { sortOrder: "asc" } },
       },
-      take: 100,
+      take: query.limit ?? 100,
     });
 
     return { registrations: registrations.map(registrationResponse) };

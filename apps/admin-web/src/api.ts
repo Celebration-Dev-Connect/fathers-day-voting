@@ -167,10 +167,13 @@ export async function deleteTeamRole(id: string) {
   });
 }
 
-export async function listRegistrations(search = "", filter?: "invited_not_logged_in") {
+export type RegistrationFilter = "checked_in" | "not_checked_in" | "invited_not_logged_in";
+
+export async function listRegistrations(search = "", filter?: RegistrationFilter, options: { limit?: number } = {}) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (filter) params.set("filter", filter);
+  if (options.limit) params.set("limit", String(options.limit));
   return request<{ registrations: Registration[] }>(`/registrations?${params.toString()}`);
 }
 

@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, CloudRain, Mail, Plus, RefreshCw, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, CloudRain, Mail, Plus, Printer, RefreshCw, Upload, X } from "lucide-react";
 import { Alert, Button, PageHeader, Pagination, RegistrationRow, SearchBox } from "@carshow/carshow-components";
 import type { Category, Registration, StaffUser } from "@carshow/carshow-components";
 import { useEffect, useRef, useState } from "react";
@@ -7,10 +7,12 @@ import {
   getLatestRegistrationImport,
   getRegistrationImport,
   importRegistrationsCsv,
+  listRegistrations,
   previewRegistrationsCsv,
   retryFailedRegistrationImport,
   sendBulkOwnerInviteEmails,
   sendBulkOwnerRainUpdateEmails,
+  type RegistrationFilter,
   type RegistrationCsvPreviewRow,
   type RegistrationImportJob,
   type RegistrationImportItemStatus,
@@ -74,14 +76,15 @@ export function RegistrationsView({
   categories: Category[];
   registrations: Registration[];
   search: string;
-  registrationFilter: "all" | "invited_not_logged_in";
+  registrationFilter: RegistrationFilter | "all";
   selected: Registration | null;
   onSearch: (value: string) => void;
-  onFilterChange: (value: "all" | "invited_not_logged_in") => void;
+  onFilterChange: (value: RegistrationFilter | "all") => void;
   onSelect: (registration: Registration | null) => void;
   onRefresh: () => void;
 }) {
   const PAGE_SIZE = 25;
+  const PRINT_FETCH_LIMIT = 5000;
   const [page, setPage] = useState(0);
   const [showNewEditor, setShowNewEditor] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -101,6 +104,8 @@ export function RegistrationsView({
   const [showSendAllConfirm, setShowSendAllConfirm] = useState(false);
   const [sendingRainUpdate, setSendingRainUpdate] = useState(false);
   const [showRainUpdateConfirm, setShowRainUpdateConfirm] = useState(false);
+  const [printOwnerNames, setPrintOwnerNames] = useState<string[]>([]);
+  const [loadingOwnerPrint, setLoadingOwnerPrint] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isAdmin = staff.role === "ADMIN";
 
@@ -130,6 +135,15 @@ export function RegistrationsView({
     }, 2500);
     return () => window.clearInterval(interval);
   }, [activeImport?.id, activeImport?.status, onRefresh]);
+
+  useEffect(() => {
+    function clearOwnerPrintSheet() {
+      setPrintOwnerNames([]);
+    }
+
+    window.addEventListener("afterprint", clearOwnerPrintSheet);
+    return () => window.removeEventListener("afterprint", clearOwnerPrintSheet);
+  }, []);
 
   function selectRegistration(registration: Registration) {
     setShowNewEditor(false);
@@ -245,6 +259,47 @@ export function RegistrationsView({
     }
   }
 
+  async function printCheckedInOwners() {
+    setLoadingOwnerPrint(true);
+    setImportError("");
+    try {
+      const result = await listRegistrations("", "checked_in", { limit: PRINT_FETCH_LIMIT });
+      const owners = new Map<string, { firstName: string; lastName: string; name: string }>();
+      for (const registration of result.registrations) {
+        const firstName = registration.owner.firstName.trim();
+        const lastName = registration.owner.lastName.trim();
+        const name = [firstName, lastName].filter(Boolean).join(" ");
+        if (!name || owners.has(registration.owner.id)) continue;
+        owners.set(registration.owner.id, { firstName, lastName, name });
+      }
+
+      const sortedNames = Array.from(owners.values())
+        .sort((a, b) =>
+          a.lastName.localeCompare(b.lastName, undefined, { sensitivity: "base" }) ||
+          a.firstName.localeCompare(b.firstName, undefined, { sensitivity: "base" }) ||
+          a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        )
+        .map((owner) => owner.name);
+
+      if (!sortedNames.length) {
+        setImportError("No checked-in owners found to print.");
+        setPrintOwnerNames([]);
+        return;
+      }
+
+      setPrintOwnerNames(sortedNames);
+      window.setTimeout(() => window.print(), 0);
+    } catch (printError) {
+      setImportError(printError instanceof Error ? printError.message : "Could not load checked-in owners for print");
+    } finally {
+      setLoadingOwnerPrint(false);
+    }
+  }
+
+  function setListFilter(nextFilter: RegistrationFilter) {
+    onFilterChange(registrationFilter === nextFilter ? "all" : nextFilter);
+  }
+
   const pageCount = Math.ceil(registrations.length / PAGE_SIZE);
   const pagedRegistrations = registrations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
@@ -256,7 +311,8 @@ export function RegistrationsView({
   }, [onSelect, page, pageCount]);
 
   return (
-    <section className="registrations-layout">
+    <>
+    <section className={`registrations-layout${printOwnerNames.length ? " owner-print-hidden" : ""}`}>
       <div className="list-panel">
         <PageHeader
           eyebrow="Registration Table"
@@ -389,12 +445,32 @@ export function RegistrationsView({
         />
         <div className="registration-filter-bar">
           <Button
+            variant={registrationFilter === "all" ? "primary" : "secondary"}
+            onClick={() => onFilterChange("all")}
+          >
+            All
+          </Button>
+          <Button
+            variant={registrationFilter === "checked_in" ? "primary" : "secondary"}
+            onClick={() => setListFilter("checked_in")}
+          >
+            Checked In
+          </Button>
+          <Button
+            variant={registrationFilter === "not_checked_in" ? "primary" : "secondary"}
+            onClick={() => setListFilter("not_checked_in")}
+          >
+            Not Checked In
+          </Button>
+          <Button
             variant={registrationFilter === "invited_not_logged_in" ? "primary" : "secondary"}
-            onClick={() =>
-              onFilterChange(registrationFilter === "invited_not_logged_in" ? "all" : "invited_not_logged_in")
-            }
+            onClick={() => setListFilter("invited_not_logged_in")}
           >
             Invited · not logged in
+          </Button>
+          <Button variant="secondary" disabled={loadingOwnerPrint} onClick={() => void printCheckedInOwners()}>
+            <Printer size={20} />
+            {loadingOwnerPrint ? "Loading owners..." : "Print Checked-In Owners"}
           </Button>
         </div>
         <div className="registration-list">
@@ -513,6 +589,19 @@ export function RegistrationsView({
         </div>
       ) : null}
     </section>
+    <section
+      className={`checked-in-owner-print-sheet${printOwnerNames.length ? " is-active" : ""}`}
+      aria-label="Printable checked-in owner names"
+    >
+      <div className="checked-in-owner-print-grid">
+        {printOwnerNames.map((name, index) => (
+          <div className="checked-in-owner-print-name" key={`${name}-${index}`}>
+            {name}
+          </div>
+        ))}
+      </div>
+    </section>
+    </>
   );
 }
 

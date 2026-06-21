@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { QrScanner } from "@carshow/carshow-components";
-import { EntrySearch } from "../components/EntrySearch";
+import { EntrySearch, PUBLIC_ENTRY_SEARCH_PLACEHOLDER } from "../components/EntrySearch";
 import logoHero from "../assets/logo-hero.png";
 
 import l1 from "../assets/photos/l1.jpg";
@@ -34,6 +34,7 @@ export function LandingView() {
   const [current, setCurrent] = useState(0);
   const [loadedUrls, setLoadedUrls] = useState<Set<string>>(new Set());
   const [scanning, setScanning] = useState(false);
+  const [vehicleSearch, setVehicleSearch] = useState("");
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
 
@@ -87,7 +88,13 @@ export function LandingView() {
       </div>
 
       <div className="hero-search">
-        <EntrySearch onSearch={(num) => navigate(`/browse/entry/${num}`)} />
+        <EntrySearch
+          onSearch={(num) => navigate(`/browse/entry/${num}`)}
+          onTextSearch={setVehicleSearch}
+          onSubmitText={(search) => navigate(search ? `/browse?search=${encodeURIComponent(search)}` : "/browse")}
+          placeholder={PUBLIC_ENTRY_SEARCH_PLACEHOLDER}
+          value={vehicleSearch}
+        />
       </div>
 
       {scanning && (

@@ -3,14 +3,18 @@ import { type FormEvent, useState } from "react";
 type Props = {
   onSearch: (entryNumber: number) => void;
   onTextSearch?: (search: string) => void;
+  onSubmitText?: (search: string) => void;
   placeholder?: string;
   value?: string;
 };
 
+export const PUBLIC_ENTRY_SEARCH_PLACEHOLDER = "Find by QR card #, owner, make, model, or entry #";
+
 export function EntrySearch({
   onSearch,
   onTextSearch,
-  placeholder = "Find by entry # (e.g. 1001)",
+  onSubmitText,
+  placeholder = "Find by QR card or entry #",
   value,
 }: Props) {
   const [localValue, setLocalValue] = useState("");
@@ -32,6 +36,12 @@ export function EntrySearch({
     if (num > 0 && String(num) === raw) {
       setError("");
       onSearch(num);
+      return;
+    }
+
+    if (onSubmitText) {
+      setError("");
+      onSubmitText(trimmed);
       return;
     }
 

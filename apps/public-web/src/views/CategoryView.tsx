@@ -3,7 +3,7 @@ import type { PublicCategory, PublicEntry } from "@carshow/carshow-components";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { searchCategoryEntries, type Pagination } from "../api";
-import { EntrySearch } from "../components/EntrySearch";
+import { EntrySearch, PUBLIC_ENTRY_SEARCH_PLACEHOLDER } from "../components/EntrySearch";
 
 export function CategoryView() {
   const { slug = "" } = useParams<{ slug: string }>();
@@ -58,7 +58,7 @@ export function CategoryView() {
       <EntrySearch
         onSearch={(num) => navigate(`/browse/entry/${num}`)}
         onTextSearch={setVehicleSearch}
-        placeholder="Find by card #, entry #, owner, make, or model"
+        placeholder={PUBLIC_ENTRY_SEARCH_PLACEHOLDER}
         value={vehicleSearch}
       />
       {category ? <h1 className="public-page-title">{category.name}</h1> : null}

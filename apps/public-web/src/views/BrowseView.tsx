@@ -1,13 +1,14 @@
 import { Alert, EntryCard } from "@carshow/carshow-components";
 import type { PublicCategory, PublicEntry } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getPublicEvent, searchPublicEntries, type Pagination } from "../api";
-import { EntrySearch } from "../components/EntrySearch";
+import { EntrySearch, PUBLIC_ENTRY_SEARCH_PLACEHOLDER } from "../components/EntrySearch";
 
 export function BrowseView() {
   const [categories, setCategories] = useState<PublicCategory[]>([]);
-  const [vehicleSearch, setVehicleSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [vehicleSearch, setVehicleSearch] = useState(() => searchParams.get("search") ?? "");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [entries, setEntries] = useState<PublicEntry[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -26,12 +27,14 @@ export function BrowseView() {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      setDebouncedSearch(vehicleSearch.trim());
+      const nextSearch = vehicleSearch.trim();
+      setDebouncedSearch(nextSearch);
       setPage(1);
+      setSearchParams(nextSearch ? { search: nextSearch } : {}, { replace: true });
     }, 180);
 
     return () => window.clearTimeout(timeout);
-  }, [vehicleSearch]);
+  }, [setSearchParams, vehicleSearch]);
 
   useEffect(() => {
     if (!debouncedSearch) {
@@ -64,7 +67,7 @@ export function BrowseView() {
       <EntrySearch
         onSearch={(num) => navigate(`/browse/entry/${num}`)}
         onTextSearch={setVehicleSearch}
-        placeholder="Find by card #, entry #, owner, make, or model"
+        placeholder={PUBLIC_ENTRY_SEARCH_PLACEHOLDER}
         value={vehicleSearch}
       />
       <h1 className="public-page-title">Browse by Category</h1>

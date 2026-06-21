@@ -4127,29 +4127,6 @@ button.owner-assist-photo-preview:focus-visible {
   width: min(420px, calc(100% - 48px));
 }
 
-.hero-search .entry-search-field input {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: #ffffff;
-}
-
-.hero-search .entry-search-field input::placeholder {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.hero-search .entry-search-field input:focus {
-  border-color: rgba(255, 255, 255, 0.8);
-}
-
-.hero-search .entry-search-btn {
-  background: var(--primary);
-  border-color: var(--primary);
-}
-
-.hero-search .entry-search-error {
-  color: #ffb3b3;
-}
-
 .hero-dots {
   position: absolute;
   bottom: calc(28px + env(safe-area-inset-bottom));

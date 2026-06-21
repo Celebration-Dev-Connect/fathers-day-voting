@@ -996,6 +996,46 @@ function registrationResponse(registration: RegistrationPayload) {
   };
 }
 
+async function vehicleResultExclusionResponses(vehicleEntryId: string) {
+  const exclusions = await prisma.vehicleResultExclusion.findMany({
+    where: { eventId, vehicleEntryId },
+    include: { excludedByStaff: { select: { displayName: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!exclusions.length) return [];
+
+  const categoryIds = exclusions
+    .filter((exclusion) => exclusion.contextType === "PEOPLE_CHOICE_CATEGORY")
+    .map((exclusion) => exclusion.contextId);
+  const specialAwardIds = exclusions
+    .filter((exclusion) => exclusion.contextType === "SPECIAL_AWARD")
+    .map((exclusion) => exclusion.contextId);
+  const [categories, specialAwards] = await Promise.all([
+    categoryIds.length
+      ? prisma.category.findMany({ where: { eventId, id: { in: categoryIds } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+    specialAwardIds.length
+      ? prisma.specialAward.findMany({ where: { eventId, id: { in: specialAwardIds } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+  ]);
+  const categoryNameById = new Map(categories.map((category) => [category.id, category.name]));
+  const specialAwardNameById = new Map(specialAwards.map((specialAward) => [specialAward.id, specialAward.name]));
+
+  return exclusions.map((exclusion) => ({
+    id: exclusion.id,
+    vehicleEntryId: exclusion.vehicleEntryId,
+    contextType: exclusion.contextType,
+    contextId: exclusion.contextId,
+    contextName:
+      exclusion.contextType === "PEOPLE_CHOICE_CATEGORY"
+        ? categoryNameById.get(exclusion.contextId) ?? "Unknown category"
+        : specialAwardNameById.get(exclusion.contextId) ?? "Unknown special award",
+    reason: exclusion.reason,
+    excludedBy: exclusion.excludedByStaff?.displayName ?? null,
+    createdAt: exclusion.createdAt.toISOString(),
+  }));
+}
+
 export async function registerRegistrationRoutes(app: FastifyInstance, deps: RegistrationRouteDeps) {
   app.get("/registrations/metrics", async (request) => {
     await requireStaff(app, request);
@@ -1599,6 +1639,17 @@ export async function registerRegistrationRoutes(app: FastifyInstance, deps: Reg
 
     if (!registration) throw app.httpErrors.notFound("Registration not found");
     return { registration: registrationResponse(registration) };
+  });
+
+  app.get("/registrations/:id/result-exclusions", async (request) => {
+    await requireStaff(app, request);
+    const params = z.object({ id: z.string() }).parse(request.params);
+    const vehicle = await prisma.vehicleEntry.findFirst({
+      where: { id: params.id, eventId },
+      select: { id: true },
+    });
+    if (!vehicle) throw app.httpErrors.notFound("Registration not found");
+    return { resultExclusions: await vehicleResultExclusionResponses(vehicle.id) };
   });
 
   app.patch("/registrations/:id", async (request) => {

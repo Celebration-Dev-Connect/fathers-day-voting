@@ -52,7 +52,7 @@ export async function buildPublishedResultsSnapshot(publishedByName: string) {
   });
   if (!event) throw new Error("Event not found");
 
-  const [categories, voteGroups, judgePicks, winnerOverrides, specialAwards, specialAwardVoteGroups] =
+  const [categories, voteGroups, judgePicks, winnerOverrides, specialAwards, specialAwardVoteGroups, resultExclusions] =
     await Promise.all([
       prisma.category.findMany({
         where: { eventId, active: true },
@@ -97,6 +97,10 @@ export async function buildPublishedResultsSnapshot(publishedByName: string) {
         },
         _count: { _all: true },
       }),
+      prisma.vehicleResultExclusion.findMany({
+        where: { eventId },
+        select: { vehicleEntryId: true, contextType: true, contextId: true },
+      }),
     ]);
 
   const votedVehicleIds = [
@@ -118,11 +122,13 @@ export async function buildPublishedResultsSnapshot(publishedByName: string) {
     votedVehicles,
     judgePicks: event.judgesVotingEnabled ? judgePicks : [],
     winnerOverrides: event.judgesVotingEnabled ? winnerOverrides : [],
+    resultExclusions,
   });
   const specialAwardTallies = buildSpecialAwardTallies({
     specialAwards,
     voteGroups: specialAwardVoteGroups,
     votedVehicles,
+    resultExclusions,
   });
 
   const publishedAt = new Date().toISOString();

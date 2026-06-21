@@ -70,6 +70,19 @@ export type SpecialAward = {
   };
 };
 
+export type ResultExclusionContextType = "PEOPLE_CHOICE_CATEGORY" | "SPECIAL_AWARD";
+
+export type VehicleResultExclusion = {
+  id: string;
+  vehicleEntryId: string;
+  contextType: ResultExclusionContextType;
+  contextId: string;
+  contextName?: string;
+  reason?: string | null;
+  excludedBy?: string | null;
+  createdAt: string;
+};
+
 export type DashboardMetrics = {
   total: number;
   checkedIn: number;

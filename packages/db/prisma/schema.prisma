@@ -81,6 +81,7 @@ model Event {
   winnerOverrides        CategoryWinnerOverride[]
   specialAwards          SpecialAward[]
   specialAwardVotes      SpecialAwardVote[]
+  resultExclusions       VehicleResultExclusion[]
   registrationImportJobs RegistrationImportJob[]
 }
 
@@ -117,6 +118,7 @@ model StaffUser {
   registrationImportJobs RegistrationImportJob[]
   excludedPeopleChoiceVotes PeopleChoiceVote[]     @relation("PeopleChoiceVoteExcludedBy")
   excludedSpecialAwardVotes SpecialAwardVote[]     @relation("SpecialAwardVoteExcludedBy")
+  resultExclusions       VehicleResultExclusion[]  @relation("VehicleResultExclusionExcludedBy")
 }
 
 model Category {
@@ -192,6 +194,7 @@ model VehicleEntry {
   winnerOverrides     CategoryWinnerOverride[]
   photos              VehiclePhoto[]           @relation("VehiclePhotos")
   specialAwardVotes   SpecialAwardVote[]
+  resultExclusions    VehicleResultExclusion[]
 
   @@unique([eventId, entryNumber])
   @@unique([eventId, ownerAccessCode])
@@ -214,6 +217,11 @@ enum PhotoSource {
   STAFF
   OWNER
   VISITOR
+}
+
+enum ResultExclusionContextType {
+  PEOPLE_CHOICE_CATEGORY
+  SPECIAL_AWARD
 }
 
 model VehiclePhoto {
@@ -353,6 +361,25 @@ model SpecialAwardVote {
   @@index([eventId, excludedAt])
   @@index([eventId, ipAddress])
   @@index([eventId, voterKey])
+}
+
+model VehicleResultExclusion {
+  id                String                     @id @default(cuid())
+  eventId           String
+  vehicleEntryId    String
+  contextType       ResultExclusionContextType
+  contextId         String
+  reason            String?
+  excludedByStaffId String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  event             Event                      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vehicleEntry      VehicleEntry               @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+  excludedByStaff   StaffUser?                 @relation("VehicleResultExclusionExcludedBy", fields: [excludedByStaffId], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, contextType, contextId, vehicleEntryId])
+  @@index([eventId, vehicleEntryId])
+  @@index([eventId, contextType, contextId])
 }
 
 model JudgeCategoryPick {

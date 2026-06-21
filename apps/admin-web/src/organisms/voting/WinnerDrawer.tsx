@@ -2,6 +2,8 @@ import { ExternalLink, RefreshCw, X } from "lucide-react";
 import { Button, Pagination, vehicleName, type Registration, type VehiclePhoto } from "@carshow/carshow-components";
 import { useEffect, useState } from "react";
 import {
+  createResultExclusion,
+  deleteResultExclusion,
   getVehicleVoteReview,
   updateVoteExclusion,
   type VoteReview,
@@ -52,7 +54,14 @@ export function WinnerDrawer({
   const [filter, setFilter] = useState<VoteFilter>("all");
   const [page, setPage] = useState(0);
   const [savingVoteId, setSavingVoteId] = useState<string | null>(null);
+  const [savingResultExclusion, setSavingResultExclusion] = useState(false);
   const [expandedVoteId, setExpandedVoteId] = useState<string | null>(null);
+  const resultContext =
+    context.kind === "special-award" && context.specialAwardId
+      ? { contextType: "SPECIAL_AWARD" as const, contextId: context.specialAwardId }
+      : context.kind === "people-choice" && context.categoryId
+        ? { contextType: "PEOPLE_CHOICE_CATEGORY" as const, contextId: context.categoryId }
+        : null;
 
   async function loadReview(targetPage = page) {
     setLoading(true);
@@ -90,6 +99,37 @@ export function WinnerDrawer({
       setError(saveError instanceof Error ? saveError.message : "Could not update vote");
     } finally {
       setSavingVoteId(null);
+    }
+  }
+
+  async function toggleResultExclusion() {
+    if (!review || !resultContext) return;
+    setSavingResultExclusion(true);
+    setError("");
+    try {
+      if (review.resultExclusion) {
+        if (!window.confirm("Restore this vehicle to this result? It can win again after tallies refresh.")) return;
+        await deleteResultExclusion(review.resultExclusion.id);
+      } else {
+        if (
+          !window.confirm(
+            "Exclude this vehicle from this result? Votes remain stored, but the next eligible vehicle will move up.",
+          )
+        ) {
+          return;
+        }
+        await createResultExclusion({
+          vehicleEntryId: registration.id,
+          ...resultContext,
+          reason: "Removed from this result during winner review",
+        });
+      }
+      await loadReview(page);
+      await onVotesChanged();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not update result exclusion");
+    } finally {
+      setSavingResultExclusion(false);
     }
   }
 
@@ -166,11 +206,32 @@ export function WinnerDrawer({
                   <p className="muted-copy">Republish results after changes to update the public snapshot.</p>
                 ) : null}
               </div>
-              <Button variant="secondary" onClick={() => loadReview()} disabled={loading}>
-                <RefreshCw size={18} />
-                Refresh
-              </Button>
+              <div className="vote-review-actions">
+                {canManage && resultContext && review ? (
+                  <Button
+                    variant={review.resultExclusion ? "secondary" : "primary"}
+                    onClick={toggleResultExclusion}
+                    disabled={savingResultExclusion}
+                  >
+                    {review.resultExclusion ? "Restore Vehicle To This Result" : "Exclude Vehicle From This Result"}
+                  </Button>
+                ) : null}
+                <Button variant="secondary" onClick={() => loadReview()} disabled={loading}>
+                  <RefreshCw size={18} />
+                  Refresh
+                </Button>
+              </div>
             </div>
+
+            {review?.resultExclusion ? (
+              <div className="result-exclusion-notice">
+                <strong>Vehicle excluded from this result.</strong>
+                <span>
+                  {review.resultExclusion.reason ?? "No reason provided"}
+                  {review.resultExclusion.excludedBy ? ` · ${review.resultExclusion.excludedBy}` : ""}
+                </span>
+              </div>
+            ) : null}
 
             {review ? (
               <div className="vote-review-summary">

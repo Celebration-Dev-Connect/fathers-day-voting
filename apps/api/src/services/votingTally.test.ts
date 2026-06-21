@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Category } from "@carshow/db";
+import type { Category, SpecialAward } from "@carshow/db";
 import {
+  buildSpecialAwardTallies,
   buildVotingTallies,
   compareJudgeScores,
   judgePointsForRank,
@@ -23,6 +24,18 @@ const category = {
   createdAt: new Date("2026-05-01T00:00:00.000Z"),
   updatedAt: new Date("2026-05-01T00:00:00.000Z"),
 } satisfies Category;
+
+const specialAward = {
+  id: "award-off-road",
+  eventId: "event",
+  name: "Off Road",
+  description: null,
+  active: true,
+  sortOrder: 1,
+  ceremonyOrder: null,
+  createdAt: new Date("2026-05-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-05-01T00:00:00.000Z"),
+} satisfies SpecialAward;
 
 function registration(id: string, entryNumber: number): VotingRegistration {
   return {
@@ -145,6 +158,67 @@ describe("voting tally scoring", () => {
       tally.peopleChoice.map((item) => item.rank),
       [1, 2, 3, 4, 5],
     );
+  });
+
+  it("excludes a vehicle from only its People's Choice category result", () => {
+    const first = registration("first", 1);
+    const second = registration("second", 2);
+
+    const [tally] = buildVotingTallies({
+      categories: [category],
+      votedVehicles: [first, second],
+      voteGroups: [
+        { vehicleEntryId: first.id, _count: { _all: 30 } },
+        { vehicleEntryId: second.id, _count: { _all: 20 } },
+      ],
+      judgePicks: [
+        { categoryId: category.id, vehicleEntryId: first.id, rank: 2, vehicleEntry: first },
+        { categoryId: category.id, vehicleEntryId: second.id, rank: 2, vehicleEntry: second },
+      ],
+      winnerOverrides: [],
+      resultExclusions: [
+        {
+          vehicleEntryId: first.id,
+          contextType: "PEOPLE_CHOICE_CATEGORY",
+          contextId: category.id,
+        },
+      ],
+    });
+
+    assert.deepEqual(
+      tally.peopleChoice.map((item) => item.registration.id),
+      [second.id],
+    );
+    assert.equal(tally.peopleChoice[0]?.rank, 1);
+    assert.equal(tally.judgeRanking[0]?.registration.id, first.id);
+    assert.equal(tally.judgeRanking[0]?.peopleChoiceTieBreakPoints, 10);
+  });
+
+  it("excludes a vehicle from only the selected special award result", () => {
+    const first = registration("first", 1);
+    const second = registration("second", 2);
+
+    const [tally] = buildSpecialAwardTallies({
+      specialAwards: [specialAward],
+      votedVehicles: [first, second],
+      voteGroups: [
+        { specialAwardId: specialAward.id, vehicleEntryId: first.id, _count: { _all: 30 } },
+        { specialAwardId: specialAward.id, vehicleEntryId: second.id, _count: { _all: 20 } },
+      ],
+      resultExclusions: [
+        {
+          vehicleEntryId: first.id,
+          contextType: "SPECIAL_AWARD",
+          contextId: specialAward.id,
+        },
+      ],
+    });
+
+    assert.deepEqual(
+      tally.results.map((item) => item.registration.id),
+      [second.id],
+    );
+    assert.equal(tally.results[0]?.rank, 1);
   });
 
   it("uses admin overrides for judge top 3 while preserving score details when present", () => {

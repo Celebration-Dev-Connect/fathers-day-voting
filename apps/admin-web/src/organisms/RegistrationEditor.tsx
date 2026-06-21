@@ -1,14 +1,24 @@
 import { Camera, CheckCircle2, Download, EyeOff, ImagePlus, Loader2, Mail, Save, Search, Star, Trash2, UserRound, X } from "lucide-react";
 import { Alert, Button, compressImage, formatPhone, payloadFromRegistration } from "@carshow/carshow-components";
-import type { Category, PhotoReviewItem, PhotoSource, Registration, RegistrationPayload, VehiclePhoto } from "@carshow/carshow-components";
+import type {
+  Category,
+  PhotoReviewItem,
+  PhotoSource,
+  Registration,
+  RegistrationPayload,
+  VehiclePhoto,
+  VehicleResultExclusion,
+} from "@carshow/carshow-components";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   checkInRegistration,
   createRegistration,
   createRegistrationForOwner,
+  deleteResultExclusion,
   deleteRegistrationPhoto,
   downloadRegistrationPhotos,
   getRegistration,
+  listRegistrationResultExclusions,
   listOwners,
   sendOwnerInviteEmail,
   setRegistrationPrimaryPhoto,
@@ -129,6 +139,9 @@ export function RegistrationEditor({
   const [ownerCandidates, setOwnerCandidates] = useState<OwnerSummary[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<OwnerSummary | null>(null);
   const [searchingOwners, setSearchingOwners] = useState(false);
+  const [resultExclusions, setResultExclusions] = useState<VehicleResultExclusion[]>([]);
+  const [loadingResultExclusions, setLoadingResultExclusions] = useState(false);
+  const [restoringResultExclusionId, setRestoringResultExclusionId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -164,6 +177,28 @@ export function RegistrationEditor({
     const freshPhoto = (registration.photos ?? []).find((photo) => photo.id === selectedPhoto.id);
     setSelectedPhoto(freshPhoto ? registrationPhotoReviewItem(registration, freshPhoto) : null);
   }, [registration, selectedPhoto?.id]);
+
+  useEffect(() => {
+    if (!registration) {
+      setResultExclusions([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingResultExclusions(true);
+    listRegistrationResultExclusions(registration.id)
+      .then((result) => {
+        if (!cancelled) setResultExclusions(result.resultExclusions);
+      })
+      .catch(() => {
+        if (!cancelled) setResultExclusions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingResultExclusions(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [registration?.id]);
 
   function updateOwner<Key extends keyof RegistrationPayload["owner"]>(
     key: Key,
@@ -355,6 +390,22 @@ export function RegistrationEditor({
     }
   }
 
+  async function restoreResultExclusion(exclusion: VehicleResultExclusion) {
+    if (!window.confirm("Restore this vehicle to this result? It can win again after tallies refresh.")) return;
+    setRestoringResultExclusionId(exclusion.id);
+    setError("");
+    setMessage("");
+    try {
+      await deleteResultExclusion(exclusion.id);
+      setResultExclusions((current) => current.filter((item) => item.id !== exclusion.id));
+      setMessage("Vehicle restored to result eligibility.");
+    } catch (restoreError) {
+      setError(restoreError instanceof Error ? restoreError.message : "Could not restore result eligibility");
+    } finally {
+      setRestoringResultExclusionId(null);
+    }
+  }
+
   function checkInMissingFields() {
     const missing: string[] = [];
     if (!/^\d{3}-\d{3}-\d{4}$/.test(registration?.owner.phone ?? "")) missing.push("phone");
@@ -452,6 +503,47 @@ export function RegistrationEditor({
             <span className="muted-copy"> · Email sent {new Date(registration.owner.ownerInviteSentAt).toLocaleString()}</span>
           ) : null}
         </Alert>
+      ) : null}
+
+      {registration && (resultExclusions.length || loadingResultExclusions) ? (
+        <section className="result-exclusion-panel">
+          <div>
+            <p className="eyebrow">Result Eligibility</p>
+            <h3>Excluded Results</h3>
+            <p className="muted-copy">
+              These exclusions remove this vehicle from one specific category or special award result only.
+            </p>
+          </div>
+          {loadingResultExclusions ? <div className="empty-state">Loading result exclusions...</div> : null}
+          {!loadingResultExclusions && resultExclusions.length ? (
+            <div className="result-exclusion-list">
+              {resultExclusions.map((exclusion) => (
+                <article key={exclusion.id} className="result-exclusion-row">
+                  <div>
+                    <strong>
+                      {exclusion.contextType === "PEOPLE_CHOICE_CATEGORY" ? "People's Choice" : "Special Award"}:{" "}
+                      {exclusion.contextName ?? exclusion.contextId}
+                    </strong>
+                    <span>
+                      {exclusion.reason ?? "No reason provided"}
+                      {exclusion.excludedBy ? ` · ${exclusion.excludedBy}` : ""}
+                    </span>
+                  </div>
+                  {staff.role === "ADMIN" ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={restoringResultExclusionId === exclusion.id}
+                      onClick={() => void restoreResultExclusion(exclusion)}
+                    >
+                      Restore
+                    </Button>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       {!registration ? (

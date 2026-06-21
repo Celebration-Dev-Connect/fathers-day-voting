@@ -493,6 +493,7 @@ export async function registerVotingRoutes(app: FastifyInstance) {
       winnerOverrides,
       specialAwards,
       specialAwardVoteGroups,
+      resultExclusions,
     ] = await Promise.all([
       prisma.category.findMany({
         where: { eventId },
@@ -537,6 +538,10 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         },
         _count: { _all: true },
       }),
+      prisma.vehicleResultExclusion.findMany({
+        where: { eventId },
+        select: { vehicleEntryId: true, contextType: true, contextId: true },
+      }),
     ]);
 
     const votedVehicleIds = voteGroups.map((vote) => vote.vehicleEntryId);
@@ -557,11 +562,13 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         votedVehicles,
         judgePicks: event.judgesVotingEnabled ? judgePicks : [],
         winnerOverrides: event.judgesVotingEnabled ? winnerOverrides : [],
+        resultExclusions,
       }),
       specialAwards: buildSpecialAwardTallies({
         specialAwards,
         voteGroups: specialAwardVoteGroups,
         votedVehicles,
+        resultExclusions,
       }),
     };
   });
@@ -589,7 +596,17 @@ export async function registerVotingRoutes(app: FastifyInstance) {
     if (!event) throw app.httpErrors.notFound("Event not found");
     if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
 
-    const [peopleChoiceVotes, specialAwardVotes, allPeopleChoiceVotes, allSpecialAwardVotes] = await Promise.all([
+    const reviewContext = query.specialAwardId
+      ? { contextType: "SPECIAL_AWARD" as const, contextId: query.specialAwardId }
+      : { contextType: "PEOPLE_CHOICE_CATEGORY" as const, contextId: query.categoryId ?? vehicle.categoryId };
+
+    const [
+      peopleChoiceVotes,
+      specialAwardVotes,
+      allPeopleChoiceVotes,
+      allSpecialAwardVotes,
+      resultExclusion,
+    ] = await Promise.all([
       query.specialAwardId
         ? Promise.resolve([])
         : prisma.peopleChoiceVote.findMany({
@@ -633,6 +650,17 @@ export async function registerVotingRoutes(app: FastifyInstance) {
           createdAt: event.peopleChoiceCutoff ? { lte: event.peopleChoiceCutoff } : undefined,
         },
         include: { specialAward: { select: { id: true, name: true } } },
+      }),
+      prisma.vehicleResultExclusion.findUnique({
+        where: {
+          eventId_contextType_contextId_vehicleEntryId: {
+            eventId,
+            contextType: reviewContext.contextType,
+            contextId: reviewContext.contextId,
+            vehicleEntryId: vehicle.id,
+          },
+        },
+        include: { excludedByStaff: { select: { displayName: true } } },
       }),
     ]);
 
@@ -678,6 +706,17 @@ export async function registerVotingRoutes(app: FastifyInstance) {
         excluded: excludedCount,
         flagged: flaggedCount,
       },
+      resultExclusion: resultExclusion
+        ? {
+            id: resultExclusion.id,
+            vehicleEntryId: resultExclusion.vehicleEntryId,
+            contextType: resultExclusion.contextType,
+            contextId: resultExclusion.contextId,
+            reason: resultExclusion.reason,
+            excludedBy: resultExclusion.excludedByStaff?.displayName ?? null,
+            createdAt: resultExclusion.createdAt,
+          }
+        : null,
       pagination: {
         page,
         pageSize: query.pageSize,
@@ -686,6 +725,87 @@ export async function registerVotingRoutes(app: FastifyInstance) {
       },
       votes: filteredRows.slice(start, start + query.pageSize),
     };
+  });
+
+  app.post("/voting/result-exclusions", async (request) => {
+    const staff = await requireAdmin(app, request);
+    const body = z
+      .object({
+        vehicleEntryId: z.string().trim().min(1),
+        contextType: z.enum(["PEOPLE_CHOICE_CATEGORY", "SPECIAL_AWARD"]),
+        contextId: z.string().trim().min(1),
+        reason: z.string().trim().max(300).optional(),
+      })
+      .parse(request.body);
+
+    const vehicle = await prisma.vehicleEntry.findFirst({
+      where: { id: body.vehicleEntryId, eventId },
+      select: { id: true, categoryId: true },
+    });
+    if (!vehicle) throw app.httpErrors.notFound("Vehicle not found");
+
+    if (body.contextType === "PEOPLE_CHOICE_CATEGORY") {
+      const category = await prisma.category.findFirst({
+        where: { id: body.contextId, eventId },
+        select: { id: true },
+      });
+      if (!category) throw app.httpErrors.notFound("Category not found");
+      if (vehicle.categoryId !== body.contextId) {
+        throw app.httpErrors.badRequest("Vehicle can only be excluded from its own People's Choice category result");
+      }
+    } else {
+      const specialAward = await prisma.specialAward.findFirst({
+        where: { id: body.contextId, eventId },
+        select: { id: true },
+      });
+      if (!specialAward) throw app.httpErrors.notFound("Special award not found");
+    }
+
+    const exclusion = await prisma.vehicleResultExclusion.upsert({
+      where: {
+        eventId_contextType_contextId_vehicleEntryId: {
+          eventId,
+          contextType: body.contextType,
+          contextId: body.contextId,
+          vehicleEntryId: vehicle.id,
+        },
+      },
+      create: {
+        eventId,
+        vehicleEntryId: vehicle.id,
+        contextType: body.contextType,
+        contextId: body.contextId,
+        reason: body.reason || "Removed from this result during winner review",
+        excludedByStaffId: staff.id,
+      },
+      update: {
+        reason: body.reason || "Removed from this result during winner review",
+        excludedByStaffId: staff.id,
+      },
+      include: { excludedByStaff: { select: { displayName: true } } },
+    });
+
+    return {
+      resultExclusion: {
+        id: exclusion.id,
+        vehicleEntryId: exclusion.vehicleEntryId,
+        contextType: exclusion.contextType,
+        contextId: exclusion.contextId,
+        reason: exclusion.reason,
+        excludedBy: exclusion.excludedByStaff?.displayName ?? null,
+        createdAt: exclusion.createdAt,
+      },
+    };
+  });
+
+  app.delete("/voting/result-exclusions/:id", async (request) => {
+    await requireAdmin(app, request);
+    const params = z.object({ id: z.string().trim().min(1) }).parse(request.params);
+    const result = await prisma.vehicleResultExclusion.deleteMany({
+      where: { id: params.id, eventId },
+    });
+    if (result.count === 0) throw app.httpErrors.notFound("Result exclusion not found");
+    return { ok: true };
   });
 
   app.patch("/voting/votes/:kind/:id", async (request) => {

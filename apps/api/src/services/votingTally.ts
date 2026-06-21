@@ -1,4 +1,4 @@
-import type { Category, Prisma, SpecialAward } from "@carshow/db";
+import type { Category, Prisma, ResultExclusionContextType, SpecialAward } from "@carshow/db";
 
 export const votingRegistrationInclude = {
   owner: true,
@@ -35,6 +35,12 @@ export type WinnerOverride = {
   adminStaffUser?: {
     displayName: string;
   } | null;
+};
+
+export type ResultExclusion = {
+  vehicleEntryId: string;
+  contextType: ResultExclusionContextType;
+  contextId: string;
 };
 
 export type PeopleChoiceTallyItem = {
@@ -100,23 +106,45 @@ export function buildVotingTallies({
   votedVehicles,
   judgePicks,
   winnerOverrides,
+  resultExclusions = [],
 }: {
   categories: Category[];
   voteGroups: VoteGroup[];
   votedVehicles: VotingRegistration[];
   judgePicks: JudgePick[];
   winnerOverrides: WinnerOverride[];
+  resultExclusions?: ResultExclusion[];
 }) {
   const vehicleById = new Map(votedVehicles.map((vehicle) => [vehicle.id, vehicle]));
   const peopleChoiceByCategory = new Map<string, PeopleChoiceTallyItem[]>();
+  const peopleChoiceTieBreakCandidatesByCategory = new Map<string, PeopleChoiceTallyItem[]>();
   const peopleChoiceTieBreakByVehicleId = new Map<string, number>();
+  const peopleChoiceExclusions = new Set(
+    resultExclusions
+      .filter((exclusion) => exclusion.contextType === "PEOPLE_CHOICE_CATEGORY")
+      .map((exclusion) => `${exclusion.contextId}:${exclusion.vehicleEntryId}`),
+  );
 
   for (const vote of voteGroups) {
     const vehicle = vehicleById.get(vote.vehicleEntryId);
     if (!vehicle) continue;
+    const item = { registration: vehicle, votes: vote._count._all, rank: 0, tieBreakPoints: 0 };
+    const tieBreakCandidates = peopleChoiceTieBreakCandidatesByCategory.get(vehicle.categoryId) ?? [];
+    tieBreakCandidates.push(item);
+    peopleChoiceTieBreakCandidatesByCategory.set(vehicle.categoryId, tieBreakCandidates);
+    if (peopleChoiceExclusions.has(`${vehicle.categoryId}:${vehicle.id}`)) continue;
     const categoryVotes = peopleChoiceByCategory.get(vehicle.categoryId) ?? [];
-    categoryVotes.push({ registration: vehicle, votes: vote._count._all, rank: 0, tieBreakPoints: 0 });
+    categoryVotes.push(item);
     peopleChoiceByCategory.set(vehicle.categoryId, categoryVotes);
+  }
+
+  for (const categoryVotes of peopleChoiceTieBreakCandidatesByCategory.values()) {
+    categoryVotes.sort((first, second) => second.votes - first.votes);
+    categoryVotes.forEach((item, index) => {
+      item.rank = index + 1;
+      item.tieBreakPoints = Math.max(0, 11 - item.rank);
+      if (item.rank <= 10) peopleChoiceTieBreakByVehicleId.set(item.registration.id, item.tieBreakPoints);
+    });
   }
 
   for (const categoryVotes of peopleChoiceByCategory.values()) {
@@ -124,7 +152,6 @@ export function buildVotingTallies({
     categoryVotes.forEach((item, index) => {
       item.rank = index + 1;
       item.tieBreakPoints = Math.max(0, 11 - item.rank);
-      if (item.rank <= 10) peopleChoiceTieBreakByVehicleId.set(item.registration.id, item.tieBreakPoints);
     });
   }
 
@@ -205,17 +232,25 @@ export function buildSpecialAwardTallies({
   specialAwards,
   voteGroups,
   votedVehicles,
+  resultExclusions = [],
 }: {
   specialAwards: SpecialAward[];
   voteGroups: SpecialAwardVoteGroup[];
   votedVehicles: VotingRegistration[];
+  resultExclusions?: ResultExclusion[];
 }) {
   const vehicleById = new Map(votedVehicles.map((vehicle) => [vehicle.id, vehicle]));
   const votesByAward = new Map<string, SpecialAwardTallyItem[]>();
+  const specialAwardExclusions = new Set(
+    resultExclusions
+      .filter((exclusion) => exclusion.contextType === "SPECIAL_AWARD")
+      .map((exclusion) => `${exclusion.contextId}:${exclusion.vehicleEntryId}`),
+  );
 
   for (const vote of voteGroups) {
     const vehicle = vehicleById.get(vote.vehicleEntryId);
     if (!vehicle) continue;
+    if (specialAwardExclusions.has(`${vote.specialAwardId}:${vehicle.id}`)) continue;
     const awardVotes = votesByAward.get(vote.specialAwardId) ?? [];
     awardVotes.push({ registration: vehicle, votes: vote._count._all, rank: 0 });
     votesByAward.set(vote.specialAwardId, awardVotes);

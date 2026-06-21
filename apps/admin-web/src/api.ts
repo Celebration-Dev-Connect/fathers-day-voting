@@ -16,6 +16,7 @@ import type {
   StaffUser,
   SpecialAward,
   SpecialAwardVotingTally,
+  VehicleResultExclusion,
   VotingSettings,
 } from "@carshow/carshow-components";
 import { API_URL } from "./config";
@@ -179,6 +180,12 @@ export async function listRegistrations(search = "", filter?: RegistrationFilter
 
 export async function getRegistration(id: string) {
   return request<{ registration: Registration }>(`/registrations/${encodeURIComponent(id)}`);
+}
+
+export async function listRegistrationResultExclusions(id: string) {
+  return request<{ resultExclusions: VehicleResultExclusion[] }>(
+    `/registrations/${encodeURIComponent(id)}/result-exclusions`,
+  );
 }
 
 export async function getDashboardMetrics() {
@@ -442,6 +449,7 @@ export type VoteReview = {
   context: { categoryId: string | null; specialAwardId: string | null };
   resultsPublished: boolean;
   summary: { total: number; included: number; excluded: number; flagged: number };
+  resultExclusion: VehicleResultExclusion | null;
   pagination: { page: number; pageSize: number; total: number; pageCount: number };
   votes: VoteReviewVote[];
 };
@@ -472,6 +480,24 @@ export async function updateVoteExclusion(
   return request<{ ok: true }>(`/voting/votes/${kind === "PEOPLE_CHOICE" ? "people-choice" : "special-award"}/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ excluded, reason }),
+  });
+}
+
+export async function createResultExclusion(input: {
+  vehicleEntryId: string;
+  contextType: "PEOPLE_CHOICE_CATEGORY" | "SPECIAL_AWARD";
+  contextId: string;
+  reason?: string;
+}) {
+  return request<{ resultExclusion: VehicleResultExclusion }>("/voting/result-exclusions", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteResultExclusion(id: string) {
+  return request<{ ok: true }>(`/voting/result-exclusions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
   });
 }
 

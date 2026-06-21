@@ -18,6 +18,7 @@ function publicVehicleSearchFilter(search: string): Prisma.VehicleEntryWhereInpu
     return {
       OR: [
         ...(Number.isFinite(numericToken) ? [{ entryNumber: numericToken }, { year: numericToken }] : []),
+        { qrCard: { visibleCode: { contains: token, mode: "insensitive" } } },
         { make: { contains: token, mode: "insensitive" } },
         { model: { contains: token, mode: "insensitive" } },
         { nickname: { contains: token, mode: "insensitive" } },
@@ -32,6 +33,7 @@ function publicVehicleSearchFilter(search: string): Prisma.VehicleEntryWhereInpu
   return {
     OR: [
       ...(Number.isFinite(numericSearch) ? [{ entryNumber: numericSearch }, { year: numericSearch }] : []),
+      { qrCard: { visibleCode: { contains: search, mode: "insensitive" } } },
       { make: { contains: search, mode: "insensitive" } },
       { model: { contains: search, mode: "insensitive" } },
       { nickname: { contains: search, mode: "insensitive" } },

@@ -64,7 +64,7 @@ export function BrowseView() {
       <EntrySearch
         onSearch={(num) => navigate(`/browse/entry/${num}`)}
         onTextSearch={setVehicleSearch}
-        placeholder="Find by entry #, owner, make, or model"
+        placeholder="Find by card #, entry #, owner, make, or model"
         value={vehicleSearch}
       />
       <h1 className="public-page-title">Browse by Category</h1>

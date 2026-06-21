@@ -105,6 +105,7 @@ export function RegistrationsView({
   const [sendingRainUpdate, setSendingRainUpdate] = useState(false);
   const [showRainUpdateConfirm, setShowRainUpdateConfirm] = useState(false);
   const [printOwnerNames, setPrintOwnerNames] = useState<string[]>([]);
+  const [ownerPrintRequested, setOwnerPrintRequested] = useState(false);
   const [loadingOwnerPrint, setLoadingOwnerPrint] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isAdmin = staff.role === "ADMIN";
@@ -139,11 +140,18 @@ export function RegistrationsView({
   useEffect(() => {
     function clearOwnerPrintSheet() {
       setPrintOwnerNames([]);
+      setOwnerPrintRequested(false);
     }
 
     window.addEventListener("afterprint", clearOwnerPrintSheet);
     return () => window.removeEventListener("afterprint", clearOwnerPrintSheet);
   }, []);
+
+  useEffect(() => {
+    if (!ownerPrintRequested || !printOwnerNames.length) return;
+    const frame = window.requestAnimationFrame(() => window.print());
+    return () => window.cancelAnimationFrame(frame);
+  }, [ownerPrintRequested, printOwnerNames.length]);
 
   function selectRegistration(registration: Registration) {
     setShowNewEditor(false);
@@ -284,11 +292,12 @@ export function RegistrationsView({
       if (!sortedNames.length) {
         setImportError("No checked-in owners found to print.");
         setPrintOwnerNames([]);
+        setOwnerPrintRequested(false);
         return;
       }
 
       setPrintOwnerNames(sortedNames);
-      window.setTimeout(() => window.print(), 0);
+      setOwnerPrintRequested(true);
     } catch (printError) {
       setImportError(printError instanceof Error ? printError.message : "Could not load checked-in owners for print");
     } finally {

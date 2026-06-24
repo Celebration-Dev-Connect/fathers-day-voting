@@ -51,6 +51,11 @@ if [ "${1:-}" = "cleanup-registrations" ]; then
   exec node apps/api/dist/scripts/cleanupRegistrations.js
 fi
 
+if [ "${1:-}" = "export-data" ]; then
+  echo "[entrypoint] Running database export..."
+  exec node apps/api/dist/scripts/exportData.js
+fi
+
 # ── Normal startup ────────────────────────────────────────────────────────────
 
 apply_migrations

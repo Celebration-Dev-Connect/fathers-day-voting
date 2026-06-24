@@ -25,18 +25,18 @@ output "acm_validation_records" {
 }
 
 output "ecr_repository_url" {
-  description = "Push API images here. Tag with git commit SHA: docker push <url>:<sha>"
-  value       = aws_ecr_repository.api.repository_url
+  description = "Push API images here. Tag with git commit SHA: docker push <url>:<sha>. Empty when decommissioned."
+  value       = var.decommissioned ? "" : aws_ecr_repository.api[0].repository_url
 }
 
 output "api_url" {
-  description = "Internal ALB URL for the API. Not for public use - all traffic enters via CloudFront /api/*."
-  value       = "http://${aws_lb.api.dns_name}"
+  description = "Internal ALB URL for the API. Not for public use. Empty when decommissioned."
+  value       = var.decommissioned ? "" : "http://${aws_lb.api[0].dns_name}"
 }
 
 output "rds_endpoint" {
-  description = "RDS hostname for migration SSM tunnel: aws ssm start-session ... --parameters host=[<value>]"
-  value       = aws_db_instance.main.address
+  description = "RDS hostname. Empty when decommissioned."
+  value       = var.decommissioned ? "" : aws_db_instance.main[0].address
   sensitive   = true
 }
 
@@ -46,13 +46,13 @@ output "photos_bucket" {
 }
 
 output "admin_web_bucket" {
-  description = "Deploy admin-web SPA: aws s3 sync apps/admin-web/dist/ s3://<value>/ --delete"
-  value       = aws_s3_bucket.admin_web.bucket
+  description = "Deploy admin-web SPA: aws s3 sync apps/admin-web/dist/ s3://<value>/ --delete. Empty when decommissioned."
+  value       = var.decommissioned ? "" : aws_s3_bucket.admin_web[0].bucket
 }
 
 output "judge_web_bucket" {
-  description = "Deploy judge-web SPA: aws s3 sync apps/judge-web/dist/ s3://<value>/ --delete"
-  value       = aws_s3_bucket.judge_web.bucket
+  description = "Deploy judge-web SPA: aws s3 sync apps/judge-web/dist/ s3://<value>/ --delete. Empty when decommissioned."
+  value       = var.decommissioned ? "" : aws_s3_bucket.judge_web[0].bucket
 }
 
 output "public_web_bucket" {
@@ -61,6 +61,6 @@ output "public_web_bucket" {
 }
 
 output "dashboard_url" {
-  description = "CloudWatch dashboard for event-day monitoring."
-  value       = "https://${var.region}.console.aws.amazon.com/cloudwatch/home?region=${var.region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main.dashboard_name}"
+  description = "CloudWatch dashboard for event-day monitoring. Empty when decommissioned."
+  value       = var.decommissioned ? "" : "https://${var.region}.console.aws.amazon.com/cloudwatch/home?region=${var.region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main[0].dashboard_name}"
 }

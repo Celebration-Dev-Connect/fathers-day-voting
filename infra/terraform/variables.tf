@@ -253,6 +253,18 @@ variable "cloudfront_custom_domain" {
   default     = true
 }
 
+variable "decommissioned" {
+  description = <<-EOT
+    When true, all backend resources (ECS, ALB, RDS, ECR, Secrets Manager, CloudWatch
+    alarms) are destroyed and CloudFront is updated to serve only the static
+    "event is over" page from the public-web S3 bucket. The photos bucket and
+    CloudFront distribution remain so /photos/* URLs continue to work.
+    Set this AFTER running infra/scripts/backup-db.sh and verifying the backups.
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "image_tag" {
   description = <<-EOT
     ECR image tag for the ECS task definition.

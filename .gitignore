@@ -21,3 +21,6 @@ infra/terraform/.terraform/
 !*.tfvars.example
 
 infra/DEPLOYMENT_RUNBOOK.md
+
+# Local pre-decommission backups (DB dumps + exported photos)
+backups/

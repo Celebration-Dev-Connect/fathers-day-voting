@@ -1,7 +1,8 @@
 # ── ECS Cluster ───────────────────────────────────────────────────────────────
 
 resource "aws_ecs_cluster" "main" {
-  name = "${var.project}-${var.environment}"
+  count = var.decommissioned ? 0 : 1
+  name  = "${var.project}-${var.environment}"
 
   tags = {
     Project     = var.project
@@ -10,13 +11,15 @@ resource "aws_ecs_cluster" "main" {
 }
 
 resource "aws_ecs_cluster_capacity_providers" "main" {
-  cluster_name       = aws_ecs_cluster.main.name
+  count              = var.decommissioned ? 0 : 1
+  cluster_name       = aws_ecs_cluster.main[0].name
   capacity_providers = ["FARGATE"]
 }
 
 # ── CloudWatch Log Group ──────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_log_group" "api" {
+  count             = var.decommissioned ? 0 : 1
   name              = "/ecs/${var.project}-${var.environment}-api"
   retention_in_days = 7
 
@@ -29,6 +32,7 @@ resource "aws_cloudwatch_log_group" "api" {
 # ── Task Definition ───────────────────────────────────────────────────────────
 
 resource "aws_ecs_task_definition" "api" {
+  count                    = var.decommissioned ? 0 : 1
   family                   = "${var.project}-${var.environment}-api"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
@@ -39,7 +43,7 @@ resource "aws_ecs_task_definition" "api" {
 
   container_definitions = jsonencode([{
     name  = "api"
-    image = "${aws_ecr_repository.api.repository_url}:${var.image_tag}"
+    image = "${aws_ecr_repository.api[0].repository_url}:${var.image_tag}"
 
     portMappings = [{
       containerPort = 4000
@@ -73,20 +77,20 @@ resource "aws_ecs_task_definition" "api" {
     ]
 
     secrets = [
-      { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.db_url.arn },
-      { name = "JWT_SECRET", valueFrom = aws_secretsmanager_secret.jwt_secret.arn },
-      { name = "PLANNING_CENTER_CLIENT_ID", valueFrom = aws_secretsmanager_secret.pco_client_id.arn },
-      { name = "PLANNING_CENTER_CLIENT_SECRET", valueFrom = aws_secretsmanager_secret.pco_client_secret.arn },
-      { name = "WEBGUIDE_USERNAME", valueFrom = aws_secretsmanager_secret.webguide_username.arn },
-      { name = "WEBGUIDE_PASSWORD", valueFrom = aws_secretsmanager_secret.webguide_password.arn },
-      { name = "EMAIL_SMTP_USERNAME", valueFrom = aws_secretsmanager_secret.email_smtp_username.arn },
-      { name = "EMAIL_SMTP_PASSWORD", valueFrom = aws_secretsmanager_secret.email_smtp_password.arn },
+      { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.db_url[0].arn },
+      { name = "JWT_SECRET", valueFrom = aws_secretsmanager_secret.jwt_secret[0].arn },
+      { name = "PLANNING_CENTER_CLIENT_ID", valueFrom = aws_secretsmanager_secret.pco_client_id[0].arn },
+      { name = "PLANNING_CENTER_CLIENT_SECRET", valueFrom = aws_secretsmanager_secret.pco_client_secret[0].arn },
+      { name = "WEBGUIDE_USERNAME", valueFrom = aws_secretsmanager_secret.webguide_username[0].arn },
+      { name = "WEBGUIDE_PASSWORD", valueFrom = aws_secretsmanager_secret.webguide_password[0].arn },
+      { name = "EMAIL_SMTP_USERNAME", valueFrom = aws_secretsmanager_secret.email_smtp_username[0].arn },
+      { name = "EMAIL_SMTP_PASSWORD", valueFrom = aws_secretsmanager_secret.email_smtp_password[0].arn },
     ]
 
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.api.name
+        "awslogs-group"         = aws_cloudwatch_log_group.api[0].name
         "awslogs-region"        = var.region
         "awslogs-stream-prefix" = "api"
       }
@@ -104,6 +108,7 @@ resource "aws_ecs_task_definition" "api" {
 # ── Application Load Balancer ─────────────────────────────────────────────────
 
 resource "aws_lb" "api" {
+  count              = var.decommissioned ? 0 : 1
   name               = "${var.project}-${var.environment}-api"
   internal           = false
   load_balancer_type = "application"
@@ -117,6 +122,7 @@ resource "aws_lb" "api" {
 }
 
 resource "aws_lb_target_group" "api" {
+  count       = var.decommissioned ? 0 : 1
   name        = "${var.project}-${var.environment}-api"
   port        = 4000
   protocol    = "HTTP"
@@ -139,22 +145,24 @@ resource "aws_lb_target_group" "api" {
 
 # CloudFront -> ALB uses plain HTTP on port 80; TLS is terminated at CloudFront.
 resource "aws_lb_listener" "api" {
-  load_balancer_arn = aws_lb.api.arn
+  count             = var.decommissioned ? 0 : 1
+  load_balancer_arn = aws_lb.api[0].arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.api.arn
+    target_group_arn = aws_lb_target_group.api[0].arn
   }
 }
 
 # ── ECS Service ───────────────────────────────────────────────────────────────
 
 resource "aws_ecs_service" "api" {
+  count           = var.decommissioned ? 0 : 1
   name            = "${var.project}-${var.environment}-api"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.api.arn
+  cluster         = aws_ecs_cluster.main[0].id
+  task_definition = aws_ecs_task_definition.api[0].arn
   desired_count   = var.ecs_min_size
   launch_type     = "FARGATE"
 
@@ -171,7 +179,7 @@ resource "aws_ecs_service" "api" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.api.arn
+    target_group_arn = aws_lb_target_group.api[0].arn
     container_name   = "api"
     container_port   = 4000
   }
@@ -195,9 +203,10 @@ resource "aws_ecs_service" "api" {
 # ── Auto Scaling ──────────────────────────────────────────────────────────────
 
 resource "aws_appautoscaling_target" "api" {
+  count              = var.decommissioned ? 0 : 1
   max_capacity       = var.ecs_max_size
   min_capacity       = var.ecs_min_size
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.api.name}"
+  resource_id        = "service/${aws_ecs_cluster.main[0].name}/${aws_ecs_service.api[0].name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 
@@ -205,17 +214,18 @@ resource "aws_appautoscaling_target" "api" {
 }
 
 resource "aws_appautoscaling_policy" "api_requests" {
+  count              = var.decommissioned ? 0 : 1
   name               = "${var.project}-${var.environment}-api-requests"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.api.resource_id
-  scalable_dimension = aws_appautoscaling_target.api.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.api.service_namespace
+  resource_id        = aws_appautoscaling_target.api[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.api[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.api[0].service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
       # Format: <alb-arn-suffix>/<tg-arn-suffix>
-      resource_label = "${aws_lb.api.arn_suffix}/${aws_lb_target_group.api.arn_suffix}"
+      resource_label = "${aws_lb.api[0].arn_suffix}/${aws_lb_target_group.api[0].arn_suffix}"
     }
     # Scale out when any task is receiving more than 1,000 req/min (~17 req/s).
     # This fires on actual inbound load rather than CPU, which stays low for

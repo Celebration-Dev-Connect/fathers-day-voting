@@ -45,17 +45,25 @@ resource "aws_sns_topic_subscription" "alerts_us_east_1_email" {
   endpoint  = var.alert_email
 }
 
+# ── Dimension helpers (nil-safe when decommissioned) ─────────────────────────
+# one() returns null when a count-gated resource has count=0.
+
 locals {
-  alb_dimensions = { LoadBalancer = aws_lb.api.arn_suffix }
-  tg_dimensions = {
-    LoadBalancer = aws_lb.api.arn_suffix
-    TargetGroup  = aws_lb_target_group.api.arn_suffix
-  }
-  ecs_dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = aws_ecs_service.api.name
-  }
-  rds_dimensions = { DBInstanceIdentifier = aws_db_instance.main.identifier }
+  _lb  = one(aws_lb.api)
+  _tg  = one(aws_lb_target_group.api)
+  _svc = one(aws_ecs_service.api)
+  _db  = one(aws_db_instance.main)
+
+  alb_dimensions = local._lb != null ? { LoadBalancer = local._lb.arn_suffix } : {}
+  tg_dimensions = local._lb != null ? {
+    LoadBalancer = local._lb.arn_suffix
+    TargetGroup  = local._tg.arn_suffix
+  } : {}
+  ecs_dimensions = local._svc != null ? {
+    ClusterName = "${var.project}-${var.environment}"
+    ServiceName = local._svc.name
+  } : {}
+  rds_dimensions = local._db != null ? { DBInstanceIdentifier = local._db.identifier } : {}
   alarm_tags = {
     Project     = var.project
     Environment = var.environment
@@ -65,6 +73,7 @@ locals {
 # ── ALB / API alarms ──────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "alb_target_5xx" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-api-5xx"
   alarm_description   = "API is returning 5xx responses (server errors)."
   namespace           = "AWS/ApplicationELB"
@@ -82,6 +91,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_target_5xx" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "alb_elb_5xx" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-alb-5xx"
   alarm_description   = "ALB itself is returning 5xx (often no healthy targets)."
   namespace           = "AWS/ApplicationELB"
@@ -99,6 +109,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_elb_5xx" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-unhealthy-hosts"
   alarm_description   = "One or more API tasks are failing the ALB health check."
   namespace           = "AWS/ApplicationELB"
@@ -116,6 +127,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "api_latency" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-api-latency"
   alarm_description   = "API p95 response time is high (>2s)."
   namespace           = "AWS/ApplicationELB"
@@ -134,6 +146,7 @@ resource "aws_cloudwatch_metric_alarm" "api_latency" {
 # ── ECS alarms ────────────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-ecs-cpu"
   alarm_description   = "ECS service CPU sustained high (autoscaling should react)."
   namespace           = "AWS/ECS"
@@ -150,6 +163,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "ecs_memory" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-ecs-memory"
   alarm_description   = "ECS service memory sustained high."
   namespace           = "AWS/ECS"
@@ -168,6 +182,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_memory" {
 # ── RDS alarms ────────────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-rds-cpu"
   alarm_description   = "RDS CPU sustained high."
   namespace           = "AWS/RDS"
@@ -184,6 +199,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_storage" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-rds-storage"
   alarm_description   = "RDS free storage below 2 GB."
   namespace           = "AWS/RDS"
@@ -200,6 +216,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_storage" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_memory" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-rds-memory"
   alarm_description   = "RDS freeable memory below 256 MB."
   namespace           = "AWS/RDS"
@@ -216,6 +233,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_memory" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_connections" {
+  count               = var.decommissioned ? 0 : 1
   alarm_name          = "${var.project}-${var.environment}-rds-connections"
   alarm_description   = "RDS connection count high relative to the per-task pool budget."
   namespace           = "AWS/RDS"
@@ -257,6 +275,7 @@ resource "aws_cloudwatch_metric_alarm" "cloudfront_5xx" {
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_dashboard" "main" {
+  count          = var.decommissioned ? 0 : 1
   dashboard_name = "${var.project}-${var.environment}"
 
   dashboard_body = jsonencode({
@@ -272,9 +291,9 @@ resource "aws_cloudwatch_dashboard" "main" {
           region = var.region
           view   = "timeSeries"
           metrics = [
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.api.arn_suffix, { stat = "Sum" }],
-            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "TargetGroup", aws_lb_target_group.api.arn_suffix, "LoadBalancer", aws_lb.api.arn_suffix, { stat = "Sum" }],
-            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", aws_lb.api.arn_suffix, { stat = "Sum" }],
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", local._lb.arn_suffix, { stat = "Sum" }],
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "TargetGroup", local._tg.arn_suffix, "LoadBalancer", local._lb.arn_suffix, { stat = "Sum" }],
+            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", local._lb.arn_suffix, { stat = "Sum" }],
           ]
         }
       },
@@ -289,7 +308,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           region = var.region
           view   = "timeSeries"
           metrics = [
-            ["AWS/ApplicationELB", "TargetResponseTime", "TargetGroup", aws_lb_target_group.api.arn_suffix, "LoadBalancer", aws_lb.api.arn_suffix, { stat = "p50" }],
+            ["AWS/ApplicationELB", "TargetResponseTime", "TargetGroup", local._tg.arn_suffix, "LoadBalancer", local._lb.arn_suffix, { stat = "p50" }],
             ["...", { stat = "p95" }],
           ]
         }
@@ -305,8 +324,8 @@ resource "aws_cloudwatch_dashboard" "main" {
           region = var.region
           view   = "timeSeries"
           metrics = [
-            ["AWS/ECS", "CPUUtilization", "ClusterName", aws_ecs_cluster.main.name, "ServiceName", aws_ecs_service.api.name, { stat = "Average" }],
-            ["AWS/ECS", "MemoryUtilization", "ClusterName", aws_ecs_cluster.main.name, "ServiceName", aws_ecs_service.api.name, { stat = "Average" }],
+            ["AWS/ECS", "CPUUtilization", "ClusterName", "${var.project}-${var.environment}", "ServiceName", local._svc.name, { stat = "Average" }],
+            ["AWS/ECS", "MemoryUtilization", "ClusterName", "${var.project}-${var.environment}", "ServiceName", local._svc.name, { stat = "Average" }],
           ]
         }
       },
@@ -321,8 +340,8 @@ resource "aws_cloudwatch_dashboard" "main" {
           region = var.region
           view   = "timeSeries"
           metrics = [
-            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", aws_db_instance.main.identifier, { stat = "Average" }],
-            ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", aws_db_instance.main.identifier, { stat = "Average", yAxis = "right" }],
+            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", local._db.identifier, { stat = "Average" }],
+            ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", local._db.identifier, { stat = "Average", yAxis = "right" }],
           ]
         }
       },
@@ -337,8 +356,8 @@ resource "aws_cloudwatch_dashboard" "main" {
           region = var.region
           view   = "timeSeries"
           metrics = [
-            ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", aws_lb_target_group.api.arn_suffix, "LoadBalancer", aws_lb.api.arn_suffix, { stat = "Average" }],
-            ["AWS/ApplicationELB", "UnHealthyHostCount", "TargetGroup", aws_lb_target_group.api.arn_suffix, "LoadBalancer", aws_lb.api.arn_suffix, { stat = "Maximum" }],
+            ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", local._tg.arn_suffix, "LoadBalancer", local._lb.arn_suffix, { stat = "Average" }],
+            ["AWS/ApplicationELB", "UnHealthyHostCount", "TargetGroup", local._tg.arn_suffix, "LoadBalancer", local._lb.arn_suffix, { stat = "Maximum" }],
           ]
         }
       },

@@ -1,4 +1,6 @@
 # ── Photos ────────────────────────────────────────────────────────────────────
+# Kept even when decommissioned — photos remain accessible at /photos/* via
+# the CloudFront distribution.
 
 resource "aws_s3_bucket" "photos" {
   bucket        = "${var.project}-photos-${var.environment}"
@@ -83,8 +85,10 @@ resource "aws_s3_bucket_policy" "photos" {
 }
 
 # ── Admin web SPA ─────────────────────────────────────────────────────────────
+# Destroyed when decommissioned. Empty the bucket manually before applying.
 
 resource "aws_s3_bucket" "admin_web" {
+  count         = var.decommissioned ? 0 : 1
   bucket        = "${var.project}-admin-web-${var.environment}"
   force_destroy = var.teardown_friendly
 
@@ -95,7 +99,8 @@ resource "aws_s3_bucket" "admin_web" {
 }
 
 resource "aws_s3_bucket_public_access_block" "admin_web" {
-  bucket                  = aws_s3_bucket.admin_web.id
+  count                   = var.decommissioned ? 0 : 1
+  bucket                  = aws_s3_bucket.admin_web[0].id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -103,7 +108,8 @@ resource "aws_s3_bucket_public_access_block" "admin_web" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "admin_web" {
-  bucket = aws_s3_bucket.admin_web.id
+  count  = var.decommissioned ? 0 : 1
+  bucket = aws_s3_bucket.admin_web[0].id
   rule { object_ownership = "BucketOwnerEnforced" }
 }
 
@@ -113,7 +119,7 @@ data "aws_iam_policy_document" "admin_web_bucket" {
     content {
       sid       = "AllowCloudFrontRead"
       actions   = ["s3:GetObject"]
-      resources = ["${aws_s3_bucket.admin_web.arn}/*"]
+      resources = ["${try(aws_s3_bucket.admin_web[0].arn, "arn:aws:s3:::decommissioned")}/*"]
       principals {
         type        = "Service"
         identifiers = ["cloudfront.amazonaws.com"]
@@ -128,15 +134,17 @@ data "aws_iam_policy_document" "admin_web_bucket" {
 }
 
 resource "aws_s3_bucket_policy" "admin_web" {
-  count      = var.skip_cloudfront ? 0 : 1
-  bucket     = aws_s3_bucket.admin_web.id
+  count      = var.decommissioned ? 0 : (var.skip_cloudfront ? 0 : 1)
+  bucket     = aws_s3_bucket.admin_web[0].id
   policy     = data.aws_iam_policy_document.admin_web_bucket.json
   depends_on = [aws_s3_bucket_public_access_block.admin_web]
 }
 
 # ── Judge web SPA ────────────────────────────────────────────────────────────
+# Destroyed when decommissioned. Empty the bucket manually before applying.
 
 resource "aws_s3_bucket" "judge_web" {
+  count         = var.decommissioned ? 0 : 1
   bucket        = "${var.project}-judge-web-${var.environment}"
   force_destroy = var.teardown_friendly
 
@@ -147,7 +155,8 @@ resource "aws_s3_bucket" "judge_web" {
 }
 
 resource "aws_s3_bucket_public_access_block" "judge_web" {
-  bucket                  = aws_s3_bucket.judge_web.id
+  count                   = var.decommissioned ? 0 : 1
+  bucket                  = aws_s3_bucket.judge_web[0].id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -155,7 +164,8 @@ resource "aws_s3_bucket_public_access_block" "judge_web" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "judge_web" {
-  bucket = aws_s3_bucket.judge_web.id
+  count  = var.decommissioned ? 0 : 1
+  bucket = aws_s3_bucket.judge_web[0].id
   rule { object_ownership = "BucketOwnerEnforced" }
 }
 
@@ -165,7 +175,7 @@ data "aws_iam_policy_document" "judge_web_bucket" {
     content {
       sid       = "AllowCloudFrontRead"
       actions   = ["s3:GetObject"]
-      resources = ["${aws_s3_bucket.judge_web.arn}/*"]
+      resources = ["${try(aws_s3_bucket.judge_web[0].arn, "arn:aws:s3:::decommissioned")}/*"]
       principals {
         type        = "Service"
         identifiers = ["cloudfront.amazonaws.com"]
@@ -180,13 +190,14 @@ data "aws_iam_policy_document" "judge_web_bucket" {
 }
 
 resource "aws_s3_bucket_policy" "judge_web" {
-  count      = var.skip_cloudfront ? 0 : 1
-  bucket     = aws_s3_bucket.judge_web.id
+  count      = var.decommissioned ? 0 : (var.skip_cloudfront ? 0 : 1)
+  bucket     = aws_s3_bucket.judge_web[0].id
   policy     = data.aws_iam_policy_document.judge_web_bucket.json
   depends_on = [aws_s3_bucket_public_access_block.judge_web]
 }
 
 # ── Public web SPA ────────────────────────────────────────────────────────────
+# Always kept — serves the static "event is over" page when decommissioned.
 
 resource "aws_s3_bucket" "public_web" {
   bucket        = "${var.project}-public-web-${var.environment}"

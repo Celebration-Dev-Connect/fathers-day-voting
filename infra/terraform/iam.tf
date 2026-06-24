@@ -26,31 +26,36 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_managed" {
 }
 
 data "aws_iam_policy_document" "ecs_execution_secrets" {
+  count = var.decommissioned ? 0 : 1
   statement {
     sid     = "SecretsRead"
     actions = ["secretsmanager:GetSecretValue"]
     resources = [
-      aws_secretsmanager_secret.db_url.arn,
-      aws_secretsmanager_secret.jwt_secret.arn,
-      aws_secretsmanager_secret.pco_client_id.arn,
-      aws_secretsmanager_secret.pco_client_secret.arn,
-      aws_secretsmanager_secret.webguide_username.arn,
-      aws_secretsmanager_secret.webguide_password.arn,
-      aws_secretsmanager_secret.email_smtp_username.arn,
-      aws_secretsmanager_secret.email_smtp_password.arn,
+      aws_secretsmanager_secret.db_url[0].arn,
+      aws_secretsmanager_secret.jwt_secret[0].arn,
+      aws_secretsmanager_secret.pco_client_id[0].arn,
+      aws_secretsmanager_secret.pco_client_secret[0].arn,
+      aws_secretsmanager_secret.webguide_username[0].arn,
+      aws_secretsmanager_secret.webguide_password[0].arn,
+      aws_secretsmanager_secret.email_smtp_username[0].arn,
+      aws_secretsmanager_secret.email_smtp_password[0].arn,
     ]
   }
 }
 
 resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  count  = var.decommissioned ? 0 : 1
   name   = "${var.project}-${var.environment}-ecs-execution-secrets"
   role   = aws_iam_role.ecs_execution.id
-  policy = data.aws_iam_policy_document.ecs_execution_secrets.json
+  policy = data.aws_iam_policy_document.ecs_execution_secrets[0].json
 }
 
 # ── ECS Task Role ─────────────────────────────────────────────────────────────
 # Assumed by the running container. Grants least-privilege runtime access to
 # S3 and Rekognition. No long-lived credentials exist anywhere.
+#
+# The backups/ permission is used by the one-off export-data task (backup-db.sh)
+# to write the JSON snapshot before decommissioning.
 
 resource "aws_iam_role" "ecs_task" {
   name = "${var.project}-${var.environment}-ecs-task"
@@ -87,6 +92,12 @@ data "aws_iam_policy_document" "ecs_task" {
     sid       = "PhotosPublicReadWrite"
     actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
     resources = ["${aws_s3_bucket.photos.arn}/public/*"]
+  }
+
+  statement {
+    sid       = "PhotosBackupWrite"
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.photos.arn}/backups/*"]
   }
 
   statement {

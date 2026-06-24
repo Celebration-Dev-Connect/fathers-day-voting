@@ -44,7 +44,7 @@ data "aws_cloudfront_cache_policy" "optimized" {
 # (?page=N) cache each page separately. Used for /api/public/event and
 # /api/public/categories/*/entries.
 resource "aws_cloudfront_cache_policy" "api_short" {
-  count       = var.skip_cloudfront ? 0 : 1
+  count       = (var.skip_cloudfront || var.decommissioned) ? 0 : 1
   name        = "${var.project}-${var.environment}-api-short-ttl"
   default_ttl = 30
   max_ttl     = 30
@@ -75,7 +75,7 @@ data "aws_cloudfront_origin_request_policy" "all_except_host" {
 # /api/* — strips the /api prefix before forwarding to App Runner so the
 # Fastify routes receive requests at / rather than /api/.
 resource "aws_cloudfront_function" "strip_api_prefix" {
-  count   = var.skip_cloudfront ? 0 : 1
+  count   = (var.skip_cloudfront || var.decommissioned) ? 0 : 1
   name    = "${var.project}-${var.environment}-strip-api-prefix"
   runtime = "cloudfront-js-2.0"
   publish = true
@@ -95,7 +95,7 @@ resource "aws_cloudfront_function" "strip_api_prefix" {
 # CloudFront shares one cache across all behaviors, so every SPA must use a
 # distinct fallback filename.
 resource "aws_cloudfront_function" "admin_routing" {
-  count   = var.skip_cloudfront ? 0 : 1
+  count   = (var.skip_cloudfront || var.decommissioned) ? 0 : 1
   name    = "${var.project}-${var.environment}-admin-routing"
   runtime = "cloudfront-js-2.0"
   publish = true
@@ -111,6 +111,7 @@ resource "aws_cloudfront_function" "admin_routing" {
 
 # /photos/* — rewrites /photos/<id> to /public/<id> to match the S3 key
 # layout used by the moderation pipeline (pending/ and public/ prefixes).
+# Kept even when decommissioned so existing photo URLs continue to work.
 resource "aws_cloudfront_function" "photos_prefix" {
   count   = var.skip_cloudfront ? 0 : 1
   name    = "${var.project}-${var.environment}-photos-prefix"
@@ -129,7 +130,7 @@ resource "aws_cloudfront_function" "photos_prefix" {
 # bucket root, then falls back to /judge.html for SPA client-side routing.
 # Unique fallback filename avoids the shared CloudFront cache key collision.
 resource "aws_cloudfront_function" "judge_routing" {
-  count   = var.skip_cloudfront ? 0 : 1
+  count   = (var.skip_cloudfront || var.decommissioned) ? 0 : 1
   name    = "${var.project}-${var.environment}-judge-routing"
   runtime = "cloudfront-js-2.0"
   publish = true
@@ -143,14 +144,11 @@ resource "aws_cloudfront_function" "judge_routing" {
   EOT
 }
 
-# /* default — SPA routing for the public-web app. Paths with no file extension
-# are served as /index.html; asset paths (hashed filenames) pass through.
-# Owner-web is stored under /owner in the public-web bucket and falls back to
-# /owner/index.html for owner routes. Sub-app paths (/admin, /judge, /api,
-# /photos) are hard-rejected here so the public-web origin can never serve them,
-# even if the ordered behaviors somehow miss (belt-and-suspenders guard).
+# /* default — SPA routing for the public-web app. Active only when NOT
+# decommissioned; the decommissioned path uses custom_error_response + default
+# root object instead, which is simpler for a static single-page site.
 resource "aws_cloudfront_function" "spa_routing" {
-  count   = var.skip_cloudfront ? 0 : 1
+  count   = (var.skip_cloudfront || var.decommissioned) ? 0 : 1
   name    = "${var.project}-${var.environment}-spa-routing"
   runtime = "cloudfront-js-2.0"
   publish = true
@@ -181,176 +179,197 @@ resource "aws_cloudfront_function" "spa_routing" {
 resource "aws_cloudfront_distribution" "main" {
   count       = var.skip_cloudfront ? 0 : 1
   enabled     = true
-  # When using a custom domain (test/prod), attach the alias so the distribution
-  # answers on that domain. When cloudfront_custom_domain = false (perf), omit
-  # aliases entirely — the distribution is reachable only via its AWS-assigned
-  # *.cloudfront.net domain, which uses CloudFront's built-in certificate.
   aliases     = var.cloudfront_custom_domain ? [var.domain] : []
   comment     = "${var.project} ${var.environment}"
   price_class = "PriceClass_100"
 
-  # Origin 1: ECS Fargate API via ALB (HTTP — TLS is terminated at CloudFront)
-  origin {
-    origin_id   = "api"
-    domain_name = aws_lb.api.dns_name
+  # Serve index.html as the root object when decommissioned (single static page).
+  default_root_object = var.decommissioned ? "index.html" : null
 
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "http-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
+  # Origin 1: ECS Fargate API via ALB — active only when NOT decommissioned.
+  dynamic "origin" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      origin_id   = "api"
+      domain_name = aws_lb.api[0].dns_name
+
+      custom_origin_config {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "http-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
     }
   }
 
-  # Origin 2: Admin web SPA (S3)
-  origin {
-    origin_id                = "admin-web"
-    domain_name              = aws_s3_bucket.admin_web.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
+  # Origin 2: Admin web SPA (S3) — active only when NOT decommissioned.
+  dynamic "origin" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      origin_id                = "admin-web"
+      domain_name              = aws_s3_bucket.admin_web[0].bucket_regional_domain_name
+      origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
+    }
   }
 
-  # Origin 3: Photos (S3) — CF function rewrites /photos/<id> → /public/<id>
+  # Origin 3: Photos (S3) — always kept so /photos/* URLs continue to work.
   origin {
     origin_id                = "photos"
     domain_name              = aws_s3_bucket.photos.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
   }
 
-  # Origin 4: Judge web SPA (S3)
-  origin {
-    origin_id                = "judge-web"
-    domain_name              = aws_s3_bucket.judge_web.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
+  # Origin 4: Judge web SPA (S3) — active only when NOT decommissioned.
+  dynamic "origin" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      origin_id                = "judge-web"
+      domain_name              = aws_s3_bucket.judge_web[0].bucket_regional_domain_name
+      origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
+    }
   }
 
-  # Origin 5: Public web SPA (S3) — default origin
+  # Origin 5: Public web SPA (S3) — always kept (static page when decommissioned).
   origin {
     origin_id                = "public-web"
     domain_name              = aws_s3_bucket.public_web.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.s3[0].id
   }
 
-  # Behavior 1 (priority 1): /api/public/event → cached 30s
-  # Must sit above the /api/* catch-all so CloudFront applies caching here
-  # instead of the CachingDisabled policy that covers the rest of the API.
-  # The strip_api_prefix function still runs so Fargate receives /public/event.
-  ordered_cache_behavior {
-    path_pattern             = "/api/public/event"
-    target_origin_id         = "api"
-    viewer_protocol_policy   = "redirect-to-https"
-    allowed_methods          = ["GET", "HEAD"]
-    cached_methods           = ["GET", "HEAD"]
-    cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+  # ── Ordered behaviors (all removed when decommissioned) ─────────────────────
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+  # Behavior: /api/public/event → cached 30s
+  dynamic "ordered_cache_behavior" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      path_pattern             = "/api/public/event"
+      target_origin_id         = "api"
+      viewer_protocol_policy   = "redirect-to-https"
+      allowed_methods          = ["GET", "HEAD"]
+      cached_methods           = ["GET", "HEAD"]
+      cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+      }
     }
   }
 
-  # Behavior 2 (priority 2): /api/public/results → cached 30s
-  # Read-only results snapshot; high traffic on results day. Mirrors the
-  # /api/public/event behavior exactly.
-  ordered_cache_behavior {
-    path_pattern             = "/api/public/results"
-    target_origin_id         = "api"
-    viewer_protocol_policy   = "redirect-to-https"
-    allowed_methods          = ["GET", "HEAD"]
-    cached_methods           = ["GET", "HEAD"]
-    cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+  # Behavior: /api/public/results → cached 30s
+  dynamic "ordered_cache_behavior" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      path_pattern             = "/api/public/results"
+      target_origin_id         = "api"
+      viewer_protocol_policy   = "redirect-to-https"
+      allowed_methods          = ["GET", "HEAD"]
+      cached_methods           = ["GET", "HEAD"]
+      cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+      }
     }
   }
 
-  # Behavior 3 (priority 3): /api/public/categories/*/entries → cached 30s
-  # The * wildcard matches the category slug. Query strings (e.g. ?page=2) are
-  # included in the cache key via the api_short policy so pages cache separately.
-  ordered_cache_behavior {
-    path_pattern             = "/api/public/categories/*/entries"
-    target_origin_id         = "api"
-    viewer_protocol_policy   = "redirect-to-https"
-    allowed_methods          = ["GET", "HEAD"]
-    cached_methods           = ["GET", "HEAD"]
-    cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+  # Behavior: /api/public/categories/*/entries → cached 30s
+  dynamic "ordered_cache_behavior" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      path_pattern             = "/api/public/categories/*/entries"
+      target_origin_id         = "api"
+      viewer_protocol_policy   = "redirect-to-https"
+      allowed_methods          = ["GET", "HEAD"]
+      cached_methods           = ["GET", "HEAD"]
+      cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+      }
     }
   }
 
-  # Behavior 4 (priority 4): /api/public/entries/* → cached 30s for GET/HEAD
-  # Vehicle detail page — called on every QR scan and browse click. This pattern
-  # also matches nested vote endpoints (/vote and /special-awards/*/vote), so all
-  # HTTP methods must be allowed while only GET/HEAD are cached at the edge.
-  ordered_cache_behavior {
-    path_pattern             = "/api/public/entries/*"
-    target_origin_id         = "api"
-    viewer_protocol_policy   = "redirect-to-https"
-    allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods           = ["GET", "HEAD"]
-    cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+  # Behavior: /api/public/entries/* → cached 30s for GET/HEAD
+  dynamic "ordered_cache_behavior" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      path_pattern             = "/api/public/entries/*"
+      target_origin_id         = "api"
+      viewer_protocol_policy   = "redirect-to-https"
+      allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+      cached_methods           = ["GET", "HEAD"]
+      cache_policy_id          = aws_cloudfront_cache_policy.api_short[0].id
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+      }
     }
   }
 
-  # Behavior 5 (priority 5): /api/* → Fargate (all other API routes, no caching)
-  ordered_cache_behavior {
-    path_pattern             = "/api/*"
-    target_origin_id         = "api"
-    viewer_protocol_policy   = "redirect-to-https"
-    allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods           = ["GET", "HEAD"]
-    cache_policy_id          = data.aws_cloudfront_cache_policy.disabled.id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
+  # Behavior: /api/* → Fargate, no caching
+  dynamic "ordered_cache_behavior" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      path_pattern             = "/api/*"
+      target_origin_id         = "api"
+      viewer_protocol_policy   = "redirect-to-https"
+      allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+      cached_methods           = ["GET", "HEAD"]
+      cache_policy_id          = data.aws_cloudfront_cache_policy.disabled.id
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_except_host.id
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.strip_api_prefix[0].arn
+      }
     }
   }
 
-  # Behavior 2 (priority 2): /admin* → admin-web S3 bucket
-  ordered_cache_behavior {
-    path_pattern           = "/admin*"
-    target_origin_id       = "admin-web"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
+  # Behavior: /admin* → admin-web S3 bucket
+  dynamic "ordered_cache_behavior" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      path_pattern           = "/admin*"
+      target_origin_id       = "admin-web"
+      viewer_protocol_policy = "redirect-to-https"
+      allowed_methods        = ["GET", "HEAD"]
+      cached_methods         = ["GET", "HEAD"]
+      cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.admin_routing[0].arn
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.admin_routing[0].arn
+      }
     }
   }
 
-  # Behavior 3 (priority 3): /judge* → judge-web S3 bucket
-  ordered_cache_behavior {
-    path_pattern           = "/judge*"
-    target_origin_id       = "judge-web"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
+  # Behavior: /judge* → judge-web S3 bucket
+  dynamic "ordered_cache_behavior" {
+    for_each = var.decommissioned ? [] : [1]
+    content {
+      path_pattern           = "/judge*"
+      target_origin_id       = "judge-web"
+      viewer_protocol_policy = "redirect-to-https"
+      allowed_methods        = ["GET", "HEAD"]
+      cached_methods         = ["GET", "HEAD"]
+      cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.judge_routing[0].arn
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.judge_routing[0].arn
+      }
     }
   }
 
-  # Behavior 5 (priority 5): /photos/* → photos S3 bucket (public/ prefix)
+  # Behavior: /photos/* → photos S3 bucket (always kept)
   ordered_cache_behavior {
     path_pattern           = "/photos/*"
     target_origin_id       = "photos"
@@ -365,7 +384,7 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Default behavior: /* → public-web S3 bucket
+  # Default behavior: public-web (static page when decommissioned, full SPA otherwise)
   default_cache_behavior {
     target_origin_id       = "public-web"
     viewer_protocol_policy = "redirect-to-https"
@@ -373,9 +392,26 @@ resource "aws_cloudfront_distribution" "main" {
     cached_methods         = ["GET", "HEAD"]
     cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.spa_routing[0].arn
+    # SPA routing function only needed when the full app is running.
+    # When decommissioned, custom_error_response handles 403/404 → index.html.
+    dynamic "function_association" {
+      for_each = var.decommissioned ? [] : [1]
+      content {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.spa_routing[0].arn
+      }
+    }
+  }
+
+  # When decommissioned, redirect all S3 access errors to index.html so every
+  # URL on the domain serves the "event is over" static page.
+  dynamic "custom_error_response" {
+    for_each = var.decommissioned ? [403, 404] : []
+    content {
+      error_code            = custom_error_response.value
+      response_code         = 200
+      response_page_path    = "/index.html"
+      error_caching_min_ttl = 300
     }
   }
 

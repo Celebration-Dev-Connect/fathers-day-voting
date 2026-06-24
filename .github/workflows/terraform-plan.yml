@@ -8,6 +8,11 @@ on:
         required: true
         type: choice
         options: [test, perf, prod]
+      decommissioned:
+        description: "Preview decommission: plan tearing down the backend (keeps CloudFront + photos + static page)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -227,6 +232,9 @@ jobs:
           EOF
               ;;
           esac
+
+          # Inject the decommission flag so the plan reflects a teardown when requested.
+          echo "decommissioned = ${{ inputs.decommissioned }}" >> "infra/terraform/${{ inputs.environment }}.tfvars"
 
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6

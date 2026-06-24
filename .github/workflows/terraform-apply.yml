@@ -13,6 +13,11 @@ on:
         required: true
         type: choice
         options: [apply, destroy, suspend, resume]
+      decommissioned:
+        description: "Decommission (apply only): destroy backend, keep CloudFront + photos + static page"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -257,6 +262,10 @@ jobs:
               ;;
           esac
 
+          # Inject the decommission flag into the generated tfvars (default false).
+          # When true + action=apply, the backend is torn down (see decommission steps).
+          echo "decommissioned = ${{ inputs.decommissioned }}" >> "infra/terraform/${{ inputs.environment }}.tfvars"
+
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6
         with:
@@ -274,8 +283,61 @@ jobs:
             --output text 2>/dev/null | awk -F: '{print $NF}')
           echo "tag=${TAG:-latest}" >> "$GITHUB_OUTPUT"
 
+      # ── Decommission flow (action=apply + decommissioned=true) ───────────────
+      # Runs terraform directly (not deploy.sh) to avoid the ECR-bootstrap path,
+      # which assumes the backend resources still exist. Mirrors decommission.sh.
+      - name: Decommission prep (disable RDS deletion protection, empty SPA buckets)
+        if: inputs.action == 'apply' && inputs.decommissioned
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          DB_ID="carshow-${ENVIRONMENT}"
+          echo "Disabling RDS deletion protection on ${DB_ID}..."
+          aws rds modify-db-instance --db-instance-identifier "$DB_ID" \
+            --no-deletion-protection --apply-immediately --region "$AWS_REGION" >/dev/null
+          aws rds wait db-instance-available --db-instance-identifier "$DB_ID" --region "$AWS_REGION"
+          # SPA buckets have force_destroy=false in prod, so empty them before destroy.
+          for b in "carshow-admin-web-${ENVIRONMENT}" "carshow-judge-web-${ENVIRONMENT}"; do
+            if aws s3 ls "s3://${b}" --region "$AWS_REGION" >/dev/null 2>&1; then
+              echo "Emptying s3://${b} ..."
+              aws s3 rm "s3://${b}" --recursive --region "$AWS_REGION" >/dev/null
+            else
+              echo "Bucket ${b} already gone."
+            fi
+          done
+
+      - name: Terraform decommission apply
+        if: inputs.action == 'apply' && inputs.decommissioned
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          terraform -chdir=infra/terraform init -input=false
+          terraform -chdir=infra/terraform workspace select "$ENVIRONMENT"
+          terraform -chdir=infra/terraform apply \
+            -var-file="${ENVIRONMENT}.tfvars" \
+            -var="image_tag=latest" \
+            -auto-approve
+
+      - name: Decommission finalize (sync static page + invalidate cache)
+        if: inputs.action == 'apply' && inputs.decommissioned
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          PUBLIC_BUCKET="carshow-public-web-${ENVIRONMENT}"
+          echo "Syncing static thank-you page to s3://${PUBLIC_BUCKET} ..."
+          aws s3 sync infra/static-site/ "s3://${PUBLIC_BUCKET}/" --delete --region "$AWS_REGION"
+          DIST_ID="$(terraform -chdir=infra/terraform output -raw cloudfront_distribution_id)"
+          if [ -n "$DIST_ID" ]; then
+            echo "Invalidating CloudFront ${DIST_ID} ..."
+            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths '/*' >/dev/null
+          fi
+          echo "Decommission complete for ${ENVIRONMENT}."
+
       - name: Terraform apply (infra only — image and SPAs unchanged)
-        if: inputs.action == 'apply'
+        if: inputs.action == 'apply' && !inputs.decommissioned
         run: |
           ./infra/deploy.sh \
             --env ${{ inputs.environment }} \

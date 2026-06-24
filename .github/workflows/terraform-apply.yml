@@ -286,17 +286,22 @@ jobs:
       # ── Decommission flow (action=apply + decommissioned=true) ───────────────
       # Runs terraform directly (not deploy.sh) to avoid the ECR-bootstrap path,
       # which assumes the backend resources still exist. Mirrors decommission.sh.
-      - name: Decommission prep (disable RDS deletion protection, empty SPA buckets)
+      - name: Decommission prep (RDS protection, empty SPA buckets + ECR)
         if: inputs.action == 'apply' && inputs.decommissioned
         env:
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
           DB_ID="carshow-${ENVIRONMENT}"
-          echo "Disabling RDS deletion protection on ${DB_ID}..."
-          aws rds modify-db-instance --db-instance-identifier "$DB_ID" \
-            --no-deletion-protection --apply-immediately --region "$AWS_REGION" >/dev/null
-          aws rds wait db-instance-available --db-instance-identifier "$DB_ID" --region "$AWS_REGION"
+          # Idempotent: the instance may already be deleted on a re-run.
+          if aws rds describe-db-instances --db-instance-identifier "$DB_ID" --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo "Disabling RDS deletion protection on ${DB_ID}..."
+            aws rds modify-db-instance --db-instance-identifier "$DB_ID" \
+              --no-deletion-protection --apply-immediately --region "$AWS_REGION" >/dev/null
+            aws rds wait db-instance-available --db-instance-identifier "$DB_ID" --region "$AWS_REGION"
+          else
+            echo "RDS ${DB_ID} already gone."
+          fi
           # SPA buckets have force_destroy=false in prod, so empty them before destroy.
           for b in "carshow-admin-web-${ENVIRONMENT}" "carshow-judge-web-${ENVIRONMENT}"; do
             if aws s3 ls "s3://${b}" --region "$AWS_REGION" >/dev/null 2>&1; then
@@ -306,6 +311,20 @@ jobs:
               echo "Bucket ${b} already gone."
             fi
           done
+          # ECR repo has force_delete=false in prod and can't be force-flagged while
+          # being destroyed (count=0), so delete its images here first.
+          REPO="carshow/api"
+          if aws ecr describe-repositories --repository-names "$REPO" --region "$AWS_REGION" >/dev/null 2>&1; then
+            IDS="$(aws ecr list-images --repository-name "$REPO" --region "$AWS_REGION" --query 'imageIds[*]' --output json)"
+            if [ "$IDS" != "[]" ]; then
+              echo "Deleting all images in ECR ${REPO} ..."
+              aws ecr batch-delete-image --repository-name "$REPO" --region "$AWS_REGION" --image-ids "$IDS" >/dev/null
+            else
+              echo "ECR ${REPO} already empty."
+            fi
+          else
+            echo "ECR ${REPO} already gone."
+          fi
 
       - name: Terraform decommission apply
         if: inputs.action == 'apply' && inputs.decommissioned
@@ -315,6 +334,15 @@ jobs:
           set -euo pipefail
           terraform -chdir=infra/terraform init -input=false
           terraform -chdir=infra/terraform workspace select "$ENVIRONMENT"
+          # Phase 1: reconfigure CloudFront to static-only FIRST and let it fully
+          # deploy. Terraform's count/dynamic blocks don't reliably order the
+          # distribution update before the CF function + cache-policy deletes, so
+          # without this the deletes fail with FunctionInUse / CachePolicyInUse.
+          terraform -chdir=infra/terraform apply \
+            -var-file="${ENVIRONMENT}.tfvars" -var="image_tag=latest" -auto-approve \
+            -target='aws_cloudfront_distribution.main[0]'
+          # Phase 2: destroy everything else now that the functions + cache policy
+          # are disassociated from the distribution.
           terraform -chdir=infra/terraform apply \
             -var-file="${ENVIRONMENT}.tfvars" \
             -var="image_tag=latest" \

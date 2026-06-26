@@ -56,17 +56,23 @@ builds + syncs the four SPAs, then invalidates CloudFront.
 
 ## Step 3 — Restore the database
 
-Schema is created by `prisma migrate deploy` on api start. Load the data dump:
+The api's `prisma migrate deploy` creates the schema on start **and a migration
+seeds the base Event row**, so the dump (a plain `pg_dump`) can't be layered on
+top — recreate the database clean, then load the dump:
 
 ```bash
 # Stage the dump in S3 (the box's role can read the photos bucket).
 aws s3 cp backups/carshow-prod-YYYYMMDD-HHMMSS.sql.gz \
-  s3://carshow-photos-prod/backups/db/restore.sql.gz
+  s3://carshow-photos-prod/backups/db/restore.sql.gz --profile carshow
 
-# Then, in an SSM Session Manager shell on the box:
+# Then, in an SSM Session Manager shell on the box (or via ssm send-command):
 cd /opt/carshow
 aws s3 cp s3://carshow-photos-prod/backups/db/restore.sql.gz /tmp/restore.sql.gz
+docker compose stop api                                  # drop active connections
+docker compose exec -T postgres psql -U carshow -d postgres \
+  -c "DROP DATABASE carshow WITH (FORCE);" -c "CREATE DATABASE carshow OWNER carshow;"
 gunzip -c /tmp/restore.sql.gz | docker compose exec -T postgres psql -U carshow -d carshow
+docker compose up -d api                                 # entrypoint migrate is a no-op
 rm /tmp/restore.sql.gz
 ```
 

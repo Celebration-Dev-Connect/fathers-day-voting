@@ -84,6 +84,17 @@
       ]
     },
     {
+      "Sid": "CloudFrontCachePolicy",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateCachePolicy",
+        "cloudfront:UpdateCachePolicy",
+        "cloudfront:DeleteCachePolicy",
+        "cloudfront:GetCachePolicyConfig"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "KMSForSSM",
       "Effect": "Allow",
       "Action": [

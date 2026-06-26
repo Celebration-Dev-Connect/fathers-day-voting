@@ -265,6 +265,39 @@ variable "decommissioned" {
   default     = false
 }
 
+variable "compute_mode" {
+  description = <<-EOT
+    How the API is hosted.
+      "ecs" — event-day footprint: ECS Fargate behind an ALB, RDS PostgreSQL,
+              Secrets Manager, and CloudWatch alarms/dashboard. Scales for the show.
+      "ec2" — cheap year-round footprint: a single small EC2 instance running the
+              API and PostgreSQL in Docker, behind CloudFront directly (no ALB),
+              secrets in SSM Parameter Store. ~$22/mo vs ~$160/mo for "ecs".
+    Ignored when decommissioned = true (everything backend is torn down).
+    Switch back to "ecs" before the next event; restore data from the nightly
+    pg_dump in s3://carshow-photos-<env>/backups/db/ or the RDS final snapshot.
+  EOT
+  type        = string
+  default     = "ecs"
+
+  validation {
+    condition     = contains(["ecs", "ec2"], var.compute_mode)
+    error_message = "compute_mode must be \"ecs\" or \"ec2\"."
+  }
+}
+
+variable "ec2_instance_type" {
+  description = "EC2 instance type for compute_mode = ec2. ARM (t4g) to match the linux/arm64 image build. t4g.small (2 GB) is the safe minimum for API + Postgres + the moderation worker."
+  type        = string
+  default     = "t4g.small"
+}
+
+variable "ec2_data_volume_size" {
+  description = "Size (GB) of the dedicated EBS data volume that holds the Postgres data dir on compute_mode = ec2. Survives instance replacement."
+  type        = number
+  default     = 20
+}
+
 variable "image_tag" {
   description = <<-EOT
     ECR image tag for the ECS task definition.

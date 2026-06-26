@@ -6,10 +6,21 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUT_DIR="$ROOT/infra/ci/out"
 TASK_FILE="$OUT_DIR/task-definition.json"
 
+# DEPLOY_TARGET selects how the API is hosted:
+#   ecs — ECS Fargate rolling deploy (event-day stack)
+#   ec2 — single year-round EC2 box; pull + restart via SSM Send-Command
+DEPLOY_TARGET="${DEPLOY_TARGET:-ecs}"
+
+# SPA + CloudFront vars are common to both targets.
 required_env=(
-  DEPLOY_ENV AWS_REGION ECS_CLUSTER ECS_SERVICE PUBLIC_BUCKET ADMIN_BUCKET JUDGE_BUCKET
+  DEPLOY_ENV AWS_REGION PUBLIC_BUCKET ADMIN_BUCKET JUDGE_BUCKET
   CLOUDFRONT_DISTRIBUTION_ID PUBLIC_URL IMAGE_TAG
 )
+# Per-target compute vars. INSTANCE_ID is optional for ec2 — when unset it is
+# resolved from the instance Name tag in validate().
+case "$DEPLOY_TARGET" in
+  ecs) required_env+=(ECS_CLUSTER ECS_SERVICE) ;;
+esac
 
 require_tools() {
   local tool
@@ -48,10 +59,31 @@ validate() {
     echo "IMAGE_TAG must be a full Git commit SHA" >&2
     exit 1
   }
-  [[ "$ECS_CLUSTER" == "carshow-$DEPLOY_ENV" && "$ECS_SERVICE" == "carshow-$DEPLOY_ENV-api" ]] || {
-    echo "Unexpected ECS deployment target" >&2
+  [[ "$DEPLOY_TARGET" == "ecs" || "$DEPLOY_TARGET" == "ec2" ]] || {
+    echo "DEPLOY_TARGET must be ecs or ec2" >&2
     exit 1
   }
+  if [[ "$DEPLOY_TARGET" == "ecs" ]]; then
+    [[ "$ECS_CLUSTER" == "carshow-$DEPLOY_ENV" && "$ECS_SERVICE" == "carshow-$DEPLOY_ENV-api" ]] || {
+      echo "Unexpected ECS deployment target" >&2
+      exit 1
+    }
+  else
+    # Resolve the box from its Name tag when INSTANCE_ID isn't pinned via env.
+    if [[ -z "${INSTANCE_ID:-}" ]]; then
+      INSTANCE_ID="$(aws ec2 describe-instances \
+        --region "$AWS_REGION" \
+        --filters "Name=tag:Name,Values=carshow-${DEPLOY_ENV}-api" \
+        "Name=instance-state-name,Values=running" \
+        --query 'Reservations[0].Instances[0].InstanceId' \
+        --output text 2>/dev/null)"
+      export INSTANCE_ID
+    fi
+    [[ "$INSTANCE_ID" =~ ^i-[0-9a-f]+$ ]] || {
+      echo "INSTANCE_ID not set and no running carshow-${DEPLOY_ENV}-api instance found" >&2
+      exit 1
+    }
+  fi
   [[ "$PUBLIC_BUCKET" == "carshow-public-web-$DEPLOY_ENV" \
     && "$ADMIN_BUCKET" == "carshow-admin-web-$DEPLOY_ENV" \
     && "$JUDGE_BUCKET" == "carshow-judge-web-$DEPLOY_ENV" ]] || {
@@ -233,6 +265,65 @@ deploy_api() {
     --services "$ECS_SERVICE"
 }
 
+deploy_api_ec2() {
+  local account_id registry command_id status
+  account_id="$(aws sts get-caller-identity --query Account --output text)"
+  registry="${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+  ECR_URL="${registry}/carshow/api"
+
+  # t4g host is ARM — build linux/arm64 (ECS path builds amd64).
+  aws ecr get-login-password --region "$AWS_REGION" |
+    docker login --username AWS --password-stdin "$registry"
+  docker build --platform linux/arm64 -t "$ECR_URL:$IMAGE_TAG" -f apps/api/Dockerfile .
+  docker push "$ECR_URL:$IMAGE_TAG"
+
+  # Record the released tag so a future instance replacement boots this image.
+  aws ssm put-parameter --region "$AWS_REGION" \
+    --name "/carshow/${DEPLOY_ENV}/image-tag" --type String --overwrite \
+    --value "$IMAGE_TAG" >/dev/null
+
+  echo "[deploy] Sending pull+restart to instance ${INSTANCE_ID} via SSM..."
+  command_id="$(aws ssm send-command \
+    --region "$AWS_REGION" \
+    --instance-ids "$INSTANCE_ID" \
+    --document-name "AWS-RunShellScript" \
+    --comment "carshow ${DEPLOY_ENV} deploy ${IMAGE_TAG}" \
+    --parameters "commands=[\
+\"set -euo pipefail\",\
+\"cd /opt/carshow\",\
+\"sed -i 's#^CARSHOW_IMAGE=.*#CARSHOW_IMAGE=${ECR_URL}:${IMAGE_TAG}#' .env\",\
+\"aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${registry}\",\
+\"docker compose pull api\",\
+\"docker compose up -d api\",\
+\"docker image prune -f\"]" \
+    --query 'Command.CommandId' --output text)"
+
+  echo "[deploy] SSM command: $command_id — waiting for completion..."
+  # The api entrypoint applies `prisma migrate deploy` before serving.
+  aws ssm wait command-executed \
+    --region "$AWS_REGION" \
+    --command-id "$command_id" \
+    --instance-id "$INSTANCE_ID" || true
+
+  status="$(aws ssm get-command-invocation \
+    --region "$AWS_REGION" \
+    --command-id "$command_id" \
+    --instance-id "$INSTANCE_ID" \
+    --query 'Status' --output text)"
+
+  if [[ "$status" != "Success" ]]; then
+    echo "[deploy] SSM command status: $status. Output:" >&2
+    aws ssm get-command-invocation \
+      --region "$AWS_REGION" \
+      --command-id "$command_id" \
+      --instance-id "$INSTANCE_ID" \
+      --query '{stdout:StandardOutputContent,stderr:StandardErrorContent}' \
+      --output text >&2 || true
+    exit 1
+  fi
+  echo "[deploy] Instance updated to ${IMAGE_TAG}."
+}
+
 deploy_spas() {
   npm run build:components
 
@@ -263,7 +354,11 @@ deploy_spas() {
 
 deploy() {
   validate
-  deploy_api
+  if [[ "$DEPLOY_TARGET" == "ec2" ]]; then
+    deploy_api_ec2
+  else
+    deploy_api
+  fi
   deploy_spas
   curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors \
     "$PUBLIC_URL/api/health"

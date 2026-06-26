@@ -73,7 +73,7 @@ locals {
 # ── ALB / API alarms ──────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "alb_target_5xx" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-api-5xx"
   alarm_description   = "API is returning 5xx responses (server errors)."
   namespace           = "AWS/ApplicationELB"
@@ -91,7 +91,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_target_5xx" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "alb_elb_5xx" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-alb-5xx"
   alarm_description   = "ALB itself is returning 5xx (often no healthy targets)."
   namespace           = "AWS/ApplicationELB"
@@ -109,7 +109,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_elb_5xx" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-unhealthy-hosts"
   alarm_description   = "One or more API tasks are failing the ALB health check."
   namespace           = "AWS/ApplicationELB"
@@ -127,7 +127,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "api_latency" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-api-latency"
   alarm_description   = "API p95 response time is high (>2s)."
   namespace           = "AWS/ApplicationELB"
@@ -146,7 +146,7 @@ resource "aws_cloudwatch_metric_alarm" "api_latency" {
 # ── ECS alarms ────────────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-ecs-cpu"
   alarm_description   = "ECS service CPU sustained high (autoscaling should react)."
   namespace           = "AWS/ECS"
@@ -163,7 +163,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "ecs_memory" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-ecs-memory"
   alarm_description   = "ECS service memory sustained high."
   namespace           = "AWS/ECS"
@@ -182,7 +182,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_memory" {
 # ── RDS alarms ────────────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-rds-cpu"
   alarm_description   = "RDS CPU sustained high."
   namespace           = "AWS/RDS"
@@ -199,7 +199,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_storage" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-rds-storage"
   alarm_description   = "RDS free storage below 2 GB."
   namespace           = "AWS/RDS"
@@ -216,7 +216,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_storage" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_memory" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-rds-memory"
   alarm_description   = "RDS freeable memory below 256 MB."
   namespace           = "AWS/RDS"
@@ -233,7 +233,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_memory" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_connections" {
-  count               = var.decommissioned ? 0 : 1
+  count               = local.ecs_active ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-rds-connections"
   alarm_description   = "RDS connection count high relative to the per-task pool budget."
   namespace           = "AWS/RDS"
@@ -252,12 +252,12 @@ resource "aws_cloudwatch_metric_alarm" "rds_connections" {
 # ── CloudFront alarm (us-east-1) ──────────────────────────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "cloudfront_5xx" {
-  count               = var.skip_cloudfront ? 0 : 1
-  provider            = aws.us_east_1
-  alarm_name          = "${var.project}-${var.environment}-cloudfront-5xx"
-  alarm_description   = "CloudFront 5xx error rate elevated."
-  namespace           = "AWS/CloudFront"
-  metric_name         = "5xxErrorRate"
+  count             = var.skip_cloudfront ? 0 : 1
+  provider          = aws.us_east_1
+  alarm_name        = "${var.project}-${var.environment}-cloudfront-5xx"
+  alarm_description = "CloudFront 5xx error rate elevated."
+  namespace         = "AWS/CloudFront"
+  metric_name       = "5xxErrorRate"
   dimensions = {
     DistributionId = aws_cloudfront_distribution.main[0].id
     Region         = "Global"
@@ -275,7 +275,7 @@ resource "aws_cloudwatch_metric_alarm" "cloudfront_5xx" {
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_dashboard" "main" {
-  count          = var.decommissioned ? 0 : 1
+  count          = local.ecs_active ? 1 : 0
   dashboard_name = "${var.project}-${var.environment}"
 
   dashboard_body = jsonencode({

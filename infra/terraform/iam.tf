@@ -26,7 +26,7 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_managed" {
 }
 
 data "aws_iam_policy_document" "ecs_execution_secrets" {
-  count = var.decommissioned ? 0 : 1
+  count = local.ecs_active ? 1 : 0
   statement {
     sid     = "SecretsRead"
     actions = ["secretsmanager:GetSecretValue"]
@@ -44,7 +44,7 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
 }
 
 resource "aws_iam_role_policy" "ecs_execution_secrets" {
-  count  = var.decommissioned ? 0 : 1
+  count  = local.ecs_active ? 1 : 0
   name   = "${var.project}-${var.environment}-ecs-execution-secrets"
   role   = aws_iam_role.ecs_execution.id
   policy = data.aws_iam_policy_document.ecs_execution_secrets[0].json

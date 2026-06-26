@@ -1,0 +1,39 @@
+# Year-round production stack for the EC2 host (compute_mode = ec2).
+# Lives at /opt/carshow/docker-compose.yml on the box; run from that directory so
+# Compose auto-loads /opt/carshow/.env for ${...} interpolation AND passes it to
+# the api container. Delivered to the box via SSM (see infra/terraform/ssm.tf);
+# this file in the repo is the single source of truth.
+#
+# DB_PASSWORD and CARSHOW_IMAGE are interpolated from /opt/carshow/.env.
+# AWS credentials are NOT in the env — the api uses the EC2 instance role via IMDS.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: carshow
+      POSTGRES_DB: carshow
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      # Bind-mounted onto the dedicated EBS data volume mounted at /data.
+      - /data/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carshow -d carshow"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    # Never published off-box; only reachable by the api over the compose network.
+
+  api:
+    image: ${CARSHOW_IMAGE}
+    restart: unless-stopped
+    # All app env (DATABASE_URL=...@postgres:5432, JWT, PCO, SES, S3, etc.).
+    env_file: /opt/carshow/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      # CloudFront → host:80 → container:4000 (TLS terminates at CloudFront).
+      - "80:4000"
+    # The image entrypoint runs `prisma migrate deploy` before starting the API.

@@ -1,7 +1,7 @@
 # ── ECS Cluster ───────────────────────────────────────────────────────────────
 
 resource "aws_ecs_cluster" "main" {
-  count = var.decommissioned ? 0 : 1
+  count = local.ecs_active ? 1 : 0
   name  = "${var.project}-${var.environment}"
 
   tags = {
@@ -11,7 +11,7 @@ resource "aws_ecs_cluster" "main" {
 }
 
 resource "aws_ecs_cluster_capacity_providers" "main" {
-  count              = var.decommissioned ? 0 : 1
+  count              = local.ecs_active ? 1 : 0
   cluster_name       = aws_ecs_cluster.main[0].name
   capacity_providers = ["FARGATE"]
 }
@@ -19,7 +19,7 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 # ── CloudWatch Log Group ──────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_log_group" "api" {
-  count             = var.decommissioned ? 0 : 1
+  count             = local.ecs_active ? 1 : 0
   name              = "/ecs/${var.project}-${var.environment}-api"
   retention_in_days = 7
 
@@ -32,7 +32,7 @@ resource "aws_cloudwatch_log_group" "api" {
 # ── Task Definition ───────────────────────────────────────────────────────────
 
 resource "aws_ecs_task_definition" "api" {
-  count                    = var.decommissioned ? 0 : 1
+  count                    = local.ecs_active ? 1 : 0
   family                   = "${var.project}-${var.environment}-api"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
@@ -108,7 +108,7 @@ resource "aws_ecs_task_definition" "api" {
 # ── Application Load Balancer ─────────────────────────────────────────────────
 
 resource "aws_lb" "api" {
-  count              = var.decommissioned ? 0 : 1
+  count              = local.ecs_active ? 1 : 0
   name               = "${var.project}-${var.environment}-api"
   internal           = false
   load_balancer_type = "application"
@@ -122,7 +122,7 @@ resource "aws_lb" "api" {
 }
 
 resource "aws_lb_target_group" "api" {
-  count       = var.decommissioned ? 0 : 1
+  count       = local.ecs_active ? 1 : 0
   name        = "${var.project}-${var.environment}-api"
   port        = 4000
   protocol    = "HTTP"
@@ -145,7 +145,7 @@ resource "aws_lb_target_group" "api" {
 
 # CloudFront -> ALB uses plain HTTP on port 80; TLS is terminated at CloudFront.
 resource "aws_lb_listener" "api" {
-  count             = var.decommissioned ? 0 : 1
+  count             = local.ecs_active ? 1 : 0
   load_balancer_arn = aws_lb.api[0].arn
   port              = 80
   protocol          = "HTTP"
@@ -159,7 +159,7 @@ resource "aws_lb_listener" "api" {
 # ── ECS Service ───────────────────────────────────────────────────────────────
 
 resource "aws_ecs_service" "api" {
-  count           = var.decommissioned ? 0 : 1
+  count           = local.ecs_active ? 1 : 0
   name            = "${var.project}-${var.environment}-api"
   cluster         = aws_ecs_cluster.main[0].id
   task_definition = aws_ecs_task_definition.api[0].arn
@@ -203,7 +203,7 @@ resource "aws_ecs_service" "api" {
 # ── Auto Scaling ──────────────────────────────────────────────────────────────
 
 resource "aws_appautoscaling_target" "api" {
-  count              = var.decommissioned ? 0 : 1
+  count              = local.ecs_active ? 1 : 0
   max_capacity       = var.ecs_max_size
   min_capacity       = var.ecs_min_size
   resource_id        = "service/${aws_ecs_cluster.main[0].name}/${aws_ecs_service.api[0].name}"
@@ -214,7 +214,7 @@ resource "aws_appautoscaling_target" "api" {
 }
 
 resource "aws_appautoscaling_policy" "api_requests" {
-  count              = var.decommissioned ? 0 : 1
+  count              = local.ecs_active ? 1 : 0
   name               = "${var.project}-${var.environment}-api-requests"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.api[0].resource_id

@@ -186,12 +186,13 @@ resource "aws_cloudfront_distribution" "main" {
   # Serve index.html as the root object when decommissioned (single static page).
   default_root_object = var.decommissioned ? "index.html" : null
 
-  # Origin 1: ECS Fargate API via ALB — active only when NOT decommissioned.
+  # Origin 1: the API. ECS mode → ALB; EC2 mode → the EC2 box's Elastic IP.
+  # Both speak plain HTTP on port 80 (TLS terminates at CloudFront).
   dynamic "origin" {
     for_each = var.decommissioned ? [] : [1]
     content {
       origin_id   = "api"
-      domain_name = aws_lb.api[0].dns_name
+      domain_name = local.ec2_active ? aws_eip.api[0].public_dns : aws_lb.api[0].dns_name
 
       custom_origin_config {
         http_port              = 80

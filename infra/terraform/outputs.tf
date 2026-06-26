@@ -30,14 +30,24 @@ output "ecr_repository_url" {
 }
 
 output "api_url" {
-  description = "Internal ALB URL for the API. Not for public use. Empty when decommissioned."
-  value       = var.decommissioned ? "" : "http://${aws_lb.api[0].dns_name}"
+  description = "Internal ALB URL for the API (ECS mode only). Not for public use."
+  value       = local.ecs_active ? "http://${aws_lb.api[0].dns_name}" : ""
 }
 
 output "rds_endpoint" {
-  description = "RDS hostname. Empty when decommissioned."
-  value       = var.decommissioned ? "" : aws_db_instance.main[0].address
+  description = "RDS hostname (ECS mode only)."
+  value       = local.ecs_active ? aws_db_instance.main[0].address : ""
   sensitive   = true
+}
+
+output "ec2_instance_id" {
+  description = "EC2 host instance ID (EC2 mode only). Used by the deploy script's SSM Send-Command target."
+  value       = local.ec2_active ? aws_instance.api[0].id : ""
+}
+
+output "ec2_public_ip" {
+  description = "EC2 host Elastic IP (EC2 mode only). The CloudFront api origin."
+  value       = local.ec2_active ? aws_eip.api[0].public_ip : ""
 }
 
 output "photos_bucket" {
@@ -61,6 +71,6 @@ output "public_web_bucket" {
 }
 
 output "dashboard_url" {
-  description = "CloudWatch dashboard for event-day monitoring. Empty when decommissioned."
-  value       = var.decommissioned ? "" : "https://${var.region}.console.aws.amazon.com/cloudwatch/home?region=${var.region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main[0].dashboard_name}"
+  description = "CloudWatch dashboard for event-day monitoring (ECS mode only)."
+  value       = local.ecs_active ? "https://${var.region}.console.aws.amazon.com/cloudwatch/home?region=${var.region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main[0].dashboard_name}" : ""
 }

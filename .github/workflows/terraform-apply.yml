@@ -18,6 +18,12 @@ on:
         required: false
         type: boolean
         default: false
+      compute_mode:
+        description: "API hosting: ecs (event-day Fargate) or ec2 (cheap year-round box). Ignored when decommissioned."
+        required: false
+        type: choice
+        options: [ecs, ec2]
+        default: ecs
 
 permissions:
   contents: read
@@ -265,6 +271,8 @@ jobs:
           # Inject the decommission flag into the generated tfvars (default false).
           # When true + action=apply, the backend is torn down (see decommission steps).
           echo "decommissioned = ${{ inputs.decommissioned }}" >> "infra/terraform/${{ inputs.environment }}.tfvars"
+          # API hosting mode (ecs = event-day Fargate, ec2 = year-round box).
+          echo "compute_mode = \"${{ inputs.compute_mode }}\"" >> "infra/terraform/${{ inputs.environment }}.tfvars"
 
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6

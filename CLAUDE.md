@@ -109,6 +109,11 @@ Test changes on localhost before opening a PR. Do not expose or commit AWS keys,
 
 ### Infrastructure layout
 
-ECS Fargate API → ALB → CloudFront. Three S3 buckets (public-web, admin-web, judge-web) served behind the same CloudFront distribution under `/`, `/admin`, `/judge` behaviors. RDS PostgreSQL. ECR for the API image. Secrets Manager for `DATABASE_URL` and `JWT_SECRET`. Region: `ca-central-1` by default.
+The `compute_mode` Terraform variable selects how the API is hosted:
+
+- **`ec2` (current, year-round, ~$22/mo):** a single `t4g.small` EC2 instance runs the API and PostgreSQL in Docker (`docker compose`), with the Postgres data dir on a dedicated EBS volume (survives instance replacement; no scheduled backup — `/opt/carshow/backup-db.sh` takes an on-demand dump to S3 if needed). CloudFront reaches the box's Elastic IP directly over HTTP for `/api/*`. Secrets are in SSM Parameter Store; the box uses its instance role via IMDS. Ops access is SSM Session Manager only (no SSH). See `infra/RESTORE.md` and `infra/ec2/`.
+- **`ecs` (event-day, ~$160/mo):** ECS Fargate API → ALB → CloudFront, RDS PostgreSQL, Secrets Manager, CloudWatch alarms/dashboard. Switch back before the next show.
+
+Both modes share: the same CloudFront distribution, ECR for the API image, and three S3 SPA buckets (public-web, admin-web, judge-web) served under `/`, `/admin`, `/judge`, plus the photos bucket under `/photos/*`. Region: `ca-central-1` by default. When `decommissioned = true`, all backend is torn down and CloudFront serves only the static page (see `infra/DECOMMISSION.md`).
 
 Admin and judge SPAs use a separate `<env>.html` fallback file (`admin.html`, `judge.html`) in their S3 buckets to avoid CloudFront cache key collisions with `/index.html`.

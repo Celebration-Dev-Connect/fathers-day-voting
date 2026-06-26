@@ -33,8 +33,11 @@ jobs:
     env:
       DEPLOY_ENV: ${{ inputs.environment }}
       AWS_REGION: ${{ vars.AWS_REGION }}
+      # ecs (Fargate, event day) or ec2 (year-round box). Set per environment.
+      DEPLOY_TARGET: ${{ vars.DEPLOY_TARGET || 'ecs' }}
       ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
       ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+      INSTANCE_ID: ${{ vars.INSTANCE_ID }}
       PUBLIC_BUCKET: ${{ vars.PUBLIC_BUCKET }}
       ADMIN_BUCKET: ${{ vars.ADMIN_BUCKET }}
       JUDGE_BUCKET: ${{ vars.JUDGE_BUCKET }}

@@ -132,64 +132,6 @@
       "Resource": "arn:aws:iam::*:role/carshow-*"
     },
     {
-      "Sid": "IAMInstanceProfile",
-      "Effect": "Allow",
-      "Action": [
-        "iam:CreateInstanceProfile",
-        "iam:DeleteInstanceProfile",
-        "iam:GetInstanceProfile",
-        "iam:AddRoleToInstanceProfile",
-        "iam:RemoveRoleFromInstanceProfile",
-        "iam:TagInstanceProfile",
-        "iam:UntagInstanceProfile"
-      ],
-      "Resource": "arn:aws:iam::*:instance-profile/carshow-*"
-    },
-    {
-      "Sid": "SSMParameters",
-      "Effect": "Allow",
-      "Action": [
-        "ssm:PutParameter",
-        "ssm:DeleteParameter",
-        "ssm:GetParameter",
-        "ssm:GetParameters",
-        "ssm:GetParameterHistory",
-        "ssm:AddTagsToResource",
-        "ssm:RemoveTagsFromResource",
-        "ssm:ListTagsForResource"
-      ],
-      "Resource": "arn:aws:ssm:ca-central-1:*:parameter/carshow/*"
-    },
-    {
-      "Sid": "SSMDescribeAndPublicParams",
-      "Effect": "Allow",
-      "Action": [
-        "ssm:DescribeParameters",
-        "ssm:GetParameter",
-        "ssm:GetParameters"
-      ],
-      "Resource": [
-        "*",
-        "arn:aws:ssm:*::parameter/aws/service/*"
-      ]
-    },
-    {
-      "Sid": "KMSForSSM",
-      "Effect": "Allow",
-      "Action": [
-        "kms:Encrypt",
-        "kms:Decrypt",
-        "kms:GenerateDataKey",
-        "kms:DescribeKey"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "kms:ViaService": "ssm.ca-central-1.amazonaws.com"
-        }
-      }
-    },
-    {
       "Sid": "IAMOIDCProvider",
       "Effect": "Allow",
       "Action": [

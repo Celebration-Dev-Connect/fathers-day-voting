@@ -1,11 +1,6 @@
 name: Deploy Test
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'planning/**'
-      - '**.md'
   workflow_dispatch:
 
 permissions:

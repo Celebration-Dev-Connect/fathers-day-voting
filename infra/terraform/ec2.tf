@@ -5,11 +5,11 @@
 # CloudFront origin-facing prefix list so the box is never open to the world.
 # Access for ops is via SSM Session Manager only — no SSH port, no key pair.
 
-# Latest Amazon Linux 2023 ARM64 AMI (matches the t4g instance family and the
-# linux/arm64 image we build for ECR).
-data "aws_ssm_parameter" "al2023_arm64" {
+# Latest Amazon Linux 2023 x86_64 AMI (matches the t3 instance family and the
+# linux/amd64 image built natively on the x64 CI runner).
+data "aws_ssm_parameter" "al2023_x86_64" {
   count = local.ec2_active ? 1 : 0
-  name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64"
+  name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
 # CloudFront's published origin-facing IP ranges, so we can scope ingress to CF.
@@ -74,7 +74,7 @@ resource "aws_ebs_volume" "data" {
 
 resource "aws_instance" "api" {
   count                       = local.ec2_active ? 1 : 0
-  ami                         = data.aws_ssm_parameter.al2023_arm64[0].value
+  ami                         = data.aws_ssm_parameter.al2023_x86_64[0].value
   instance_type               = var.ec2_instance_type
   subnet_id                   = aws_subnet.public_a.id
   vpc_security_group_ids      = [aws_security_group.ec2_origin[0].id]

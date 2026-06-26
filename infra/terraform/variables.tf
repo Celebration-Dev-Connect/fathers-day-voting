@@ -287,9 +287,9 @@ variable "compute_mode" {
 }
 
 variable "ec2_instance_type" {
-  description = "EC2 instance type for compute_mode = ec2. ARM (t4g) to match the linux/arm64 image build. t4g.small (2 GB) is the safe minimum for API + Postgres + the moderation worker."
+  description = "EC2 instance type for compute_mode = ec2. x86_64 (t3) to match the linux/amd64 image built natively on the x64 CI runner (no cross-arch emulation). t3.small (2 GB) is the safe minimum for API + Postgres + the moderation worker."
   type        = string
-  default     = "t4g.small"
+  default     = "t3.small"
 }
 
 variable "ec2_data_volume_size" {

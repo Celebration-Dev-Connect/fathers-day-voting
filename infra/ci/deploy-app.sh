@@ -271,10 +271,10 @@ deploy_api_ec2() {
   registry="${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com"
   ECR_URL="${registry}/carshow/api"
 
-  # t4g host is ARM — build linux/arm64 (ECS path builds amd64).
+  # x86_64 host (t3) — build linux/amd64 natively on the x64 CI runner.
   aws ecr get-login-password --region "$AWS_REGION" |
     docker login --username AWS --password-stdin "$registry"
-  docker build --platform linux/arm64 -t "$ECR_URL:$IMAGE_TAG" -f apps/api/Dockerfile .
+  docker build --platform linux/amd64 -t "$ECR_URL:$IMAGE_TAG" -f apps/api/Dockerfile .
   docker push "$ECR_URL:$IMAGE_TAG"
 
   # Record the released tag so a future instance replacement boots this image.

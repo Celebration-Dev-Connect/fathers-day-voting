@@ -33,7 +33,7 @@ systemctl enable --now docker
 # Compose v2 plugin (AL2023 doesn't ship it in the docker package).
 mkdir -p /usr/libexec/docker/cli-plugins
 COMPOSE_VERSION="v2.29.7"
-curl -sSL "https://github.com/docker/compose/releases/download/$COMPOSE_VERSION/docker-compose-linux-aarch64" \
+curl -sSL "https://github.com/docker/compose/releases/download/$COMPOSE_VERSION/docker-compose-linux-x86_64" \
   -o /usr/libexec/docker/cli-plugins/docker-compose
 chmod +x /usr/libexec/docker/cli-plugins/docker-compose
 

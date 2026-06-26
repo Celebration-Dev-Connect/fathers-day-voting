@@ -281,15 +281,17 @@ if ! $SKIP_INFRA; then
   _parsed_project="$(awk -F'"' '/^project[[:space:]]*=/ {print $2; exit}' "$VAR_FILE")"
   [[ -n "$_parsed_project" ]] && ECR_REPO_NAME="${_parsed_project}/api"
   info "Ensuring ECR repository exists ($ECR_REPO_NAME)"
-  if ! tf state show aws_ecr_repository.api >/dev/null 2>&1; then
+  # ECR is a counted resource (count = decommissioned ? 0 : 1), so its address is
+  # aws_ecr_repository.api[0] in both ecs and ec2 modes.
+  if ! tf state show 'aws_ecr_repository.api[0]' >/dev/null 2>&1; then
     if aws ecr describe-repositories --repository-names "$ECR_REPO_NAME" \
         --region "$REGION" >/dev/null 2>&1; then
       info "ECR repo already exists in AWS — importing into workspace state"
       tf import "${tf_var_args[@]}" -var="image_tag=$IMAGE_TAG" \
-        aws_ecr_repository.api "$ECR_REPO_NAME" >/dev/null
+        'aws_ecr_repository.api[0]' "$ECR_REPO_NAME" >/dev/null
     else
       tf apply "${tf_var_args[@]}" -var="image_tag=$IMAGE_TAG" \
-        -target=aws_ecr_repository.api -auto-approve >/dev/null
+        -target='aws_ecr_repository.api[0]' -auto-approve >/dev/null
     fi
   fi
 fi
